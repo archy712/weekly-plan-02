@@ -1,9 +1,9 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { Building2, CheckCircle2, Download, FileText } from "lucide-react";
 
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { Button } from "@/components/ui/button";
+import { HeroCta } from "@/components/hero-cta";
 import {
   Card,
   CardContent,
@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const features = [
   {
@@ -56,12 +57,16 @@ export default function Home() {
               현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/auth/login">로그인</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/auth/sign-up">회원가입</Link>
-              </Button>
+              <Suspense
+                fallback={
+                  <>
+                    <Skeleton className="h-10 w-24 rounded-md" />
+                    <Skeleton className="h-10 w-24 rounded-md" />
+                  </>
+                }
+              >
+                <HeroCta />
+              </Suspense>
             </div>
           </section>
 

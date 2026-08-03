@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ProtectedPage() {
+async function ProtectedRedirect(): Promise<never> {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -10,5 +11,21 @@ export default async function ProtectedPage() {
     redirect("/auth/login");
   }
 
-  redirect("/protected/weekly-logs");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department_id")
+    .eq("id", data.claims.sub)
+    .maybeSingle();
+
+  redirect(
+    profile?.department_id ? "/protected/weekly-logs" : "/protected/profile",
+  );
+}
+
+export default function ProtectedPage() {
+  return (
+    <Suspense>
+      <ProtectedRedirect />
+    </Suspense>
+  );
 }
