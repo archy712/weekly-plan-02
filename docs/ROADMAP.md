@@ -303,11 +303,12 @@
     2. `components/weekly-log-list-view.tsx`의 관리자 전용 부서 필터 `Select`도 동일하게 접근성 이름이 없었음(라벨 요소 없이 `SelectTrigger`만 존재) — 프로필 폼의 부서 선택(`Label htmlFor`로 연결됨)과 달리 목록 페이지 필터는 시각적 라벨이 없는 UI라 `aria-label="부서 필터"`를 직접 추가해 해소
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 QA 계정(개발팀, 이후 SQL로 관리자 승격)을 만들어 Playwright로 3개 뷰포트 × 라이트/다크 조합을 스크린샷 대조하며 전 페이지 확인, 접근성 스냅샷(`browser_snapshot`)으로 두 이슈를 발견해 수정 후 재확인. 전 구간 콘솔 에러 0건(로그아웃 시 이미 SQL로 삭제한 계정의 세션을 종료하며 발생한 403은 테스트 정리 과정에서 발생한 것으로 실제 사용 흐름과 무관). 테스트 후 QA 계정과 생성한 `weekly_logs` 2건은 SQL로 정리
 
-- **Task 016: 에러·로딩 처리 및 성능 최적화**
-  - [ ] 라우트별 `loading.tsx` / `error.tsx` / `not-found.tsx` 배치
-  - [ ] Suspense 경계 정리 및 `cacheComponents` 동작 하에서 스트리밍 확인
-  - [ ] 조회 쿼리 인덱스 검토 (`weekly_logs.department_id`, `start_date`)
-  - [ ] `npm run build` 성공, 번들 크기 점검(특히 PDF 폰트), `npx tsc --noEmit` 및 `npm run lint` 무오류
+- **Task 016: 에러·로딩 처리 및 성능 최적화** ✅ (2026-08-04)
+  - [x] 라우트별 `loading.tsx` / `error.tsx` / `not-found.tsx` 배치 — `app/error.tsx`(전역, `homeHref="/"`), `app/global-error.tsx`(루트 레이아웃 자체 크래시 대비), `app/not-found.tsx`(전역 404, 헤더 의존 없이 중앙 정렬), `app/protected/{profile,weekly-logs,weekly-logs/new,weekly-logs/[id]}` 4개 세그먼트에 각각 `loading.tsx`/`error.tsx` 배치, `weekly-logs/[id]`에는 `not-found.tsx` 추가(`notFound()` 호출 지점과 동일 세그먼트라 `protected/layout.tsx`의 헤더·푸터를 유지한 채 렌더링됨). 반복되는 에러 UI는 `components/error-state.tsx`(재시도·홈 버튼)로 공통화, 프로필 로딩은 `components/profile-skeleton.tsx` 신규 작성(기존엔 프로필 페이지 `Suspense`에 fallback이 아예 없어 로딩 중 빈 화면이었음 — 이번에 해소)
+  - [x] Suspense 경계 정리 및 `cacheComponents` 동작 하에서 스트리밍 확인 — 기존 4개 페이지의 Suspense 구조(정적 shell은 즉시 렌더, 동적 조회부만 fallback과 함께 스트리밍)를 그대로 유지하며 재확인. 추가로 `components/site-header.tsx`의 `HeaderNav` Suspense에 fallback이 없어(빈 화면 후 팝인) 레이아웃 시프트 가능성이 있던 것을 발견 — `HeroCta`(app/page.tsx)와 동일한 패턴으로 버튼 크기의 `Skeleton` fallback 추가
+  - [x] 조회 쿼리 인덱스 검토 (`weekly_logs.department_id`, `start_date`) — `pg_indexes` 조회 결과 두 컬럼 모두 Task 008에서 이미 단일 컬럼 인덱스(`weekly_logs_department_id_idx`, `weekly_logs_start_date_idx`) 생성 완료, `author_id`/`id`(PK)도 포함 확인. 현재/예상 데이터 규모(부서당 수십~수백 건)에서는 복합 인덱스 없이도 충분하다고 판단해 추가 마이그레이션은 하지 않음(과도한 사전 최적화 지양). `get_advisors(performance)`는 트래픽 부재로 인한 `unused_index` INFO 1건만 확인(정상), `get_advisors(security)`는 Task008/014에서 이미 검토된 항목 외 신규 이슈 없음
+  - [x] `npm run build` 성공, 번들 크기 점검(특히 PDF 폰트), `npx tsc --noEmit` 및 `npm run lint` 무오류 — `next build` 정상 완료(`app/not-found.tsx`가 `/_not-found`로 정상 포함됨을 빌드 로그에서 확인). `next start`(3100 포트)로 프로덕션 서버를 띄우고 Playwright 네트워크 요청을 실측: 목록 페이지 최초 로드 시 jsPDF/autoTable 청크(`0xpgrjn-qx5it.js` 412K, `39k4ojqlk3yys.js` 32K)는 전혀 요청되지 않고, [PDF 다운로드] 클릭 시점에만 두 청크와 `public/fonts/NotoSansKR-Regular.ttf`(2.4MB, 별도 정적 자산 fetch)가 로드됨을 확인 — Task013에서 의도한 코드 스플리팅이 프로덕션 빌드에서도 정상 동작
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. QA 계정으로 `not-found.tsx`(유효 형식이지만 존재하지 않는 UUID·형식이 아예 다른 id) 2가지 경로와 전역 404(로그인 상태에서 존재하지 않는 임의 경로 접근, 비로그인 상태는 `proxy.ts` 게이트가 먼저 `/auth/login`으로 보내므로 도달하지 않음 — 기존 설계 그대로) 모두 헤더·푸터 유지 여부에 맞게 정상 렌더링 확인. `error.tsx` 동작은 목록 페이지 서버 컴포넌트에 임시로 `throw`를 넣어 실제로 에러 화면(제목·설명·다시 시도·홈으로 버튼)이 뜨는지, [다시 시도] 클릭 시 `reset()`이 정상 재실행되는지 확인한 뒤 즉시 원복(`git status`로 되돌림 확인). 전 구간 콘솔 에러는 Task014에서 이미 무해하다고 확인된 dev-only Turbopack 성능 계측 노이즈 1건 외 없음. 테스트 후 QA 계정 2개와 생성 데이터는 SQL로 정리
 
 - **Task 017: 배포 및 운영 준비**
   - [ ] Vercel 프로젝트 환경변수 등록 (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)
