@@ -72,7 +72,7 @@ export function WeeklyLogListView({
             value={currentDepartmentId}
             onValueChange={handleDepartmentChange}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48" aria-label="부서 필터">
               <SelectValue placeholder="부서 선택" />
             </SelectTrigger>
             <SelectContent>
