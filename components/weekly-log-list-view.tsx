@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +16,7 @@ import {
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
+import { downloadWeeklyLogListPdf } from "@/lib/pdf/weekly-log-pdf";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
 import type {
   Department,
@@ -35,6 +38,7 @@ export function WeeklyLogListView({
   currentDepartmentName?: string | null;
 }) {
   const router = useRouter();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // 부서 필터는 클라이언트 상태가 아니라 URL(?department=)로 관리한다 — 서버 컴포넌트가
   // searchParams를 읽어 매번 다시 조회하므로, 관리자가 아니면 이 파라미터는 서버에서
@@ -47,6 +51,17 @@ export function WeeklyLogListView({
   const scopeLabel = isAdmin
     ? (currentDepartmentName ?? "전체")
     : (currentDepartmentName ?? "부서 미설정");
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true);
+    try {
+      await downloadWeeklyLogListPdf({ items, departmentLabel: scopeLabel });
+    } catch {
+      toast.error("PDF 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,10 +91,10 @@ export function WeeklyLogListView({
           <Button
             type="button"
             variant="outline"
-            disabled
-            title="PDF 다운로드는 추후 지원 예정입니다"
+            disabled={isDownloading}
+            onClick={handleDownloadPdf}
           >
-            PDF 다운로드
+            {isDownloading ? "생성 중..." : "PDF 다운로드"}
           </Button>
           <Button asChild>
             <Link href="/protected/weekly-logs/new">신규 작성</Link>
