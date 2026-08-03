@@ -240,21 +240,23 @@
     - [x] 타 부서 상세 id로 직접 접근 시 404 처리되는지 확인
     - [x] 데이터 0건일 때 EmptyState가 표시되는지 확인
 
-- **Task 012: 주간업무일지 작성·수정·삭제·완료 처리 구현 (F003~F006)**
-  - [ ] 작성 폼에 React Hook Form + Zod resolver 연결 (`lib/schemas/weekly-log.ts` 재사용)
-  - [ ] `department_id`는 폼 입력이 아니라 **작성자 프로필 기준으로 서버에서 자동 지정**, `author_id`는 세션 사용자로 고정
-  - [ ] 수정 저장 — 상세 페이지 수정 모드에서 UPDATE 후 동일 페이지 갱신
-  - [ ] 완료/미완료 토글 — `is_completed` 전환 및 즉시 상태 반영
-  - [ ] 삭제 — `alert-dialog` 확인 절차 후 DELETE, 성공 시 목록으로 복귀
-  - [ ] 변경 후 캐시 무효화 처리(`router.refresh()` 또는 `revalidatePath`)로 목록 최신화
-  - [ ] 서버 오류/검증 실패 시 사용자에게 한국어 메시지 노출 (`sonner` 토스트)
+- **Task 012: 주간업무일지 작성·수정·삭제·완료 처리 구현 (F003~F006)** ✅ (2026-08-03)
+  - [x] 작성 폼에 React Hook Form + Zod resolver 연결 (`lib/schemas/weekly-log.ts` 재사용) — `components/weekly-log-form.tsx`를 `useForm` + `zodResolver(weeklyLogSchema)` + shadcn `Form`/`FormField`/`FormMessage`로 재작성, 기존 `useState` 기반 수동 폼을 대체
+  - [x] `department_id`는 폼 입력이 아니라 **작성자 프로필 기준으로 서버에서 자동 지정**, `author_id`는 세션 사용자로 고정 — `lib/actions/weekly-log.ts`에 신규 Server Action(`createWeeklyLogAction` 등) 도입. 이 저장소에 기존 Server Action 사례가 없었지만, "department_id는 서버에서 지정"이라는 요구를 클라이언트 신뢰 없이 충족하려면 서버 실행 컨텍스트가 필요해 이번 Task에서 처음 도입(로그인/프로필 폼의 "Client Component에서 `supabase.*` 직접 호출" 관례는 유지하되, DB 쓰기 중 서버 측 값 결정이 필요한 이 케이스만 예외로 분리). `getClaims()`로 세션 확인 후 `profiles.department_id`를 서버에서 조회해 삽입값에 사용 — RLS의 `weekly_logs_insert_own_department_or_admin` 정책(`department_id = current_department_id() AND author_id = auth.uid()`)과 이중으로 일치하도록 보장
+  - [x] 수정 저장 — 상세 페이지 수정 모드에서 UPDATE 후 동일 페이지 갱신 — `updateWeeklyLogAction` 호출 후 `router.refresh()`로 현재 라우트 재조회, `is_completed`는 건드리지 않고 title/content/날짜만 갱신
+  - [x] 완료/미완료 토글 — `is_completed` 전환 및 즉시 상태 반영 — `toggleWeeklyLogCompletionAction` 호출, 로컬 state로 낙관적 업데이트 후 실패 시 롤백. Task007에서 도입했던 `lib/dummy-log-overrides.ts`(localStorage 임시 계층)는 실 저장 연결로 목적을 다해 삭제
+  - [x] 삭제 — `alert-dialog` 확인 절차 후 DELETE, 성공 시 목록으로 복귀 — `deleteWeeklyLogAction` 호출 성공 시 `router.push("/protected/weekly-logs")`
+  - [x] 변경 후 캐시 무효화 처리(`router.refresh()` 또는 `revalidatePath`)로 목록 최신화 — 각 Server Action 내부에서 `revalidatePath("/protected/weekly-logs")`(+ 수정/토글은 상세 경로도) 호출, 페이지 이동 없이 머무는 수정/토글 플로우는 클라이언트에서 `router.refresh()`도 함께 호출해 이중으로 최신화
+  - [x] 서버 오류/검증 실패 시 사용자에게 한국어 메시지 노출 (`sonner` 토스트) — 모든 액션이 `{success: true} | {success: false, error: string}` 형태로 반환, 실패 시 `toast.error(result.error)`로 노출. Zod `safeParse` 실패 메시지도 동일 경로로 전달(클라이언트 RHF 검증을 우회해도 서버에서 한 번 더 차단)
+  - **계획 대비 편차**: `lib/dummy-log-overrides.ts`가 목적을 다해 삭제되면서 `components/weekly-log-list-view.tsx`의 `useResolvedItems` 참조도 함께 제거(서버에서 이미 최신 `is_completed`를 조회하므로 클라이언트 오버라이드 레이어가 불필요해짐)
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 QA 계정(개발팀) 1개를 만들어 Playwright로 전 구간 확인: (1) 빈 값 저장 시도 → 4개 필드 모두 필수 검증 메시지 노출·페이지 이동 없음, (2) `start_date > target_end_date` 입력 시 "시작일은 목표종료일보다 늦을 수 없습니다" 메시지로 차단, (3) 제목 입력창은 HTML `maxLength=100`이 100자 초과 입력 자체를 막아 길이 제한이 정상 동작함을 확인(zod `max(100)`과 이중 방어), (4) 정상 값으로 작성 → 목록으로 이동 및 토스트·신규 항목 노출 확인, (5) 상세에서 완료 토글 → 배지·토스트 즉시 반영, 목록 재방문 시에도 "완료"로 유지되는 실제 영속성 확인(이전 Task007의 localStorage 흉내가 아닌 진짜 DB 반영), (6) 수정 모드에서 제목 변경 후 저장 → 동일 페이지에 즉시 반영, `is_completed`는 그대로 유지됨을 확인, (7) 삭제 다이얼로그에서 취소 시 삭제되지 않음을 목록 재방문으로 확인, (8) 삭제 확인 시 목록으로 이동 + EmptyState 노출. RLS 거부 확인은 UI로 도달 불가능한 시나리오라(Task011에서 타 부서 상세 접근 자체가 404) SQL에서 `set local role authenticated`+`request.jwt.claims`로 QA 계정을 impersonate해 직접 검증: 타 부서 행 UPDATE/DELETE 시도 0건 처리(반환 행 없음, `ROLLBACK`으로 부작용 없이 확인)되고, 동일한 방식으로 본인 부서 행에 대해서는 1건 처리됨을 대조군으로 확인해 impersonation 자체가 유효했음을 검증. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정과 SQL로 삽입한 대조군 행은 정리
   - **테스트 체크리스트**
-    - [ ] Playwright MCP로 작성 → 목록 복귀 → 신규 항목 노출까지 전체 흐름 확인
-    - [ ] `start_date > target_end_date` 입력 시 저장이 차단되고 검증 메시지가 표시되는지 확인
-    - [ ] 필수값 누락, 초과 길이 입력 등 유효성 검사 동작 확인
-    - [ ] 완료 토글 후 목록의 상태 배지가 함께 변경되는지 확인
-    - [ ] 삭제 확인 다이얼로그에서 취소 시 삭제되지 않는지 확인
-    - [ ] 타 부서 항목에 대한 수정/삭제 요청이 RLS에서 거부되는지 확인
+    - [x] Playwright MCP로 작성 → 목록 복귀 → 신규 항목 노출까지 전체 흐름 확인
+    - [x] `start_date > target_end_date` 입력 시 저장이 차단되고 검증 메시지가 표시되는지 확인
+    - [x] 필수값 누락, 초과 길이 입력 등 유효성 검사 동작 확인
+    - [x] 완료 토글 후 목록의 상태 배지가 함께 변경되는지 확인
+    - [x] 삭제 확인 다이얼로그에서 취소 시 삭제되지 않는지 확인
+    - [x] 타 부서 항목에 대한 수정/삭제 요청이 RLS에서 거부되는지 확인
 
 - **Task 013: 부서별 리스트 PDF 다운로드 구현 (F008)**
   - [ ] `jsPDF` + `jspdf-autotable`로 현재 조회 중인 목록을 표 형태 PDF로 생성 (클라이언트 사이드)
