@@ -14,6 +14,7 @@ import {
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
+import { useResolvedItems } from "@/lib/dummy-log-overrides";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
 import type {
   Department,
@@ -25,24 +26,34 @@ export function WeeklyLogListView({
   items,
   departments,
   isAdmin,
+  currentDepartmentName,
 }: {
   items: WeeklyLogListItem[];
   departments: Department[];
   isAdmin: boolean;
+  currentDepartmentName?: string | null;
 }) {
   const [department, setDepartment] = useState<DepartmentFilter>(
     ALL_DEPARTMENTS_FILTER,
   );
+  const resolvedItems = useResolvedItems(items);
 
   const filteredItems = useMemo(() => {
     if (!isAdmin || department === ALL_DEPARTMENTS_FILTER) {
-      return items;
+      return resolvedItems;
     }
-    return items.filter((item) => item.department_id === department);
-  }, [items, isAdmin, department]);
+    return resolvedItems.filter((item) => item.department_id === department);
+  }, [resolvedItems, isAdmin, department]);
+
+  const scopeLabel = isAdmin
+    ? (department === ALL_DEPARTMENTS_FILTER
+        ? "전체"
+        : (departments.find((dept) => dept.id === department)?.name ?? "전체"))
+    : (currentDepartmentName ?? "부서 미설정");
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">{scopeLabel}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isAdmin ? (
           <Select

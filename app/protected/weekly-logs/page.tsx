@@ -21,11 +21,18 @@ async function WeeklyLogsContent({
   const { admin } = await searchParams;
   const isAdmin = admin === "1";
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department_id, departments(name)")
+    .eq("id", data.claims.sub)
+    .maybeSingle();
+
   return (
     <WeeklyLogListView
       items={dummyWeeklyLogListItems}
       departments={dummyDepartments}
       isAdmin={isAdmin}
+      currentDepartmentName={profile?.departments?.name ?? null}
     />
   );
 }
