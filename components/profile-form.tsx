@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Profile = Pick<Tables<"profiles">, "id" | "email" | "department_id">;
@@ -37,16 +37,14 @@ export function ProfileForm({
 } & React.ComponentPropsWithoutRef<"div">) {
   const [departmentId, setDepartmentId] = useState(profile.department_id ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const isFirstTimeSetup = !profile.department_id;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const supabase = createClient();
     setIsLoading(true);
     setError(null);
-    setSuccess(false);
 
     try {
       const { error } = await supabase
@@ -54,11 +52,22 @@ export function ProfileForm({
         .update({ department_id: departmentId })
         .eq("id", profile.id);
       if (error) throw error;
-      setSuccess(true);
-      router.refresh();
+
+      const departmentName =
+        departments.find((department) => department.id === departmentId)?.name ??
+        "선택한 부서";
+      toast.success(
+        isFirstTimeSetup
+          ? `${departmentName}으로 설정되었습니다.`
+          : `${departmentName}으로 변경되었습니다.`,
+      );
+
+      // 토스트가 잠깐 보인 뒤 목록 화면으로 이동
+      setTimeout(() => {
+        window.location.href = "/protected/weekly-logs";
+      }, 900);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "부서 저장 중 오류가 발생했습니다.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -98,11 +107,6 @@ export function ProfileForm({
                 </Select>
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              {success && (
-                <p className="text-sm text-green-600">
-                  부서가 저장되었습니다.
-                </p>
-              )}
               <Button
                 type="submit"
                 className="w-full"
