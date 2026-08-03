@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { WeeklyLogNewForm } from "@/components/weekly-log-new-form";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function NewWeeklyLogPage() {
+async function NewWeeklyLogContent() {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -10,9 +13,16 @@ export default async function NewWeeklyLogPage() {
     redirect("/auth/login");
   }
 
+  return <WeeklyLogNewForm />;
+}
+
+export default function NewWeeklyLogPage() {
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
+    <div className="flex-1 w-full max-w-2xl flex flex-col gap-6">
       <h1 className="text-2xl font-bold">주간업무일지 작성</h1>
+      <Suspense fallback={<Skeleton className="h-96 w-full rounded-md" />}>
+        <NewWeeklyLogContent />
+      </Suspense>
     </div>
   );
 }

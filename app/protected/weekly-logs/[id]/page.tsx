@@ -1,8 +1,12 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { dummyWeeklyLogs } from "@/lib/dummy-data";
+import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
+import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton";
 
-export default async function WeeklyLogDetailPage({
+async function WeeklyLogDetailContent({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -16,9 +20,25 @@ export default async function WeeklyLogDetailPage({
     redirect("/auth/login");
   }
 
+  const log = dummyWeeklyLogs.find((item) => item.id === id);
+
+  if (!log) {
+    notFound();
+  }
+
+  return <WeeklyLogDetailView log={log} />;
+}
+
+export default function WeeklyLogDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <h1 className="text-2xl font-bold">주간업무일지 상세 ({id})</h1>
+    <div className="flex-1 w-full max-w-2xl flex flex-col gap-6">
+      <Suspense fallback={<WeeklyLogDetailSkeleton />}>
+        <WeeklyLogDetailContent params={params} />
+      </Suspense>
     </div>
   );
 }

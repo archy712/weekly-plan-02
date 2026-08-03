@@ -141,13 +141,15 @@
   - [x] ~~더미 부서 목록으로~~ **실제 `departments` 테이블 조회**로 셀렉트 렌더링, [저장] 버튼 로딩/에러/성공 상태 UI — Task 008이 먼저 완료되어 실제 부서 테이블(RLS: 인증 사용자 전체 SELECT)이 이미 존재하므로, 더미 데이터를 만들었다가 Task 010에서 다시 실 데이터로 교체하는 이중 작업을 피하기 위해 `app/protected/profile/page.tsx`에서 서버 컴포넌트로 직접 조회하도록 변경 (계획 대비 의도적 편차)
   - **검증**: `npx tsc --noEmit` / `npm run lint` 무오류 확인. Playwright로 `/auth/login`, `/auth/sign-up` 렌더링 및 콘솔 에러 0건 확인. `/protected/profile`의 부서 선택 동작은 실제 인증 계정이 필요해 미검증 — Task 009(구글 로그인) 이후 실 계정으로 재확인 필요
 
-- **Task 007: 주간업무일지 3개 페이지 UI 구현 (더미 데이터)**
-  - [ ] 목록 페이지 — 제목/시작일/목표종료일/완료상태 컬럼, 데스크탑 테이블·모바일 카드 전환
-  - [ ] 목록 페이지 — 관리자 전용 부서 필터 셀렉트(더미 role로 노출 분기), [신규 작성]·[PDF 다운로드] 버튼 배치
-  - [ ] 작성 페이지 — 시작일/목표종료일(date input), 제목, 본문(textarea) 폼 레이아웃 + [저장]/[취소]
-  - [ ] 상세 페이지 — 조회 뷰 / 수정 모드 전환, 완료 토글 스위치, [삭제] 버튼
-  - [ ] 삭제 확인 `alert-dialog` 마크업
-  - **수락 기준**: 랜딩 → 로그인 → 프로필 → 목록 → 작성/상세 전 구간을 더미 데이터로 클릭 이동 가능
+- **Task 007: 주간업무일지 3개 페이지 UI 구현 (더미 데이터)** ✅ (2026-08-03)
+  - [x] 목록 페이지(`app/protected/weekly-logs/page.tsx`) — `components/weekly-log-list-view.tsx`(신규, 클라이언트)에서 `WeeklyLogTable`/`WeeklyLogCardList`로 데스크탑·모바일 전환
+  - [x] 목록 페이지 — `?admin=1` 쿼리 파라미터로 관리자 뷰 진입(더미 role 분기, Task011에서 실제 `profiles.role`/`searchParams` 기반 권한 로직으로 교체 예정), 부서 필터 `ui/select`로 클라이언트 필터링, [신규 작성] 링크·[PDF 다운로드](비활성 placeholder, Task013 대상) 버튼 배치
+  - [x] 작성 페이지(`app/protected/weekly-logs/new/page.tsx`) — `components/weekly-log-form.tsx`(신규, 작성/수정 겸용) + `components/weekly-log-new-form.tsx`(신규 작성 전용 래퍼)로 폼 레이아웃 구현, [저장]/[취소] 모두 목록으로 이동(실 저장은 Task012)
+  - [x] 상세 페이지(`app/protected/weekly-logs/[id]/page.tsx`) — `components/weekly-log-detail-view.tsx`(신규)에서 조회/수정 모드 전환(동일 `WeeklyLogForm` 재사용), `ui/checkbox` 기반 완료 토글(배지 즉시 반영), id가 더미 데이터에 없으면 `notFound()`
+  - [x] 삭제 확인 `alert-dialog` — 상세 페이지에 확인 다이얼로그 연결, 확인 시 목록으로 이동(실 삭제는 Task012)
+  - **계획 대비 편차 (버그 수정)**: 목록 페이지에서 `searchParams`를 Suspense 경계 밖에서 직접 `await`하자 `cacheComponents: true` 하에서 "Uncached data ... accessed outside of `<Suspense>`" 런타임 에러 발생 확인(Playwright 콘솔에서 실측). `app/protected/profile/page.tsx`의 기존 패턴(외부는 동기 컴포넌트, 내부 비동기 `*Content` 컴포넌트를 `Suspense`로 감싸는 구조)을 3개 페이지 전부에 동일하게 적용해 해소 — CLAUDE.md 규칙 #6과 Task011에 이미 명시된 주의사항이 실제로 이번 Task에서 선제적으로 나타난 사례. 목록/상세 페이지는 Task004에서 만든 `WeeklyLogListSkeleton`/`WeeklyLogDetailSkeleton`을 `Suspense` fallback으로 재사용
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입(자동 이메일 확인 활성 확인)으로 임시 QA 계정을 만들어 Playwright로 로그인 → 목록(데스크탑 테이블 16건/모바일 카드 전환) → `?admin=1` 부서 필터(디자인팀 필터링 결과 3건 확인) → 신규 작성(입력 후 저장 → 목록 복귀) → 상세(완료 토글 즉시 반영 → 수정 모드 기존값 프리필 → 취소 → 삭제 확인 다이얼로그 → 삭제 후 목록 복귀) 전 구간 콘솔 에러 0건으로 확인 후 QA 계정은 삭제하여 정리
+  - **범위 밖 유지**: 실제 DB 연동(Task011)·React Hook Form+Zod 연결과 실 저장/삭제(Task012)·PDF 생성(Task013)은 이번 Task에서 다루지 않음
 
 ---
 
