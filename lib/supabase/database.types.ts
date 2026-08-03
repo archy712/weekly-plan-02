@@ -14,42 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
+      departments: {
         Row: {
-          avatar_url: string | null
           created_at: string
-          email: string | null
-          full_name: string | null
           id: string
-          updated_at: string
-          username: string | null
+          name: string
         }
         Insert: {
-          avatar_url?: string | null
           created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string
-          username?: string | null
+          id?: string
+          name: string
         }
         Update: {
-          avatar_url?: string | null
           created_at?: string
-          email?: string | null
-          full_name?: string | null
           id?: string
-          updated_at?: string
-          username?: string | null
+          name?: string
         }
         Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          department_id: string | null
+          email: string | null
+          id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_logs: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          department_id: string
+          id: string
+          is_completed: boolean
+          start_date: string
+          target_end_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          department_id: string
+          id?: string
+          is_completed?: boolean
+          start_date: string
+          target_end_date: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          department_id?: string
+          id?: string
+          is_completed?: boolean
+          start_date?: string
+          target_end_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_logs_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_logs_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_department_id: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

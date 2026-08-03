@@ -14,14 +14,21 @@ async function ProfileContent() {
 
   const userId = data.claims.sub;
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, email, username, full_name, avatar_url")
-    .eq("id", userId)
-    .maybeSingle();
+  const [{ data: profile, error: profileError }, { data: departments, error: departmentsError }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, email, department_id")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase.from("departments").select("id, name").order("name"),
+    ]);
 
   if (profileError) {
     throw profileError;
+  }
+  if (departmentsError) {
+    throw departmentsError;
   }
 
   return (
@@ -30,11 +37,10 @@ async function ProfileContent() {
         profile ?? {
           id: userId,
           email: data.claims.email ?? null,
-          username: null,
-          full_name: null,
-          avatar_url: null,
+          department_id: null,
         }
       }
+      departments={departments ?? []}
     />
   );
 }
