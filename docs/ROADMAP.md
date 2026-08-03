@@ -115,13 +115,16 @@
 
 > 목표: DB 없이도 전체 화면과 사용자 플로우를 클릭으로 체험 가능한 상태. 이 Phase의 모든 작업은 Phase 3(DB)과 병렬 진행 가능.
 
-- **Task 004: 공통 컴포넌트 및 더미 데이터 구축**
-  - [ ] `lib/dummy-data.ts` — 부서 4~5개, 주간업무일지 15건 이상(완료/미완료 혼합, 부서 분산)
-  - [ ] `components/site-header.tsx` 완성 — 비로그인/일반/관리자 메뉴 분기, 모바일 햄버거(sheet)
-  - [ ] `components/weekly-log-table.tsx`(데스크탑) / `components/weekly-log-card.tsx`(모바일) 뷰 분기
-  - [ ] `components/status-badge.tsx` — 완료/진행중 배지 (기존 `ui/badge` 기반, 다크모드 대비 확인)
-  - [ ] `components/empty-state.tsx`, 목록/상세용 `skeleton` 로딩 컴포넌트
-  - [ ] 새 색상 토큰이 필요하면 `app/globals.css`와 `tailwind.config.ts`를 **함께** 수정
+- **Task 004: 공통 컴포넌트 및 더미 데이터 구축** ✅ (2026-08-03)
+  - [x] `lib/dummy-data.ts` — 부서 5개(개발/디자인/마케팅/인사/영업팀, Task 008 seed명과 통일), 주간업무일지 16건(완료 7·미완료 9, 부서별 3~4건 분산)
+  - [x] `components/site-header.tsx` 완성 — `components/header-nav.tsx`(신규, 서버 컴포넌트)에서 `getClaims()` + `profiles.role` 조회로 비로그인/일반/관리자 상태 판별, 데스크탑은 인라인 메뉴·모바일은 `components/mobile-nav.tsx`(신규, `ui/sheet` 기반 햄버거)로 분기
+  - [x] `components/weekly-log-table.tsx`(데스크탑, `hidden md:block`) / `components/weekly-log-card.tsx`(모바일, `WeeklyLogCard`+`WeeklyLogCardList`, `md:hidden`) 뷰 분기 — 관리자용 부서 컬럼은 `showDepartment` prop으로 토글
+  - [x] `components/status-badge.tsx` — 완료/진행중 배지 (`ui/badge`에 `success` variant 추가 후 사용, 다크모드 대비 Playwright로 확인)
+  - [x] `components/empty-state.tsx`, `components/weekly-log-list-skeleton.tsx` / `components/weekly-log-detail-skeleton.tsx`
+  - [x] `success`/`success-foreground` 색상 토큰을 `app/globals.css`(`:root`/`.dark`)와 `tailwind.config.ts`에 함께 추가 (완료 배지 전용, 기존 팔레트에 없던 녹색 계열)
+  - **계획 대비 편차**: 로드맵에 명시되지 않았던 `components/auth-button.tsx`를 `header-nav.tsx`로 흡수·삭제 — 관리자 메뉴 분기를 위해 `profiles.role` 조회가 새로 필요해졌고, 기존 `AuthButton`은 역할(role) 정보 없이 이메일/로그아웃만 처리했으므로 로직을 새 컴포넌트로 통합하는 편이 중복 쿼리를 피할 수 있어 이렇게 결정 (참조하는 곳이 `site-header.tsx` 한 곳뿐임을 grep으로 확인 후 진행)
+  - **검증**: `npx tsc --noEmit` / `npm run lint` 무오류. Playwright로 데스크탑(로그인/회원가입 링크)·모바일(390px, 햄버거→Sheet 오픈, 로그인/회원가입 버튼 노출) 렌더링과 콘솔 에러 0건 확인. `status-badge`의 `success`/`secondary` variant를 라이트·다크 양쪽에 임시 렌더링해 대비 확인
+  - **범위 밖 유지**: 이번 Task는 컴포넌트 자체만 구축 — 실제 `/protected/weekly-logs` 3개 페이지에 더미 데이터를 연결해 렌더링하는 작업은 Task 007에서 진행
 
 - **Task 005: 랜딩 페이지 UI 구현 (F015)**
   - [ ] `app/page.tsx` 전면 교체 — 서비스 가치 제안 히어로 섹션

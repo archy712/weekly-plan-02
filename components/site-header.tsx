@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AuthButton } from "@/components/auth-button";
 import { EnvVarWarning } from "@/components/env-var-warning";
+import { HeaderNav } from "@/components/header-nav";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { hasEnvVars } from "@/lib/utils";
 
@@ -12,12 +12,12 @@ export function SiteHeader() {
         <Link href="/" className="font-semibold">
           부서별 주간업무일지
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {!hasEnvVars ? (
             <EnvVarWarning />
           ) : (
             <Suspense>
-              <AuthButton />
+              <HeaderNav />
             </Suspense>
           )}
           <ThemeSwitcher />
