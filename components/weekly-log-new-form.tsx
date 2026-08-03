@@ -11,7 +11,13 @@ export function WeeklyLogNewForm() {
   const router = useRouter();
 
   const handleSubmit = async (values: WeeklyLogFormData) => {
-    const result = await createWeeklyLogAction(values);
+    let result;
+    try {
+      result = await createWeeklyLogAction(values);
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+      return;
+    }
     if (!result.success) {
       toast.error(result.error);
       return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -39,9 +39,17 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
   const [isCompleted, setIsCompleted] = useState(log.is_completed);
   const [isTogglingCompletion, setIsTogglingCompletion] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // isDeleting 리렌더 반영 전에 도착하는 연속 클릭(더블클릭)을 막기 위한 동기 가드.
+  const isDeletingRef = useRef(false);
 
   const handleEditSubmit = async (values: WeeklyLogFormData) => {
-    const result = await updateWeeklyLogAction(log.id, values);
+    let result;
+    try {
+      result = await updateWeeklyLogAction(log.id, values);
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+      return;
+    }
     if (!result.success) {
       toast.error(result.error);
       return;
@@ -55,27 +63,41 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
     const previous = isCompleted;
     setIsCompleted(checked);
     setIsTogglingCompletion(true);
-    const result = await toggleWeeklyLogCompletionAction(log.id, checked);
-    setIsTogglingCompletion(false);
-    if (!result.success) {
+    try {
+      const result = await toggleWeeklyLogCompletionAction(log.id, checked);
+      if (!result.success) {
+        setIsCompleted(previous);
+        toast.error(result.error);
+        return;
+      }
+      toast.success(checked ? "완료 처리되었습니다." : "미완료로 변경되었습니다.");
+      router.refresh();
+    } catch {
       setIsCompleted(previous);
-      toast.error(result.error);
-      return;
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsTogglingCompletion(false);
     }
-    toast.success(checked ? "완료 처리되었습니다." : "미완료로 변경되었습니다.");
-    router.refresh();
   };
 
   const handleDelete = async () => {
+    if (isDeletingRef.current) return;
+    isDeletingRef.current = true;
     setIsDeleting(true);
-    const result = await deleteWeeklyLogAction(log.id);
-    if (!result.success) {
+    try {
+      const result = await deleteWeeklyLogAction(log.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("삭제되었습니다.");
+      router.push("/protected/weekly-logs");
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      isDeletingRef.current = false;
       setIsDeleting(false);
-      toast.error(result.error);
-      return;
     }
-    toast.success("삭제되었습니다.");
-    router.push("/protected/weekly-logs");
   };
 
   const backLink = (

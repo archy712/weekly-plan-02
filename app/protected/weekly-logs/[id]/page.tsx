@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
@@ -11,6 +12,12 @@ async function WeeklyLogDetailContent({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  // uuid 형식이 아닌 id를 그대로 쿼리하면 Postgres가 22P02(invalid input syntax)
+  // 오류를 던져 500으로 이어진다. 존재하지 않는 id와 동일하게 404로 처리한다.
+  if (!z.string().uuid().safeParse(id).success) {
+    notFound();
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();

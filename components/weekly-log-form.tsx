@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -39,9 +40,24 @@ export function WeeklyLogForm({
 
   const isSubmitting = form.formState.isSubmitting;
 
+  // isSubmitting은 리렌더 이후에야 반영되므로, 리렌더 전에 도착하는 연속 클릭(더블클릭 등)은
+  // disabled 속성만으로 막히지 않는다. ref는 동기적으로 갱신되므로 즉시 재진입을 차단한다.
+  const isSubmittingRef = useRef(false);
+  const handleFormSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
+    if (isSubmittingRef.current) {
+      event.preventDefault();
+      return;
+    }
+    isSubmittingRef.current = true;
+    // 검증 실패로 onSubmit이 호출되지 않는 경우까지 포함해 항상 가드를 해제한다.
+    void form.handleSubmit(onSubmit)(event).finally(() => {
+      isSubmittingRef.current = false;
+    });
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      <form onSubmit={handleFormSubmit} className="flex flex-col gap-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
