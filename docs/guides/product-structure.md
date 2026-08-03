@@ -54,7 +54,7 @@ app/
 - `page.tsx`: 해당 경로의 메인 페이지
 - `layout.tsx`: 레이아웃 컴포넌트 (자식 페이지 감쌈)
 - `route.ts`: Route Handler (API 엔드포인트)
-- `loading.tsx` / `error.tsx` / `not-found.tsx`: 필요한 세그먼트에만 추가 (현재는 미사용)
+- `loading.tsx` / `error.tsx` / `not-found.tsx`: 필요한 세그먼트에만 추가 — `app/`(전역) 및 `app/protected/{profile,weekly-logs,weekly-logs/new,weekly-logs/[id]}`에 배치됨(Task 016)
 
 ### components/ - 컴포넌트 조직 (실제 구조)
 

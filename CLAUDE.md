@@ -22,7 +22,7 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 ### 디렉토리 구조 — `src/` 없음
 
-`app/`, `components/`, `lib/`는 모두 프로젝트 **루트**에 위치합니다 (`src/` 디렉토리 사용 안 함). 경로 별칭 `@/*`는 `tsconfig.json`에서 `./*`(루트)로 매핑됩니다. `docs/guides/`에 아키텍처/스타일/폼 처리에 대한 상세 가이드 5종이 있으니 관련 작업 전에 참고하세요.
+`app/`, `components/`, `lib/`는 모두 프로젝트 **루트**에 위치합니다 (`src/` 디렉토리 사용 안 함). 경로 별칭 `@/*`는 `tsconfig.json`에서 `./*`(루트)로 매핑됩니다. `docs/guides/`에 아키텍처/스타일/폼 처리/배포·운영에 대한 상세 가이드 6종이 있으니 관련 작업 전에 참고하세요.
 
 ### Supabase 클라이언트 3종 — 컨텍스트별로 반드시 구분해서 사용
 
