@@ -13,6 +13,16 @@ async function NewWeeklyLogContent() {
     redirect("/auth/login");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("department_id")
+    .eq("id", data.claims.sub)
+    .maybeSingle();
+
+  if (!profile?.department_id) {
+    redirect("/protected/profile");
+  }
+
   return <WeeklyLogNewForm />;
 }
 

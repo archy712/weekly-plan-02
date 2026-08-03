@@ -27,6 +27,10 @@ async function WeeklyLogsContent({
     .eq("id", data.claims.sub)
     .maybeSingle();
 
+  if (!profile?.department_id) {
+    redirect("/protected/profile");
+  }
+
   return (
     <WeeklyLogListView
       items={dummyWeeklyLogListItems}
