@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { WeeklyLogListItem } from "@/lib/types";
 
 export function WeeklyLogTable({
@@ -37,7 +38,10 @@ export function WeeklyLogTable({
               <TableCell className="whitespace-normal font-medium">
                 <Link
                   href={`/protected/weekly-logs/${item.id}`}
-                  className="hover:underline"
+                  className={cn(
+                    "hover:underline",
+                    item.is_completed && "italic line-through text-muted-foreground",
+                  )}
                 >
                   {item.title}
                 </Link>
