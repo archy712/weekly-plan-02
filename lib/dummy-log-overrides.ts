@@ -1,6 +1,6 @@
-// 더미 데이터(lib/dummy-data.ts)는 서버 모듈 상수라 클라이언트에서 직접 변경할 수 없다.
-// Task012에서 실제 weekly_logs 테이블에 저장하기 전까지, 완료 토글이 목록 화면에도
-// 반영되도록 브라우저 localStorage에 임시로 덮어쓴다. 실 DB 연동 후에는 제거될 임시 계층.
+// Task012에서 완료 토글을 실제 weekly_logs 테이블에 저장하기 전까지, 상세 화면의
+// 토글이 목록 화면에도 반영되도록 브라우저 localStorage에 임시로 덮어쓴다.
+// Task012에서 실 저장이 연결되면 제거될 임시 계층.
 //
 // localStorage는 SSR에서 읽을 수 없고, 하이드레이션 첫 렌더에서 곧바로 읽으면 서버
 // 렌더 결과와 달라져 hydration mismatch가 발생한다. useSyncExternalStore의

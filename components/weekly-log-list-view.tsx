@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,29 +26,28 @@ export function WeeklyLogListView({
   items,
   departments,
   isAdmin,
+  currentDepartmentId,
   currentDepartmentName,
 }: {
   items: WeeklyLogListItem[];
   departments: Department[];
   isAdmin: boolean;
+  currentDepartmentId: DepartmentFilter;
   currentDepartmentName?: string | null;
 }) {
-  const [department, setDepartment] = useState<DepartmentFilter>(
-    ALL_DEPARTMENTS_FILTER,
-  );
+  const router = useRouter();
   const resolvedItems = useResolvedItems(items);
 
-  const filteredItems = useMemo(() => {
-    if (!isAdmin || department === ALL_DEPARTMENTS_FILTER) {
-      return resolvedItems;
-    }
-    return resolvedItems.filter((item) => item.department_id === department);
-  }, [resolvedItems, isAdmin, department]);
+  // 부서 필터는 클라이언트 상태가 아니라 URL(?department=)로 관리한다 — 서버 컴포넌트가
+  // searchParams를 읽어 매번 다시 조회하므로, 관리자가 아니면 이 파라미터는 서버에서
+  // 무시된다(UI 은닉만으로 방어하지 않음).
+  const handleDepartmentChange = (value: string) => {
+    const query = value === ALL_DEPARTMENTS_FILTER ? "" : `?department=${value}`;
+    router.push(`/protected/weekly-logs${query}`);
+  };
 
   const scopeLabel = isAdmin
-    ? (department === ALL_DEPARTMENTS_FILTER
-        ? "전체"
-        : (departments.find((dept) => dept.id === department)?.name ?? "전체"))
+    ? (currentDepartmentName ?? "전체")
     : (currentDepartmentName ?? "부서 미설정");
 
   return (
@@ -57,8 +56,8 @@ export function WeeklyLogListView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {isAdmin ? (
           <Select
-            value={department}
-            onValueChange={(value) => setDepartment(value)}
+            value={currentDepartmentId}
+            onValueChange={handleDepartmentChange}
           >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="부서 선택" />
@@ -89,15 +88,15 @@ export function WeeklyLogListView({
           </Button>
         </div>
       </div>
-      {filteredItems.length === 0 ? (
+      {resolvedItems.length === 0 ? (
         <EmptyState
           title="등록된 주간업무일지가 없습니다"
           description="신규 작성 버튼을 눌러 첫 업무일지를 작성해보세요."
         />
       ) : (
         <>
-          <WeeklyLogTable items={filteredItems} showDepartment={isAdmin} />
-          <WeeklyLogCardList items={filteredItems} showDepartment={isAdmin} />
+          <WeeklyLogTable items={resolvedItems} showDepartment={isAdmin} />
+          <WeeklyLogCardList items={resolvedItems} showDepartment={isAdmin} />
         </>
       )}
     </div>

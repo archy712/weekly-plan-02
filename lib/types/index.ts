@@ -17,6 +17,20 @@ export type WeeklyLogListItem = Pick<
   department_name: string;
 };
 
+export type WeeklyLogDetail = Pick<
+  WeeklyLog,
+  | "id"
+  | "title"
+  | "content"
+  | "start_date"
+  | "target_end_date"
+  | "is_completed"
+  | "department_id"
+> & {
+  department_name: string;
+  author_email: string | null;
+};
+
 export const ALL_DEPARTMENTS_FILTER = "all" as const;
 
 export type DepartmentFilter = typeof ALL_DEPARTMENTS_FILTER | string;

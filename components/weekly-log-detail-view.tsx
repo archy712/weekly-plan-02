@@ -26,13 +26,13 @@ import {
   type WeeklyLogFormValues,
 } from "@/components/weekly-log-form";
 import { formatDate } from "@/lib/format";
-import type { DummyWeeklyLog } from "@/lib/dummy-data";
+import type { WeeklyLogDetail } from "@/lib/types";
 import {
   setCompletionOverride,
   useCompletionOverride,
 } from "@/lib/dummy-log-overrides";
 
-export function WeeklyLogDetailView({ log }: { log: DummyWeeklyLog }) {
+export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [values, setValues] = useState<WeeklyLogFormValues>({
@@ -90,7 +90,7 @@ export function WeeklyLogDetailView({ log }: { log: DummyWeeklyLog }) {
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{log.department_name}</span>
-        <span>{log.author_name}</span>
+        {log.author_email && <span>{log.author_email}</span>}
         <span>
           {formatDate(values.start_date)} ~ {formatDate(values.target_end_date)}
         </span>
