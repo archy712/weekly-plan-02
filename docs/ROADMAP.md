@@ -258,18 +258,21 @@
     - [x] 삭제 확인 다이얼로그에서 취소 시 삭제되지 않는지 확인
     - [x] 타 부서 항목에 대한 수정/삭제 요청이 RLS에서 거부되는지 확인
 
-- **Task 013: 부서별 리스트 PDF 다운로드 구현 (F008)**
-  - [ ] `jsPDF` + `jspdf-autotable`로 현재 조회 중인 목록을 표 형태 PDF로 생성 (클라이언트 사이드)
-  - [ ] **한글 폰트 임베딩 필수** — jsPDF 기본 폰트는 한글을 렌더링하지 못해 글자가 깨짐. Noto Sans KR 등 TTF를 base64로 등록(`addFileToVFS` + `addFont`)해야 함. 폰트 파일 용량이 번들에 미치는 영향을 고려해 동적 import 검토
-  - [ ] PDF 헤더에 부서명·출력일시 표기, 컬럼 구성은 제목/시작일/목표종료일/완료상태
-  - [ ] 파일명 규칙 정의 (예: `주간업무일지_{부서명}_{YYYYMMDD}.pdf`)
-  - [ ] 관리자 부서 필터가 적용된 현재 목록 기준으로 출력되는지 보장, 0건일 때 처리 방침 확정
+- **Task 013: 부서별 리스트 PDF 다운로드 구현 (F008)** ✅ (2026-08-03)
+  - [x] `lib/pdf/weekly-log-pdf.ts` 신규 작성 — `downloadWeeklyLogListPdf()`가 `jspdf`/`jspdf-autotable`을 `await import()`로 동적 로드해 코드 스플리팅(초기 번들에 미포함, 버튼 클릭 시에만 로드)한 뒤 `autoTable`로 표 생성
+  - [x] **한글 폰트 임베딩** — `public/fonts/NotoSansKR-Regular.ttf`(서브셋, 2.4MB)를 정적 자산으로 두고, PDF 생성 시 `fetch()`로 받아 청크 단위 `arrayBufferToBase64()` 변환 후 `addFileToVFS`+`addFont`로 등록. 원본 Noto Sans KR 가변 폰트(10.4MB, OFL 라이선스)를 `fontTools.varLib.instancer`로 정적 Regular 인스턴스화한 뒤, `fontTools.subset`으로 한자(CJK 통합 한자) 영역을 제외하고 한글 완성형 11,172자 전체(U+AC00-D7A3)·라틴·문장부호만 남겨 2.4MB로 축소(원본 대비 약 1/4). 폰트를 JS 번들에 base64 리터럴로 심지 않고 정적 파일 `fetch`로 분리해 번들 크기 영향 자체를 없앰(로드맵이 우려했던 "번들 크기 영향"에 대한 실제 대응)
+  - [x] PDF 헤더에 `부서명·출력일시`(`toLocaleString("ko-KR")`) 표기, 컬럼 구성 제목/시작일/목표종료일/완료상태(`lib/format.ts`의 `formatDate`/`getCompletionLabel` 재사용)
+  - [x] 파일명 규칙 `주간업무일지_{부서명}_{YYYYMMDD}.pdf` 구현(`buildFileName`), 부서명에 파일명 금지 문자(`\/:*?"<>|`) 포함 시 `_`로 치환
+  - [x] `components/weekly-log-list-view.tsx`의 기존 비활성 PDF 버튼을 `onClick={handleDownloadPdf}`로 교체, 현재 렌더링 중인 `items`(관리자 부서 필터 적용된 목록)와 `scopeLabel`(관리자는 필터 부서명 또는 "전체", 일반 사용자는 본인 부서명)을 그대로 전달해 화면에 보이는 목록과 PDF 내용이 항상 일치하도록 함. 생성 중 로딩 상태("생성 중...", 버튼 비활성화), 실패 시 `sonner` 토스트 에러 처리 추가
+  - [x] 0건일 때 처리 — `autoTable` body를 4열 병합 셀 `표시할 데이터가 없습니다`로 대체해 헤더만 있는 빈 표 대신 안내 문구가 보이는 PDF를 오류 없이 생성
+  - **버그 수정 (구현 중 발견)**: `jspdf-autotable`은 헤더 행에 기본적으로 `fontStyle: "bold"`를 적용하는데, 임베딩한 한글 폰트는 `normal` 스타일로만 등록해 헤더 렌더링 시 `Unable to look up font label for font 'NotoSansKR', 'bold'` 경고와 함께 기본 폰트(Helvetica)로 폴백되어 헤더의 한글("제목/시작일/목표종료일/완료상태")이 깨진 글자로 출력되는 문제를 Playwright 콘솔 경고 + `pdftotext` 추출로 실측. `styles`/`headStyles`에 `fontStyle: "normal"`을 명시해 헤더도 등록된 한글 폰트를 그대로 쓰도록 해소(별도 bold 폰트 파일은 추가하지 않음)
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 QA 계정(개발팀) 1개를 만들어 SQL로 개발팀 2건·디자인팀 1건 `weekly_logs`를 시딩하고 Playwright로 확인: (1) 관리자 역할(SQL로 승격)에서 필터 "전체" 상태로 PDF 다운로드 → `주간업무일지_전체_20260803.pdf` 생성, `pdftotext`로 헤더·3건 본문 모두 정상 한글 렌더링 확인, (2) 부서 필터를 데이터 없는 마케팅팀으로 변경 후 다운로드 → `주간업무일지_마케팅팀_20260803.pdf`가 오류 없이 "표시할 데이터가 없습니다" 안내로 생성됨을 확인, (3) 계정을 일반 사용자로 되돌려 재로그인 → 본인 부서(개발팀) 2건만 담긴 `주간업무일지_개발팀_20260803.pdf` 생성 확인. 세 경우 모두 다운로드 후 목록 페이지 URL·렌더링 유지, 콘솔 에러 0건(단, 세션 시작 이후 누적된 Task012 이전 `dummy-log-overrides` 관련 stale 콘솔 이력이 `all:true` 조회 시 섞여 나왔으나 현재 소스에 해당 파일/참조가 전혀 없음을 grep으로 확인 — 이번 변경과 무관한 개발 서버 HMR 잔여 로그). 테스트 후 QA 계정과 시딩 데이터는 삭제
   - **테스트 체크리스트**
-    - [ ] Playwright MCP로 [PDF 다운로드] 클릭 시 파일 다운로드가 트리거되는지 확인
-    - [ ] 다운로드 후에도 목록 페이지가 유지되는지 확인
-    - [ ] 한글 제목·부서명이 깨지지 않고 렌더링되는지 확인
-    - [ ] 관리자가 부서 필터를 변경한 뒤 받은 PDF의 내용이 해당 부서와 일치하는지 확인
-    - [ ] 데이터 0건일 때 오류 없이 처리되는지 확인
+    - [x] Playwright MCP로 [PDF 다운로드] 클릭 시 파일 다운로드가 트리거되는지 확인
+    - [x] 다운로드 후에도 목록 페이지가 유지되는지 확인
+    - [x] 한글 제목·부서명이 깨지지 않고 렌더링되는지 확인(헤더 폰트 버그 수정 후 재확인)
+    - [x] 관리자가 부서 필터를 변경한 뒤 받은 PDF의 내용이 해당 부서와 일치하는지 확인
+    - [x] 데이터 0건일 때 오류 없이 처리되는지 확인
 
 - **Task 014: 핵심 기능 통합 E2E 테스트**
   - [ ] Playwright MCP로 전체 사용자 여정 검증: 랜딩 → 회원가입 → 로그인 → 부서 온보딩 → 목록 → 작성 → 상세(수정/완료/삭제) → PDF
