@@ -209,18 +209,19 @@
     - [x] 기존 이메일/비밀번호 로그인이 회귀 없이 동작하는지 확인 — 임시 QA 계정으로 회원가입(자동 이메일 확인 활성)·로그인·부서 미설정→`/protected/profile` 분기·부서 저장 후 재로그인→`/protected/weekly-logs` 분기·로그아웃·비로그인 접근 차단까지 전 구간 확인 후 QA 계정 삭제
   - **남은 확인 사항 (사용자)**: 실제 Google 계정으로 [구글로 계속하기] → 로그인까지 완료해 보호 페이지 진입과 세션 유지가 정상인지 최종 확인 권장(코드 경로상 문제될 부분은 없으나 실사용자 계정 기준 검증은 못함)
 
-- **Task 010: 부서 선택 온보딩 게이트 구현 (F012)**
-  - [ ] `lib/supabase/proxy.ts`의 `updateSession()` 확장 — 세션은 있으나 부서가 없으면 `/protected/profile`로 리디렉션. **쿠키 처리 로직과 `createServerClient`→`getClaims()` 사이 구간은 절대 수정 금지**, 리디렉션 분기만 추가
-  - [ ] 부서 정보 조회 방식 결정 및 문서화 — `getClaims()`의 JWT에는 `department_id`가 없음. (A) proxy에서 `profiles` 1회 조회, (B) Custom Access Token Hook으로 커스텀 클레임 주입 중 택일. 매 요청 DB 조회 비용과 부서 변경 즉시 반영 요구를 비교해 결정
-  - [ ] 리디렉션 루프 방지 — `/protected/profile` 자신과 `/auth/*`, `/`는 게이트 대상에서 제외
+- **Task 010: 부서 선택 온보딩 게이트 구현 (F012)** ✅ (2026-08-03)
+  - [x] `lib/supabase/proxy.ts`의 `updateSession()` 확장 — 세션은 있으나 부서가 없으면 `/protected/profile`로 리디렉션. `createServerClient`→`getClaims()` 사이 구간은 수정하지 않고, `getClaims()` 이후에 리디렉션 분기만 추가
+  - [x] 부서 정보 조회 방식 결정: **(A) proxy에서 `profiles` 매 요청 조회**로 확정. 부서 변경이 다음 요청에 즉시 반영되어야 하고(온보딩 직후 접근 허용 요구), Custom Access Token Hook(B) 대비 추가 대시보드 설정이 없어 단순함. `profiles` 테이블은 이미 `id`(PK)로 인덱싱되어 있어 요청당 조회 비용 우려는 낮다고 판단
+  - [x] 리디렉션 루프 방지 — 게이트 조건을 `pathname.startsWith("/protected") && pathname !== "/protected/profile"`로 한정해 `/protected/profile` 자신은 제외(기존 미인증 리디렉션 분기가 이미 `/`, `/auth/*`는 별도 처리 중이므로 그대로 유지)
   - [x] `components/profile-form.tsx`에 실제 `departments` 조회 및 `profiles.department_id` 저장 연결 — Task 006에서 이미 완료(`app/protected/profile/page.tsx`에서 서버 조회)
-  - [x] 저장 성공 시 `/protected/weekly-logs`로 이동 — **Task 009 구글 로그인 실사용 테스트 중 사용자 피드백으로 선반영(2026-08-03)**, 이후 토스트 도입 시 한 번 더 개선(2026-08-03). 1차: `profile-form.tsx`에 `isFirstTimeSetup` 분기 추가, 최초 설정은 즉시 이동·기존 변경은 같은 화면에 텍스트만 표시. 2차(최종): "기존 부서 변경 시에는 동일 페이지 유지" 방침을 사용자 피드백으로 재조정 — 최초 설정/기존 변경 **모두** `sonner` 토스트("OO팀으로 설정/변경되었습니다")를 띄운 뒤 900ms 후 `/protected/weekly-logs`로 자동 이동하도록 동일하게 통일(Task 006 후속 개선 항목 참고). Playwright로 두 경로 모두 확인
-  - [ ] 각 보호 페이지 서버 컴포넌트에서 `getClaims()` + 부서 재확인 이중 방어 패턴 적용
+  - [x] 저장 성공 시 `/protected/weekly-logs`로 이동 — Task 009/006에서 이미 완료(토스트 후 900ms 자동 이동)
+  - [x] 각 보호 페이지 서버 컴포넌트에서 `getClaims()` + 부서 재확인 이중 방어 패턴 적용 — `app/protected/weekly-logs/page.tsx`, `new/page.tsx`, `[id]/page.tsx` 3곳에 `profiles.department_id` 조회 후 미설정 시 `redirect("/protected/profile")` 추가(`app/protected/page.tsx`는 Task 009에서 이미 동일 패턴으로 구현되어 있어 변경 없음)
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 임시 QA 계정을 만들어 Playwright로 부서 미설정 상태에서 `/protected/weekly-logs`·`/protected/weekly-logs/new` 직접 접근 시 `/protected/profile`로 리디렉션되는 것을 확인, `/protected/profile` 자체 재방문 시 루프 없이 정상 렌더링됨을 확인. 부서(디자인팀) 선택·저장 직후 `/protected/weekly-logs`로 자동 이동해 목록이 즉시 노출됨을 확인. 이후 `/protected/weekly-logs/new`·상세(`/protected/weekly-logs/[id]`)·`/protected`(허브) 재방문 시 부서가 설정된 계정이 프로필로 튕기지 않고 각 페이지가 정상 렌더링됨을 확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리(FK로 `profiles` 행도 함께 제거됨)
   - **테스트 체크리스트**
-    - [ ] 부서 미설정 계정으로 `/protected/weekly-logs` 직접 접근 시 프로필로 리디렉션되는지 확인
-    - [ ] 리디렉션 무한 루프가 발생하지 않는지 확인 (프로필 페이지 자체 접근 정상)
-    - [ ] 부서 저장 직후 목록 페이지 접근이 즉시 허용되는지 확인
-    - [ ] 부서 설정 완료 계정이 불필요하게 프로필로 튕기지 않는지 확인
+    - [x] 부서 미설정 계정으로 `/protected/weekly-logs` 직접 접근 시 프로필로 리디렉션되는지 확인
+    - [x] 리디렉션 무한 루프가 발생하지 않는지 확인 (프로필 페이지 자체 접근 정상)
+    - [x] 부서 저장 직후 목록 페이지 접근이 즉시 허용되는지 확인
+    - [x] 부서 설정 완료 계정이 불필요하게 프로필로 튕기지 않는지 확인
 
 - **Task 011: 주간업무일지 목록·상세 조회 구현 (F001, F002, F007)**
   - [ ] 목록 페이지 Server Component에서 `await createClient()`로 `weekly_logs` 조회, 더미 데이터 제거
@@ -326,6 +327,6 @@
 | ~~`database.types.ts`와 원격 DB 불일치~~ | ✅ 해소됨(2026-08-03). Task 008에서 `departments`/`profiles`/`weekly_logs` 신규 생성 후 타입 재생성 완료 | 해소됨 |
 | ~~RLS 정책 재귀~~ | ✅ 해소됨(2026-08-03). `is_admin()`/`current_department_id()` `SECURITY DEFINER` 헬퍼 함수로 우회 적용 완료 | 해소됨 |
 | ~~`profile-form.tsx` 타입 에러~~ | ✅ 해소됨(2026-08-03). Task 006에서 부서 선택 폼으로 재작성, `tsc --noEmit`/`lint` 무오류 확인 | 해소됨 |
-| 부서 정보 조회 방식 | proxy에서 매 요청 DB 조회 vs Custom Access Token Hook 커스텀 클레임 | Task 010 |
+| ~~부서 정보 조회 방식~~ | ✅ 해소됨(2026-08-03). Task 010에서 (A) proxy 매 요청 `profiles` 조회로 결정 — 부서 변경 즉시 반영 요구 우선, 추가 대시보드 설정 불필요 | 해소됨 |
 | PDF 한글 폰트 | TTF base64 임베딩 필요, 번들 용량 증가 → 동적 로딩 여부 | Task 013 |
 | `cacheComponents` | 사용자별 데이터에 `"use cache"` 적용 금지, Suspense 경계로 처리 | Task 011 |
