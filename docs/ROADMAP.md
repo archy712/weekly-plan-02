@@ -291,7 +291,7 @@
 
 ---
 
-### Phase 4: 마감 및 배포
+### Phase 4: 마감 및 배포 ✅
 
 - **Task 015: 반응형 및 접근성 마감 (F014)** ✅ (2026-08-04)
   - [x] 데스크탑(1280)/태블릿(768)/모바일(390) 3개 뷰포트에서 7개 페이지 전수 점검 (Playwright MCP `browser_resize`) — 랜딩, 로그인, 회원가입, 프로필(온보딩), 주간업무일지 목록/작성/상세(조회·수정)
@@ -310,14 +310,13 @@
   - [x] `npm run build` 성공, 번들 크기 점검(특히 PDF 폰트), `npx tsc --noEmit` 및 `npm run lint` 무오류 — `next build` 정상 완료(`app/not-found.tsx`가 `/_not-found`로 정상 포함됨을 빌드 로그에서 확인). `next start`(3100 포트)로 프로덕션 서버를 띄우고 Playwright 네트워크 요청을 실측: 목록 페이지 최초 로드 시 jsPDF/autoTable 청크(`0xpgrjn-qx5it.js` 412K, `39k4ojqlk3yys.js` 32K)는 전혀 요청되지 않고, [PDF 다운로드] 클릭 시점에만 두 청크와 `public/fonts/NotoSansKR-Regular.ttf`(2.4MB, 별도 정적 자산 fetch)가 로드됨을 확인 — Task013에서 의도한 코드 스플리팅이 프로덕션 빌드에서도 정상 동작
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. QA 계정으로 `not-found.tsx`(유효 형식이지만 존재하지 않는 UUID·형식이 아예 다른 id) 2가지 경로와 전역 404(로그인 상태에서 존재하지 않는 임의 경로 접근, 비로그인 상태는 `proxy.ts` 게이트가 먼저 `/auth/login`으로 보내므로 도달하지 않음 — 기존 설계 그대로) 모두 헤더·푸터 유지 여부에 맞게 정상 렌더링 확인. `error.tsx` 동작은 목록 페이지 서버 컴포넌트에 임시로 `throw`를 넣어 실제로 에러 화면(제목·설명·다시 시도·홈으로 버튼)이 뜨는지, [다시 시도] 클릭 시 `reset()`이 정상 재실행되는지 확인한 뒤 즉시 원복(`git status`로 되돌림 확인). 전 구간 콘솔 에러는 Task014에서 이미 무해하다고 확인된 dev-only Turbopack 성능 계측 노이즈 1건 외 없음. 테스트 후 QA 계정 2개와 생성 데이터는 SQL로 정리
 
-- **Task 017: 배포 및 운영 준비** 🔶 부분 완료 (2026-08-04, Claude Code가 실행 가능한 범위만 진행)
-  - [ ] Vercel 프로젝트 환경변수 등록 (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) — **사용자 직접 진행 필요**(Vercel 계정 접근 필요). 절차는 `docs/guides/deployment-ops.md` 1절에 정리
-  - [ ] 프로덕션 도메인 기준 Supabase Auth Redirect URL 및 Google OAuth 승인 URI 추가 — **사용자 직접 진행 필요**(Supabase/Google Cloud Console 대시보드 접근 필요). 절차는 `docs/guides/deployment-ops.md` 2~3절에 정리(Task 009에서 등록한 Google 리디렉션 URI는 Supabase 콜백 고정이라 도메인이 바뀌어도 추가 작업 불필요)
+- **Task 017: 배포 및 운영 준비** ✅ (2026-08-04, 프로덕션 https://weekly-plan-02.vercel.app/ )
+  - [x] Vercel 프로젝트 환경변수 등록 (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) — 사용자가 `docs/guides/deployment-ops.md` 1절에 따라 직접 등록·배포 완료. 랜딩 페이지에서 `EnvVarWarning`이 뜨지 않음을 확인해 정상 등록을 재확인
+  - [x] 프로덕션 도메인 기준 Supabase Auth Redirect URL 및 Google OAuth 승인 URI 추가 — 사용자가 직접 설정 완료. 이메일/비밀번호 로그인과 [구글로 계속하기] 클릭 시 `redirect_to=https://weekly-plan-02.vercel.app/auth/callback`로 정확히 설정된 실제 Google 로그인 화면까지 도달함을 Playwright로 확인(Task 009와 동일한 방식 — 실제 Google 계정 자격 증명이 없어 동의 화면 이후 단계는 검증 불가하나 리디렉션 파라미터 자체는 정상)
   - [x] `mcp__supabase__get_advisors` 최종 보안 점검 (RLS 누락 테이블 0건 확인) — `list_tables(verbose)`로 `departments`/`profiles`/`weekly_logs` 3개 테이블 모두 `rls_enabled: true` 확인. 보안 어드바이저는 Task008/014에서 이미 검토된 경고 3건(`is_admin`/`current_department_id` RPC 노출 2건은 의도된 설계, `auth_leaked_password_protection`은 대시보드 토글) 외 신규 이슈 없음
-  - [x] 관리자 계정 지정 절차 문서화 (`profiles.role`을 Supabase에서 수동으로 `admin` 변경 — 관리자 지정 UI는 MVP 범위 외) — `docs/guides/deployment-ops.md` 4절에 SQL과 함께 정리(권한은 `profiles.role`을 매 요청 조회하는 구조라 재로그인 없이 즉시 반영됨을 명시)
+  - [x] 관리자 계정 지정 절차 문서화 (`profiles.role`을 Supabase에서 수동으로 `admin` 변경 — 관리자 지정 UI는 MVP 범위 외) — `docs/guides/deployment-ops.md` 4절에 SQL과 함께 정리(권한은 `profiles.role`을 매 요청 조회하는 구조라 재로그인 없이 즉시 반영됨을 명시, 프로덕션 스모크 테스트에서 실제로 재로그인 없이 즉시 반영됨을 재확인)
   - [x] 부서 seed 데이터 운영 반영 절차 문서화 (부서 관리 UI는 MVP 범위 외) — `docs/guides/deployment-ops.md` 5절에 정리. 부서 삭제는 `weekly_logs`/`profiles`의 FK 제약으로 실패하므로 삭제 대신 이름에 "(사용중지)" 표기하는 방식을 권장 문구로 추가
-  - [ ] 프로덕션 스모크 테스트 (로그인, 작성, PDF 다운로드) — 실제 배포된 URL이 있어야 실행 가능. 체크리스트는 `docs/guides/deployment-ops.md` 6절에 준비해 둠, 배포 후 도메인 공유 시 Playwright MCP로 함께 진행
-  - **참고**: 이번 세션에서는 사용자 요청에 따라 Vercel 배포·프로덕션 도메인 연결·Google OAuth 콘솔 설정 등 외부 계정이 필요한 실행 단계는 진행하지 않고, Claude Code가 자체적으로 수행 가능한 보안 점검과 운영 문서화만 완료함. 나머지 항목은 사용자가 `docs/guides/deployment-ops.md`를 따라 진행 후 필요 시 이어서 검증 요청
+  - [x] 프로덕션 스모크 테스트 (로그인, 작성, PDF 다운로드) — 사용자가 Vercel 배포를 완료한 뒤 프로덕션 도메인(https://weekly-plan-02.vercel.app/)에서 Playwright MCP로 전체 흐름 실행: 랜딩(경고 배너 없음) → 이메일 회원가입(자동 인증 활성, 즉시 로그인 가능) → 로그인 → 부서 온보딩(개발팀) → 신규 작성 → 목록 반영 → 상세에서 완료 토글 즉시 반영 → PDF 다운로드(`pdftotext`로 한글 헤더·본문 깨짐 없이 렌더링 확인) → 로그아웃 → 보호 페이지(`/protected/weekly-logs`) 접근 시 로그인으로 정상 차단 → 구글 로그인 리디렉션 정상 → SQL로 관리자 승격 후 재로그인 시 "관리자" 배지와 부서 필터(`aria-label="부서 필터"`, Task015 접근성 수정 반영 확인)가 정상 노출. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정과 생성 데이터는 SQL로 정리
 
 ---
 
