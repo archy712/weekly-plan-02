@@ -13,7 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
@@ -24,7 +23,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,11 +37,34 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      router.push("/protected");
+      // 클라이언트 라우터 캐시에 남은 이전 로그인 세션의 /protected 리다이렉트 결과를
+      // 재사용하지 않도록 하드 네비게이션으로 이동 (부서 설정 여부 분기가 최신 상태를 반영해야 함)
+      window.location.href = "/protected";
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const supabase = createClient();
+    setError(null);
+    setIsGoogleLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error ? error.message : "구글 로그인 중 오류가 발생했습니다.",
+      );
+      setIsGoogleLoading(false);
     }
   };
 
@@ -96,8 +118,13 @@ export function LoginForm({
                   또는
                 </span>
               </div>
-              {/* TODO(Task 009): supabase.auth.signInWithOAuth({ provider: "google" }) 연동 및 app/auth/callback/route.ts 구현 */}
-              <Button type="button" variant="outline" className="w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleLogin}
+                disabled={isGoogleLoading}
+              >
                 <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
                   <path
                     fill="#4285F4"
@@ -116,7 +143,7 @@ export function LoginForm({
                     d="M12 4.75c1.76 0 3.34.6 4.59 1.79l3.44-3.44C17.94 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.28 6.61l4.01 3.1C6.23 6.86 8.88 4.75 12 4.75z"
                   />
                 </svg>
-                구글로 계속하기
+                {isGoogleLoading ? "이동 중..." : "구글로 계속하기"}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
