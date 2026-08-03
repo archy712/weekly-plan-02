@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -24,6 +27,10 @@ import {
 } from "@/components/weekly-log-form";
 import { formatDate } from "@/lib/format";
 import type { DummyWeeklyLog } from "@/lib/dummy-data";
+import {
+  setCompletionOverride,
+  useCompletionOverride,
+} from "@/lib/dummy-log-overrides";
 
 export function WeeklyLogDetailView({ log }: { log: DummyWeeklyLog }) {
   const router = useRouter();
@@ -34,30 +41,49 @@ export function WeeklyLogDetailView({ log }: { log: DummyWeeklyLog }) {
     start_date: log.start_date,
     target_end_date: log.target_end_date,
   });
-  const [isCompleted, setIsCompleted] = useState(log.is_completed);
+  const isCompleted = useCompletionOverride(log.id, log.is_completed);
 
   const handleSubmit = (next: WeeklyLogFormValues) => {
     setValues(next);
     setIsEditing(false);
   };
 
+  const handleCompletionChange = (checked: boolean) => {
+    setCompletionOverride(log.id, checked);
+    toast.success(checked ? "완료 처리되었습니다." : "미완료로 변경되었습니다.");
+  };
+
   const handleDelete = () => {
     router.push("/protected/weekly-logs");
   };
 
+  const backLink = (
+    <Link
+      href="/protected/weekly-logs"
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline w-fit"
+    >
+      <ArrowLeft className="size-4" />
+      목록으로
+    </Link>
+  );
+
   if (isEditing) {
     return (
-      <WeeklyLogForm
-        defaultValues={values}
-        submitLabel="수정 완료"
-        onSubmit={handleSubmit}
-        onCancel={() => setIsEditing(false)}
-      />
+      <div className="flex flex-col gap-6">
+        {backLink}
+        <WeeklyLogForm
+          defaultValues={values}
+          submitLabel="수정 완료"
+          onSubmit={handleSubmit}
+          onCancel={() => setIsEditing(false)}
+        />
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
+      {backLink}
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold">{values.title}</h1>
         <StatusBadge isCompleted={isCompleted} />
@@ -76,7 +102,7 @@ export function WeeklyLogDetailView({ log }: { log: DummyWeeklyLog }) {
         <Checkbox
           id="is_completed"
           checked={isCompleted}
-          onCheckedChange={(checked) => setIsCompleted(checked === true)}
+          onCheckedChange={(checked) => handleCompletionChange(checked === true)}
         />
         <Label htmlFor="is_completed">완료 처리</Label>
       </div>
