@@ -23,37 +23,58 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/status-badge";
 import {
   WeeklyLogForm,
-  type WeeklyLogFormValues,
 } from "@/components/weekly-log-form";
 import { formatDate } from "@/lib/format";
 import type { WeeklyLogDetail } from "@/lib/types";
+import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import {
-  setCompletionOverride,
-  useCompletionOverride,
-} from "@/lib/dummy-log-overrides";
+  deleteWeeklyLogAction,
+  toggleWeeklyLogCompletionAction,
+  updateWeeklyLogAction,
+} from "@/lib/actions/weekly-log";
 
 export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  const [values, setValues] = useState<WeeklyLogFormValues>({
-    title: log.title,
-    content: log.content,
-    start_date: log.start_date,
-    target_end_date: log.target_end_date,
-  });
-  const isCompleted = useCompletionOverride(log.id, log.is_completed);
+  const [isCompleted, setIsCompleted] = useState(log.is_completed);
+  const [isTogglingCompletion, setIsTogglingCompletion] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleSubmit = (next: WeeklyLogFormValues) => {
-    setValues(next);
+  const handleEditSubmit = async (values: WeeklyLogFormData) => {
+    const result = await updateWeeklyLogAction(log.id, values);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("수정되었습니다.");
     setIsEditing(false);
+    router.refresh();
   };
 
-  const handleCompletionChange = (checked: boolean) => {
-    setCompletionOverride(log.id, checked);
+  const handleCompletionChange = async (checked: boolean) => {
+    const previous = isCompleted;
+    setIsCompleted(checked);
+    setIsTogglingCompletion(true);
+    const result = await toggleWeeklyLogCompletionAction(log.id, checked);
+    setIsTogglingCompletion(false);
+    if (!result.success) {
+      setIsCompleted(previous);
+      toast.error(result.error);
+      return;
+    }
     toast.success(checked ? "완료 처리되었습니다." : "미완료로 변경되었습니다.");
+    router.refresh();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    const result = await deleteWeeklyLogAction(log.id);
+    if (!result.success) {
+      setIsDeleting(false);
+      toast.error(result.error);
+      return;
+    }
+    toast.success("삭제되었습니다.");
     router.push("/protected/weekly-logs");
   };
 
@@ -72,9 +93,14 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
       <div className="flex flex-col gap-6">
         {backLink}
         <WeeklyLogForm
-          defaultValues={values}
+          defaultValues={{
+            title: log.title,
+            content: log.content,
+            start_date: log.start_date,
+            target_end_date: log.target_end_date,
+          }}
           submitLabel="수정 완료"
-          onSubmit={handleSubmit}
+          onSubmit={handleEditSubmit}
           onCancel={() => setIsEditing(false)}
         />
       </div>
@@ -85,23 +111,22 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
     <div className="flex flex-col gap-6">
       {backLink}
       <div className="flex items-start justify-between gap-2">
-        <h1 className="text-2xl font-bold">{values.title}</h1>
+        <h1 className="text-2xl font-bold">{log.title}</h1>
         <StatusBadge isCompleted={isCompleted} />
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{log.department_name}</span>
         {log.author_email && <span>{log.author_email}</span>}
         <span>
-          {formatDate(values.start_date)} ~ {formatDate(values.target_end_date)}
+          {formatDate(log.start_date)} ~ {formatDate(log.target_end_date)}
         </span>
       </div>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed">
-        {values.content}
-      </p>
+      <p className="whitespace-pre-wrap text-sm leading-relaxed">{log.content}</p>
       <div className="flex items-center gap-2">
         <Checkbox
           id="is_completed"
           checked={isCompleted}
+          disabled={isTogglingCompletion}
           onCheckedChange={(checked) => handleCompletionChange(checked === true)}
         />
         <Label htmlFor="is_completed">완료 처리</Label>
@@ -109,7 +134,7 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
       <div className="flex justify-end gap-2">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button type="button" variant="destructive">
+            <Button type="button" variant="destructive" disabled={isDeleting}>
               삭제
             </Button>
           </AlertDialogTrigger>
@@ -122,7 +147,9 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>취소</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>삭제</AlertDialogAction>
+              <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                삭제
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

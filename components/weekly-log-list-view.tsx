@@ -14,7 +14,6 @@ import {
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
-import { useResolvedItems } from "@/lib/dummy-log-overrides";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
 import type {
   Department,
@@ -36,7 +35,6 @@ export function WeeklyLogListView({
   currentDepartmentName?: string | null;
 }) {
   const router = useRouter();
-  const resolvedItems = useResolvedItems(items);
 
   // 부서 필터는 클라이언트 상태가 아니라 URL(?department=)로 관리한다 — 서버 컴포넌트가
   // searchParams를 읽어 매번 다시 조회하므로, 관리자가 아니면 이 파라미터는 서버에서
@@ -88,15 +86,15 @@ export function WeeklyLogListView({
           </Button>
         </div>
       </div>
-      {resolvedItems.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState
           title="등록된 주간업무일지가 없습니다"
           description="신규 작성 버튼을 눌러 첫 업무일지를 작성해보세요."
         />
       ) : (
         <>
-          <WeeklyLogTable items={resolvedItems} showDepartment={isAdmin} />
-          <WeeklyLogCardList items={resolvedItems} showDepartment={isAdmin} />
+          <WeeklyLogTable items={items} showDepartment={isAdmin} />
+          <WeeklyLogCardList items={items} showDepartment={isAdmin} />
         </>
       )}
     </div>
