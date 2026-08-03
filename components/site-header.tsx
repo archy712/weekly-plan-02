@@ -3,7 +3,18 @@ import { Suspense } from "react";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { HeaderNav } from "@/components/header-nav";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { Skeleton } from "@/components/ui/skeleton";
 import { hasEnvVars } from "@/lib/utils";
+
+const headerNavFallback = (
+  <>
+    <div className="hidden items-center gap-3 md:flex">
+      <Skeleton className="h-8 w-20 rounded-md" />
+      <Skeleton className="h-8 w-16 rounded-md" />
+    </div>
+    <Skeleton className="size-9 rounded-md md:hidden" />
+  </>
+);
 
 export function SiteHeader() {
   return (
@@ -16,7 +27,7 @@ export function SiteHeader() {
           {!hasEnvVars ? (
             <EnvVarWarning />
           ) : (
-            <Suspense>
+            <Suspense fallback={headerNavFallback}>
               <HeaderNav />
             </Suspense>
           )}

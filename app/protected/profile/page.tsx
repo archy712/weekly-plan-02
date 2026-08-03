@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/profile-form";
+import { ProfileSkeleton } from "@/components/profile-skeleton";
 
 async function ProfileContent() {
   const supabase = await createClient();
@@ -48,7 +49,7 @@ async function ProfileContent() {
 export default function ProfilePage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
-      <Suspense>
+      <Suspense fallback={<ProfileSkeleton />}>
         <ProfileContent />
       </Suspense>
     </div>
