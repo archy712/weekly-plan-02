@@ -223,19 +223,22 @@
     - [x] 부서 저장 직후 목록 페이지 접근이 즉시 허용되는지 확인
     - [x] 부서 설정 완료 계정이 불필요하게 프로필로 튕기지 않는지 확인
 
-- **Task 011: 주간업무일지 목록·상세 조회 구현 (F001, F002, F007)**
-  - [ ] 목록 페이지 Server Component에서 `await createClient()`로 `weekly_logs` 조회, 더미 데이터 제거
-  - [ ] **`cacheComponents: true` 주의** — 사용자/부서별 데이터에 `"use cache"`를 적용하지 말고 Suspense 경계 + 스트리밍으로 처리
-  - [ ] 관리자 부서 필터를 `searchParams` 기반으로 구현 (`await searchParams` — Next.js 16 비동기 API)
-  - [ ] `role !== 'admin'`이면 부서 필터 UI 미노출 + 서버에서도 파라미터 무시(UI 은닉만으로 방어 금지)
-  - [ ] 상세 페이지에서 `await params`로 id 추출 후 단건 조회, 미존재/권한 없음은 `notFound()` 처리
-  - [ ] 목록 정렬 기준 확정(시작일 또는 생성일 내림차순) 및 빈 목록 EmptyState 연결
+- **Task 011: 주간업무일지 목록·상세 조회 구현 (F001, F002, F007)** ✅ (2026-08-03)
+  - [x] 목록 페이지 Server Component에서 `await createClient()`로 `weekly_logs` 조회, 더미 데이터 제거 — `lib/dummy-data.ts`는 참조하는 곳이 완전히 사라져 파일 자체를 삭제
+  - [x] **`cacheComponents: true` 주의** — 목록/상세 모두 기존 Suspense 경계(`WeeklyLogListSkeleton`/`WeeklyLogDetailSkeleton` fallback) 구조를 그대로 유지한 채 내부 쿼리만 실 DB 호출로 교체, `"use cache"`는 사용하지 않음
+  - [x] 관리자 부서 필터를 `searchParams` 기반으로 구현 — 기존 `?admin=1` 더미 플래그를 제거하고 실제 `profiles.role`로 관리자 여부 판별, `?department=<uuid>` 파라미터로 필터. `components/weekly-log-list-view.tsx`의 부서 `Select`도 클라이언트 `useState` 필터에서 `router.push`로 URL을 갱신하는 방식으로 전환(서버 컴포넌트가 재실행되어 Suspense fallback과 함께 다시 조회)
+  - [x] `role !== 'admin'`이면 부서 필터 UI 미노출 + 서버에서도 파라미터 무시 — `WeeklyLogsContent`에서 `isAdmin`이 아니면 `searchParams.department` 값을 아예 읽지 않고 항상 `ALL_DEPARTMENTS_FILTER`로 처리(UI 은닉만으로 방어하지 않음, RLS로도 이중 방어됨)
+  - [x] 상세 페이지에서 `await params`로 id 추출 후 단건 조회, 미존재/권한 없음은 `notFound()` 처리 — RLS가 타 부서 행을 이미 걸러내므로 `maybeSingle()`이 null을 반환하는 두 경우(미존재/권한없음) 모두 동일하게 404로 귀결
+  - [x] 목록 정렬 기준 확정 — `start_date` 내림차순, 동일 시작일은 `created_at` 내림차순(tie-breaker)으로 확정
+  - [x] 빈 목록 EmptyState 연결 — 기존 `EmptyState` 컴포넌트/문구 그대로 유지, 실 데이터 0건 조건에서 정상 동작 확인
+  - **계획 대비 편차**: `lib/types/index.ts`에 상세 조회 전용 `WeeklyLogDetail` 타입 신규 추가(더미 `DummyWeeklyLog`의 `author_name`을 대체) — 실제 `profiles` 테이블에는 이름 컬럼이 없고 `email`만 있어, 상세 화면의 작성자 표시를 이메일 기준으로 변경(`components/weekly-log-detail-view.tsx`). 완료 토글의 `localStorage` 오버라이드 레이어(`lib/dummy-log-overrides.ts`, Task007에서 도입)는 `{id, is_completed}` 형태에만 의존하는 범용 코드라 실 데이터에도 그대로 호환되므로 변경 없이 유지(Task012에서 실 저장 연결 시 제거 예정 — 안내 주석만 dummy-data.ts 삭제에 맞춰 갱신)
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 일반 사용자(디자인팀)·관리자(개발팀, SQL로 `role='admin'` 수동 승격) 2개 QA 계정을 만들고, `weekly_logs`에 디자인팀 3건·마케팅팀 2건을 SQL로 직접 시딩해 Playwright로 검증: 일반 사용자는 자기 부서(디자인팀) 3건만 시작일 내림차순으로 확인, `?department=<마케팅팀id>` URL 조작 시도해도 부서 필터 UI 자체가 없고 여전히 디자인팀 3건만 노출됨을 확인, 상세 조회(제목·부서·작성자 이메일·기간·본문) 정상 표시 확인, 마케팅팀 항목 id로 직접 접근 시 404 확인. 관리자는 부서 필터 드롭다운이 노출되고 기본값 "전체"에서 5건 전체가 정렬되어 보임을 확인, 필터를 디자인팀으로 변경 시 URL이 `?department=<id>`로 갱신되며 3건만 남는 것을 확인, 관리자가 타 부서(마케팅팀) 상세로 직접 진입해도 정상 조회됨을 확인(관리자 RLS 정책). 데이터 0건 상태(QA 계정 부서 설정 직후, 시딩 전)에서 EmptyState 노출도 별도로 확인. 전 구간 콘솔 에러 0건. 테스트 후 시딩한 `weekly_logs` 5건과 QA 계정 2개는 SQL로 정리
   - **테스트 체크리스트**
-    - [ ] 일반 사용자 로그인 시 자기 부서 항목만 목록에 표시되는지 확인
-    - [ ] 관리자 부서 필터 변경 시 해당 부서 데이터로 갱신되는지 확인
-    - [ ] 일반 사용자가 URL로 `?department=` 파라미터를 조작해도 타 부서가 노출되지 않는지 확인
-    - [ ] 타 부서 상세 id로 직접 접근 시 404 처리되는지 확인
-    - [ ] 데이터 0건일 때 EmptyState가 표시되는지 확인
+    - [x] 일반 사용자 로그인 시 자기 부서 항목만 목록에 표시되는지 확인
+    - [x] 관리자 부서 필터 변경 시 해당 부서 데이터로 갱신되는지 확인
+    - [x] 일반 사용자가 URL로 `?department=` 파라미터를 조작해도 타 부서가 노출되지 않는지 확인
+    - [x] 타 부서 상세 id로 직접 접근 시 404 처리되는지 확인
+    - [x] 데이터 0건일 때 EmptyState가 표시되는지 확인
 
 - **Task 012: 주간업무일지 작성·수정·삭제·완료 처리 구현 (F003~F006)**
   - [ ] 작성 폼에 React Hook Form + Zod resolver 연결 (`lib/schemas/weekly-log.ts` 재사용)
@@ -329,4 +332,4 @@
 | ~~`profile-form.tsx` 타입 에러~~ | ✅ 해소됨(2026-08-03). Task 006에서 부서 선택 폼으로 재작성, `tsc --noEmit`/`lint` 무오류 확인 | 해소됨 |
 | ~~부서 정보 조회 방식~~ | ✅ 해소됨(2026-08-03). Task 010에서 (A) proxy 매 요청 `profiles` 조회로 결정 — 부서 변경 즉시 반영 요구 우선, 추가 대시보드 설정 불필요 | 해소됨 |
 | PDF 한글 폰트 | TTF base64 임베딩 필요, 번들 용량 증가 → 동적 로딩 여부 | Task 013 |
-| `cacheComponents` | 사용자별 데이터에 `"use cache"` 적용 금지, Suspense 경계로 처리 | Task 011 |
+| ~~`cacheComponents`~~ | ✅ 해소됨(2026-08-03). Task 011에서 목록/상세 페이지 모두 기존 Suspense 경계 구조를 유지한 채 실 DB 조회로 교체, `"use cache"` 미사용 확인 | 해소됨 |
