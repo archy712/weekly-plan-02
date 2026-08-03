@@ -99,6 +99,7 @@
   - **부수 변경**: 헤더에 포함되는 `components/auth-button.tsx`, `components/logout-button.tsx`도 한국어화 (새로 추출한 공통 헤더가 전 페이지에 노출되므로 언어 일관성을 위해 포함). `app/page.tsx`는 이번엔 헤더/푸터만 공유하는 최소 placeholder(`<h1>` 한 줄)로 대체 — 실제 랜딩 콘텐츠는 Task 005 범위
   - **범위 밖 유지**: `app/auth/*` 페이지들은 헤더 없는 기존 중앙 정렬 레이아웃 그대로 유지 (로드맵이 중복으로 지목한 곳은 `app/page.tsx`·`app/protected/layout.tsx` 두 곳뿐이었고, `forgot-password`/`update-password`/`confirm` 등 PRD 범위 외 인증 흐름을 건드리지 않기 위함)
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. curl로 7개 라우트(`/`, `/auth/login`, `/auth/sign-up`, `/protected/profile`, `/protected/weekly-logs`, `/protected/weekly-logs/new`, `/protected/weekly-logs/[id]`) 전부 200 확인. Playwright로 헤더·다크모드 토글·푸터가 랜딩/보호된 페이지에서 동일하게 노출되고 콘솔 에러 0건임을 확인
+  - **버그 수정 (2026-08-03, Task 009 구글 로그인 실사용 테스트 중 발견)**: `app/protected/layout.tsx`의 컨텐츠 wrapper(`max-w-5xl p-5`)에 `w-full`이 빠져 있어, 폭이 좁은 콘텐츠(예: 프로필 폼)에서는 컨테이너 자체가 내용물 크기로 줄어들어(shrink-to-fit) 헤더보다 눈에 띄게 좁고 여백이 비대칭으로 보이는 문제 확인(모바일에서 특히 두드러짐). `w-full` 추가로 헤더와 동일하게 항상 `max-w-5xl`까지 폭을 채우도록 수정. Playwright로 모바일(390px)·데스크탑(1280px) 양쪽에서 헤더와 동일한 폭으로 정렬됨을 확인
 
 - **Task 003: 도메인 타입 및 Zod 스키마 정의** ✅ (2026-08-03)
   - [x] `lib/types/index.ts` 도메인 타입 작성 — `Department`, `Profile`(department_id·role 포함), `WeeklyLog`, `UserRole = "user" | "admin"`
@@ -133,6 +134,7 @@
   - [x] 반응형 그리드 — 모바일 1열(`grid-cols-1`) → 태블릿 2열(`sm:grid-cols-2`) → 데스크탑 4열(`lg:grid-cols-4`)
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. Playwright로 1280px(데스크탑 4열)·768px(태블릿 2열)·390px(모바일 1열, 헤더 햄버거) 3개 뷰포트와 라이트/다크 테마(실제 `ThemeSwitcher` 토글) 렌더링, 히어로·헤더 CTA 클릭 시 `/auth/login`·`/auth/sign-up` 라우팅을 확인. 콘솔 에러 0건
   - **수락 기준 충족**: 비로그인 방문자가 랜딩에서 로그인·회원가입 페이지로 이동 가능
+  - **후속 수정 (2026-08-03, Task 009 구글 로그인 실사용 테스트 중 발견)**: 로그인된 상태로 랜딩(`/`)에 재방문하면 헤더는 로그인 상태를 반영하면서도 히어로 섹션엔 여전히 [로그인]/[회원가입] 버튼이 남아있어 어색하다는 피드백 확인. `components/hero-cta.tsx`(신규, 서버 컴포넌트)를 추가해 `getClaims()`로 로그인 여부를 확인 후 로그인 상태면 **[주간업무일지 보러가기]**(`/protected`로 이동, 부서 설정 여부에 따라 자동 분기) 버튼 하나로, 비로그인 상태면 기존 [로그인]/[회원가입] 두 버튼을 보여주도록 분기. `cacheComponents` 규칙에 따라 `Suspense`(버튼 크기의 `Skeleton` fallback)로 감쌈. Playwright로 로그인/비로그인 양쪽 상태와 다크모드에서 정상 분기 확인, 콘솔 에러 0건
 
 - **Task 006: 인증 및 프로필 온보딩 UI 구현 (F010·F011·F012 마크업)** ✅ (2026-08-03)
   - [x] `components/login-form.tsx` 한국어화 + [구글로 계속하기] 버튼 UI 추가 (동작 연결은 Task 009로 TODO 주석 남김)
@@ -140,7 +142,8 @@
   - [x] `components/profile-form.tsx` **재작성** — 아바타/사용자명 편집 폼을 폐기하고 부서 선택 드롭다운(`ui/select`, 신규 설치) + 이메일 표시(disabled)로 교체
   - [x] 부서 미설정 상태일 때 "부서를 선택해야 서비스 이용이 가능합니다" 온보딩 안내 문구 분기 표시
   - [x] ~~더미 부서 목록으로~~ **실제 `departments` 테이블 조회**로 셀렉트 렌더링, [저장] 버튼 로딩/에러/성공 상태 UI — Task 008이 먼저 완료되어 실제 부서 테이블(RLS: 인증 사용자 전체 SELECT)이 이미 존재하므로, 더미 데이터를 만들었다가 Task 010에서 다시 실 데이터로 교체하는 이중 작업을 피하기 위해 `app/protected/profile/page.tsx`에서 서버 컴포넌트로 직접 조회하도록 변경 (계획 대비 의도적 편차)
-  - **검증**: `npx tsc --noEmit` / `npm run lint` 무오류 확인. Playwright로 `/auth/login`, `/auth/sign-up` 렌더링 및 콘솔 에러 0건 확인. `/protected/profile`의 부서 선택 동작은 실제 인증 계정이 필요해 미검증 — Task 009(구글 로그인) 이후 실 계정으로 재확인 필요
+  - **검증**: `npx tsc --noEmit` / `npm run lint` 무오류 확인. Playwright로 `/auth/login`, `/auth/sign-up` 렌더링 및 콘솔 에러 0건 확인. ~~`/protected/profile`의 부서 선택 동작은 실제 인증 계정이 필요해 미검증~~ → ✅ **해소됨(2026-08-03)**: Task 009 이후 여러 임시 QA 계정으로 부서 선택·저장 동작을 반복 재확인 완료(아래 후속 개선 항목들 참고)
+  - **후속 개선 (2026-08-03, 사용자 피드백)**: 부서 저장 시 사용자가 다음 행동을 알기 어렵다는 피드백에 따라 `sonner` 토스트("OO팀으로 설정/변경되었습니다")를 보여준 뒤(900ms) `/protected/weekly-logs`로 자동 이동하도록 통일(기존엔 최초 설정만 즉시 이동, 변경은 같은 화면에 텍스트만 표시했음 — **최초 설정/기존 변경 모두 이제 자동 이동으로 동일하게 동작**). `components/ui/sonner.tsx`의 `Toaster`를 `app/layout.tsx`에 전역 마운트(이번에 처음 사용됨 — Task 012에서 계획했던 sonner 토스트 인프라가 선반영됨)
 
 - **Task 007: 주간업무일지 3개 페이지 UI 구현 (더미 데이터)** ✅ (2026-08-03)
   - [x] 목록 페이지(`app/protected/weekly-logs/page.tsx`) — `components/weekly-log-list-view.tsx`(신규, 클라이언트)에서 `WeeklyLogTable`/`WeeklyLogCardList`로 데스크탑·모바일 전환
@@ -151,6 +154,11 @@
   - **계획 대비 편차 (버그 수정)**: 목록 페이지에서 `searchParams`를 Suspense 경계 밖에서 직접 `await`하자 `cacheComponents: true` 하에서 "Uncached data ... accessed outside of `<Suspense>`" 런타임 에러 발생 확인(Playwright 콘솔에서 실측). `app/protected/profile/page.tsx`의 기존 패턴(외부는 동기 컴포넌트, 내부 비동기 `*Content` 컴포넌트를 `Suspense`로 감싸는 구조)을 3개 페이지 전부에 동일하게 적용해 해소 — CLAUDE.md 규칙 #6과 Task011에 이미 명시된 주의사항이 실제로 이번 Task에서 선제적으로 나타난 사례. 목록/상세 페이지는 Task004에서 만든 `WeeklyLogListSkeleton`/`WeeklyLogDetailSkeleton`을 `Suspense` fallback으로 재사용
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입(자동 이메일 확인 활성 확인)으로 임시 QA 계정을 만들어 Playwright로 로그인 → 목록(데스크탑 테이블 16건/모바일 카드 전환) → `?admin=1` 부서 필터(디자인팀 필터링 결과 3건 확인) → 신규 작성(입력 후 저장 → 목록 복귀) → 상세(완료 토글 즉시 반영 → 수정 모드 기존값 프리필 → 취소 → 삭제 확인 다이얼로그 → 삭제 후 목록 복귀) 전 구간 콘솔 에러 0건으로 확인 후 QA 계정은 삭제하여 정리
   - **범위 밖 유지**: 실제 DB 연동(Task011)·React Hook Form+Zod 연결과 실 저장/삭제(Task012)·PDF 생성(Task013)은 이번 Task에서 다루지 않음
+  - **후속 개선 (2026-08-03, 사용자 피드백 3건)**:
+    1. 완료 항목 가독성 — `weekly-log-table.tsx`/`weekly-log-card.tsx` 제목에 완료 시 `italic line-through text-muted-foreground` 조건부 클래스 추가(이탤릭+취소선+회색)
+    2. 상세 페이지 이탈 동선 — `weekly-log-detail-view.tsx` 조회/수정 모드 상단에 `ArrowLeft` 아이콘 포함 "목록으로" 링크(`/protected/weekly-logs`) 추가
+    3. 목록 화면 소속 표시 — 어느 부서 목록인지 알 수 없다는 피드백에 따라 `weekly-log-list-view.tsx`에 스코프 라벨 추가. 일반 사용자는 `app/protected/weekly-logs/page.tsx`에서 `profiles.department_id`+`departments(name)` **실제 DB 조인 조회**로 본인 소속 부서명을 표시(더미 부서 목록과 ID 체계가 달라 실제 조회가 필요했음), 관리자는 부서 필터 선택값과 연동해 "전체" 또는 선택한 부서명을 동일 라벨에 표시. Playwright로 일반 사용자(디자인팀)·관리자 기본값("전체")·관리자 필터 변경(영업팀) 3가지 모두 라벨·필터·표 데이터 일치 확인, 콘솔 에러 0건
+    4. 완료 토글이 목록에 반영 안 됨 — 상세에서 완료 처리해도 더미 데이터가 서버 모듈 상수라 목록으로 돌아가면 원래 상태로 보이던 문제. `lib/dummy-log-overrides.ts`(신규) 추가해 완료 토글을 브라우저 `localStorage`에 임시 저장하고, 상세 페이지는 토글 시 `sonner` 토스트("완료/미완료 처리되었습니다")를 띄우도록 `weekly-log-detail-view.tsx` 수정, 목록은 `weekly-log-list-view.tsx`에서 저장된 오버라이드를 반영해 렌더링(실 DB 저장은 Task012 대상, 그 전까지의 임시 계층). **버그 수정**: 최초 구현 시 `useEffect`에서 `setState`를 호출해 `react-hooks/set-state-in-effect` lint 에러 발생 → `useSyncExternalStore`로 교체하는 과정에서, 오버라이드 값 자체가 아니라 "버전 카운터"만 그 훅으로 감싸고 실제 localStorage 읽기는 별도 `useMemo`에 둔 1차 수정이 하이드레이션 첫 렌더에서 곧바로 실제 저장값을 읽어버려 서버 렌더 결과와 달라지는 hydration mismatch를 Playwright 콘솔에서 실측 — `getServerSnapshot`이 오버라이드 없는 값을 반환하도록 조회 로직 자체를 `useSyncExternalStore`의 스냅샷 함수 안으로 옮겨 완전히 해소. 완료 토글 → 토스트 → 목록 복귀 시 반영 → 상세 재방문 시에도 유지, 하드 리로드 시 하이드레이션 에러 없음까지 확인 후 테스트용 오버라이드는 정리
 
 ---
 
@@ -186,25 +194,27 @@
     - [ ] `role='admin'` 계정으로 전체 부서 데이터 조회 성공 확인
     - [ ] 신규 회원가입(이메일/구글) 직후 `profiles` 행이 자동 생성되는지 확인
 
-- **Task 009: 구글 OAuth 로그인 구현 (F011)**
-  - [ ] Supabase 대시보드에서 Google provider 활성화 및 Client ID/Secret 등록
-  - [ ] Google Cloud Console 승인된 리디렉션 URI 등록 (로컬 + Supabase 콜백)
-  - [ ] `app/auth/callback/route.ts` **신규 작성** — `exchangeCodeForSession`으로 OAuth code 처리 (기존 `auth/confirm/route.ts`는 이메일 OTP 전용이므로 재사용 불가)
-  - [ ] `components/login-form.tsx`에 `supabase.auth.signInWithOAuth({ provider: "google" })` 연결 (Client Component 패턴 유지)
-  - [ ] 로그인 성공 후 리디렉션 대상을 `/protected`에서 **부서 설정 여부 분기**로 변경 (미설정 → `/protected/profile`, 설정됨 → `/protected/weekly-logs`)
-  - [ ] `lib/supabase/proxy.ts`의 공개 경로 허용 목록에 `/auth/callback`이 포함되는지 확인
+- **Task 009: 구글 OAuth 로그인 구현 (F011)** ✅ (2026-08-03)
+  - [x] Supabase 대시보드에서 Google provider 활성화 및 Client ID/Secret 등록 — 사용자가 직접 완료. Playwright로 재검증: [구글로 계속하기] 클릭 시 실제 Google 로그인 화면(`accounts.google.com`)까지 정상 도달
+  - [x] Google Cloud Console 승인된 리디렉션 URI 등록 (로컬 + Supabase 콜백) — 사용자가 직접 완료. 재검증한 Google 로그인 화면에서 `client_id`·`redirect_uri=https://ybhluyzkmpjmrxyhkolt.supabase.co/auth/v1/callback`·`scope=email+profile`이 올바르게 설정되어 있음을 확인
+  - [x] `app/auth/callback/route.ts` **신규 작성** — `exchangeCodeForSession`으로 OAuth code 처리, `code` 없음/실패 시 `error_description`을 담아 `/auth/error`로 폴백
+  - [x] `components/login-form.tsx`에 `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: ".../auth/callback" } })` 연결, 별도 `isGoogleLoading` 상태로 버튼 로딩 처리
+  - [x] 로그인 성공 후 리디렉션 대상을 `/protected`에서 **부서 설정 여부 분기**로 변경 — `app/protected/page.tsx`를 `profiles.department_id` 조회 후 미설정 시 `/protected/profile`, 설정됨 시 `/protected/weekly-logs`로 분기하는 단일 허브로 재작성(이메일 로그인·구글 로그인·직접 `/protected` 접근 모두 동일 로직 재사용)
+  - [x] `lib/supabase/proxy.ts`의 공개 경로 허용 목록 확인 — 기존 `startsWith("/auth")` 조건에 `/auth/callback`이 이미 포함되어 있어 코드 변경 불필요
+  - **계획 대비 편차 (버그 수정)**: `app/protected/page.tsx`에 DB 조회를 추가하며 테스트하던 중, 이메일 로그인 성공 후 `router.push("/protected")`(클라이언트 라우터 캐시 사용)가 **이전 방문 시점의 리다이렉트 결과를 재사용**해 부서를 새로 저장한 뒤에도 다시 `/protected/profile`로 튕기는 문제를 Playwright로 실측(동일 URL을 하드 네비게이션으로 재방문하면 정상 동작하는 것으로 원인 특정). `components/login-form.tsx`의 로그인 성공 처리를 `window.location.href = "/protected"` 하드 네비게이션으로 변경해 해소 — 구글 로그인은 콜백 라우트가 `NextResponse.redirect`(항상 하드 네비게이션)를 쓰므로 원래 이 문제에서 자유로웠음
   - **테스트 체크리스트**
-    - [ ] Playwright MCP로 [구글로 계속하기] 클릭 → OAuth 리디렉션 발생 확인
-    - [ ] 콜백 처리 후 세션 쿠키가 설정되고 보호 페이지 접근이 가능한지 확인
-    - [ ] OAuth 취소/거부 시 에러 페이지로 안전하게 폴백하는지 확인
-    - [ ] 기존 이메일/비밀번호 로그인이 회귀 없이 동작하는지 확인
+    - [x] Playwright MCP로 [구글로 계속하기] 클릭 → OAuth 리디렉션 발생 확인 — Provider 활성화 전에는 `400 Unsupported provider`로 코드 경로만 확인했고, 사용자가 Google Cloud Console·Supabase 설정을 완료한 후 재검증하여 실제 Google 로그인 화면까지 정상 도달함을 확인
+    - [ ] 콜백 처리 후 세션 쿠키가 설정되고 보호 페이지 접근이 가능한지 확인 — **부분 검증**. Claude Code는 실제 Google 계정 자격 증명이 없어 동의 화면 이후 단계(로그인 완료 → `exchangeCodeForSession` → 세션 쿠키)는 직접 실행할 수 없음. 콜백 라우트 코드는 Supabase 공식 패턴을 그대로 따르고, PKCE `code_challenge`·`redirect_uri`가 정확히 전달되는 것까지 확인했으므로 사용자가 실제 계정으로 한 번 로그인해 최종 확인 필요
+    - [x] OAuth 취소/거부 시 에러 페이지로 안전하게 폴백하는지 확인 — `code` 파라미터 없이 `/auth/callback` 직접 접근 시 `/auth/error?error=...`로 정상 폴백(콘솔 에러 0건)
+    - [x] 기존 이메일/비밀번호 로그인이 회귀 없이 동작하는지 확인 — 임시 QA 계정으로 회원가입(자동 이메일 확인 활성)·로그인·부서 미설정→`/protected/profile` 분기·부서 저장 후 재로그인→`/protected/weekly-logs` 분기·로그아웃·비로그인 접근 차단까지 전 구간 확인 후 QA 계정 삭제
+  - **남은 확인 사항 (사용자)**: 실제 Google 계정으로 [구글로 계속하기] → 로그인까지 완료해 보호 페이지 진입과 세션 유지가 정상인지 최종 확인 권장(코드 경로상 문제될 부분은 없으나 실사용자 계정 기준 검증은 못함)
 
 - **Task 010: 부서 선택 온보딩 게이트 구현 (F012)**
   - [ ] `lib/supabase/proxy.ts`의 `updateSession()` 확장 — 세션은 있으나 부서가 없으면 `/protected/profile`로 리디렉션. **쿠키 처리 로직과 `createServerClient`→`getClaims()` 사이 구간은 절대 수정 금지**, 리디렉션 분기만 추가
   - [ ] 부서 정보 조회 방식 결정 및 문서화 — `getClaims()`의 JWT에는 `department_id`가 없음. (A) proxy에서 `profiles` 1회 조회, (B) Custom Access Token Hook으로 커스텀 클레임 주입 중 택일. 매 요청 DB 조회 비용과 부서 변경 즉시 반영 요구를 비교해 결정
   - [ ] 리디렉션 루프 방지 — `/protected/profile` 자신과 `/auth/*`, `/`는 게이트 대상에서 제외
-  - [ ] `components/profile-form.tsx`에 실제 `departments` 조회 및 `profiles.department_id` 저장 연결
-  - [ ] 저장 성공 시 `/protected/weekly-logs`로 이동, 기존 부서 변경 시에는 동일 페이지 유지
+  - [x] `components/profile-form.tsx`에 실제 `departments` 조회 및 `profiles.department_id` 저장 연결 — Task 006에서 이미 완료(`app/protected/profile/page.tsx`에서 서버 조회)
+  - [x] 저장 성공 시 `/protected/weekly-logs`로 이동 — **Task 009 구글 로그인 실사용 테스트 중 사용자 피드백으로 선반영(2026-08-03)**, 이후 토스트 도입 시 한 번 더 개선(2026-08-03). 1차: `profile-form.tsx`에 `isFirstTimeSetup` 분기 추가, 최초 설정은 즉시 이동·기존 변경은 같은 화면에 텍스트만 표시. 2차(최종): "기존 부서 변경 시에는 동일 페이지 유지" 방침을 사용자 피드백으로 재조정 — 최초 설정/기존 변경 **모두** `sonner` 토스트("OO팀으로 설정/변경되었습니다")를 띄운 뒤 900ms 후 `/protected/weekly-logs`로 자동 이동하도록 동일하게 통일(Task 006 후속 개선 항목 참고). Playwright로 두 경로 모두 확인
   - [ ] 각 보호 페이지 서버 컴포넌트에서 `getClaims()` + 부서 재확인 이중 방어 패턴 적용
   - **테스트 체크리스트**
     - [ ] 부서 미설정 계정으로 `/protected/weekly-logs` 직접 접근 시 프로필로 리디렉션되는지 확인
