@@ -162,7 +162,7 @@
 
 ---
 
-### Phase 3: 데이터베이스 및 핵심 기능 구현
+### Phase 3: 데이터베이스 및 핵심 기능 구현 ✅
 
 > 목표: 더미 데이터를 실제 Supabase 데이터로 교체하고 부서 기반 권한이 DB 레벨에서 강제되는 상태.
 > **선행 조건**: ✅ Task 001의 Supabase 연결 확인 완료(2026-08-03). 단 원격 DB에 테이블이 전혀 없는 백지 상태이므로 Task 008은 스키마 신규 설계로 진행.
@@ -274,13 +274,20 @@
     - [x] 관리자가 부서 필터를 변경한 뒤 받은 PDF의 내용이 해당 부서와 일치하는지 확인
     - [x] 데이터 0건일 때 오류 없이 처리되는지 확인
 
-- **Task 014: 핵심 기능 통합 E2E 테스트**
-  - [ ] Playwright MCP로 전체 사용자 여정 검증: 랜딩 → 회원가입 → 로그인 → 부서 온보딩 → 목록 → 작성 → 상세(수정/완료/삭제) → PDF
-  - [ ] 일반 사용자 / 관리자 2개 역할 시나리오 각각 수행
-  - [ ] 권한 격리 시나리오: 타 부서 데이터 조회·수정·삭제 차단, 부서 필터 파라미터 조작 방어
-  - [ ] 세션 만료·로그아웃 후 보호 페이지 접근 차단 확인
-  - [ ] 네트워크 오류, 존재하지 않는 id, 중복 제출 등 엣지 케이스 처리 확인
-  - [ ] 콘솔 에러 및 하이드레이션 경고 0건 확인
+- **Task 014: 핵심 기능 통합 E2E 테스트** ✅ (2026-08-03)
+  - [x] Playwright MCP로 전체 사용자 여정 검증: 랜딩 → 회원가입 → 로그인 → 부서 온보딩 → 목록 → 작성 → 상세(수정/완료/삭제) → PDF — 실제 회원가입으로 만든 QA 계정(개발팀)으로 전 구간 실행, 날짜 역전 검증 차단까지 재확인
+  - [x] 일반 사용자 / 관리자 2개 역할 시나리오 각각 수행 — QA 계정 2개(개발팀 일반 사용자, 디자인팀→관리자 승격) + 마케팅팀 SQL 시딩으로 부서 3곳 데이터 구성. 관리자는 부서 필터 전환, 전체/특정 부서 조회, 타 부서(개발팀) 항목 상세 접근 및 완료 토글까지 확인
+  - [x] 권한 격리 시나리오: 타 부서 데이터 조회·수정·삭제 차단, 부서 필터 파라미터 조작 방어 — 디자인팀 사용자가 개발팀 상세 id 직접 접근 시 404, `?department=<개발팀id>` URL 조작 시 무시(UI 필터 자체 미노출), SQL로 디자인팀 사용자를 impersonate해 개발팀 행 UPDATE/DELETE 시도 0건 처리 확인(동일 방식으로 본인 부서 행은 1건 처리되는 대조군으로 impersonation 유효성도 함께 검증)
+  - [x] 세션 만료·로그아웃 후 보호 페이지 접근 차단 확인 — 로그아웃 후 `/protected`, `/protected/profile`, `/protected/weekly-logs`, `/protected/weekly-logs/new`, `/protected/weekly-logs/[id]` 5개 라우트 모두 `/auth/login`으로 리디렉션 확인
+  - [x] 네트워크 오류, 존재하지 않는 id, 중복 제출 등 엣지 케이스 처리 확인 — 아래 "발견 및 수정한 버그" 3건 참고. 유효 형식이지만 존재하지 않는 UUID는 이미 정상적으로 404 처리됨을 재확인
+  - [x] 콘솔 에러 및 하이드레이션 경고 0건 확인 — 랜딩/로그인/회원가입/목록/작성/상세/프로필 7개 라우트 재방문 후 콘솔 경고·에러 0건. `npm run build`로 프로덕션 빌드 성공 및 `next start`로 별도 포트에서 재검증
+  - **발견 및 수정한 버그 (E2E 중 실측)**
+    1. **잘못된 형식의 id로 상세 페이지 접근 시 500 크래시** — `/protected/weekly-logs/not-a-valid-uuid`처럼 uuid 형식이 아닌 id를 그대로 `.eq("id", id)` 쿼리에 넘기면 Postgres가 `22P02`(invalid input syntax) 오류를 던지고 코드가 이를 재throw해 Next.js 런타임 에러 화면으로 이어짐. `app/protected/weekly-logs/[id]/page.tsx`에서 쿼리 전에 `z.string().uuid().safeParse(id)`로 형식을 검증해 실패 시 존재하지 않는 id와 동일하게 `notFound()` 처리하도록 수정
+    2. **네트워크 오류 시 UI가 영구적으로 깨진 상태로 멈춤, 사용자 피드백 없음** — `window.fetch`를 강제로 실패시켜 재현: 완료 토글은 낙관적 업데이트만 하고 롤백/에러 토스트가 없어 체크박스가 `checked+disabled` 상태로 영구 고정, 삭제는 `isDeleting`이 영원히 `true`로 남아 버튼이 다시는 활성화되지 않음, 콘솔에는 처리되지 않은 `TypeError: Failed to fetch`만 남음. `components/weekly-log-detail-view.tsx`(완료 토글·삭제·수정)와 `components/weekly-log-new-form.tsx`(신규 작성)의 서버 액션 호출부에 `try/catch/finally`를 추가해 네트워크 실패 시 상태를 롤백하고 "네트워크 오류가 발생했습니다. 다시 시도해주세요." 토스트를 노출하도록 수정
+    3. **저장/삭제 버튼 연타(더블클릭) 시 중복 제출** — `isSubmitting`/`isDeleting`은 리렌더 이후에야 버튼을 비활성화하므로, 리렌더 전에 도착하는 두 번째 클릭이 막히지 않음. 실제로 신규 작성 폼에서 동일 내용의 행이 2건 생성되는 것을 실측(동일 제목으로 별도 id 2개 생성, 저장 완료 토스트도 2번). `components/weekly-log-form.tsx`(작성/수정 공용)와 `components/weekly-log-detail-view.tsx`의 삭제 버튼에 `useRef` 기반 동기 가드를 추가 — ref는 리렌더를 기다리지 않고 즉시 갱신되므로 연속 클릭의 두 번째 호출을 확실히 차단. 수정 후 동일한 더블클릭 재현으로 신규 작성 1건만 생성됨과 삭제 연타 시 에러 토스트 없이 1회만 처리됨을 확인
+  - **참고 (버그 아님)**: 개발 서버(Turbopack dev)에서만 `notFound()` 경로 진입 시 `Failed to execute 'measure' on 'Performance': ... negative time stamp` 콘솔 에러가 발생하는데, 이는 Task011에서 이미 정상 동작이 검증된 기존 404 경로에서도 동일하게 재현되고(이번 변경과 무관) `npm run build` + `next start` 프로덕션 빌드에서는 발생하지 않음을 확인 — Next.js 16.2.12 Turbopack dev 서버의 RSC 성능 계측 관련 dev-only 노이즈로 판단, 코드 수정 대상 아님
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류(수정 파일 4개: `app/protected/weekly-logs/[id]/page.tsx`, `components/weekly-log-detail-view.tsx`, `components/weekly-log-form.tsx`, `components/weekly-log-new-form.tsx`). `npm run build` 프로덕션 빌드 성공. 테스트 후 QA 계정 2개와 생성한 `weekly_logs`(정상 항목 + 중복 제출 재현용 항목 전부)는 SQL로 정리
+  - **참고 (Task017 대상, 이번 범위 아님)**: `get_advisors(security)` 재확인 결과 Task008에서 이미 의도된 설계로 확인한 2건(SECURITY DEFINER 함수 RPC 노출) 외에 `auth_leaked_password_protection`(유출된 비밀번호 차단 비활성) 경고가 있음 — Supabase 대시보드 Auth 설정 토글이라 코드 변경 대상이 아니며 배포 전 최종 점검(Task017)에서 처리 권장
 
 ---
 
