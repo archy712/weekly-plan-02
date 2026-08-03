@@ -75,7 +75,7 @@
 
 ## 개발 단계
 
-### Phase 1: 기반 정비 및 애플리케이션 골격 구축
+### Phase 1: 기반 정비 및 애플리케이션 골격 구축 ✅
 
 > 목표: 앱이 폴백 모드에서 벗어나 정상 부팅되고, 7개 페이지의 라우트 골격과 도메인 타입이 확정된 상태.
 
@@ -100,13 +100,14 @@
   - **범위 밖 유지**: `app/auth/*` 페이지들은 헤더 없는 기존 중앙 정렬 레이아웃 그대로 유지 (로드맵이 중복으로 지목한 곳은 `app/page.tsx`·`app/protected/layout.tsx` 두 곳뿐이었고, `forgot-password`/`update-password`/`confirm` 등 PRD 범위 외 인증 흐름을 건드리지 않기 위함)
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. curl로 7개 라우트(`/`, `/auth/login`, `/auth/sign-up`, `/protected/profile`, `/protected/weekly-logs`, `/protected/weekly-logs/new`, `/protected/weekly-logs/[id]`) 전부 200 확인. Playwright로 헤더·다크모드 토글·푸터가 랜딩/보호된 페이지에서 동일하게 노출되고 콘솔 에러 0건임을 확인
 
-- **Task 003: 도메인 타입 및 Zod 스키마 정의**
-  - [ ] `lib/types/` 도메인 타입 작성 — `Department`, `Profile`(department_id·role 포함), `WeeklyLog`, `UserRole = "user" | "admin"`
-  - [ ] `lib/schemas/weekly-log.ts` — 제목/본문 길이, 날짜 필수, `start_date <= target_end_date` 교차 검증(`.refine`)
-  - [ ] `lib/schemas/profile.ts` — 부서 선택 필수(uuid) 검증
-  - [ ] 목록 필터·PDF 행 타입 정의 (`WeeklyLogListItem`, `DepartmentFilter`)
-  - [ ] `lib/format.ts` — 날짜 포맷(`YYYY-MM-DD`), 완료 상태 라벨 유틸
-  - **주의**: `database.types.ts`는 Task 008 마이그레이션 이후에 재생성됨. 이 단계 타입은 **임시 수기 정의**이며, Task 008 완료 시 `Tables<"weekly_logs">` 기반으로 교체하는 것을 전제로 작성할 것
+- **Task 003: 도메인 타입 및 Zod 스키마 정의** ✅ (2026-08-03)
+  - [x] `lib/types/index.ts` 도메인 타입 작성 — `Department`, `Profile`(department_id·role 포함), `WeeklyLog`, `UserRole = "user" | "admin"`
+  - [x] `lib/schemas/weekly-log.ts` — 제목(100자)/본문(5000자) 길이 제한, `z.string().date()` 날짜 형식 검증, `start_date <= target_end_date` 교차 검증(`.refine`)
+  - [x] `lib/schemas/profile.ts` — 부서 선택 필수(uuid) 검증
+  - [x] 목록 필터·PDF 행 타입 정의 (`WeeklyLogListItem`, `DepartmentFilter`)
+  - [x] `lib/format.ts` — 날짜 포맷(`YYYY-MM-DD`), 완료 상태 라벨 유틸
+  - **계획 대비 편차**: 원래 주석은 "이 단계 타입은 임시 수기 정의이며 Task 008 완료 후 `Tables<"weekly_logs">` 기반으로 교체"를 전제했으나, Task 003 착수 시점에 Task 008이 이미 완료되어 실제 스키마가 존재했으므로 **처음부터 `database.types.ts`의 `Tables<"...">`를 재사용**해 작성 — 이중 작업 회피 (`Profile`은 `role: string`을 `UserRole`로 좁혀 재정의)
+  - **검증**: `npx tsc --noEmit` / `npm run lint` 무오류 확인. `tsx`로 zod 스키마 스모크 테스트 — 정상 입력 통과, `start_date > target_end_date` 거부(`target_end_date` 필드에 에러), 잘못된 날짜 포맷 거부, uuid 아닌 `department_id` 거부 모두 확인
 
 ---
 
