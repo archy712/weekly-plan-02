@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -13,6 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
@@ -23,6 +32,27 @@ import type {
   DepartmentFilter,
   WeeklyLogListItem,
 } from "@/lib/types";
+
+const PAGE_SIZE = 20;
+
+// 총 페이지가 많을 때 앞/뒤/현재 주변만 보여주고 나머지는 생략(...) 처리한다.
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const keep = new Set([1, total, current - 1, current, current + 1]);
+  const sorted = [...keep].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
+  const result: (number | "ellipsis")[] = [];
+  let previous = 0;
+  for (const page of sorted) {
+    if (previous && page - previous > 1) {
+      result.push("ellipsis");
+    }
+    result.push(page);
+    previous = page;
+  }
+  return result;
+}
 
 export function WeeklyLogListView({
   items,
@@ -37,6 +67,22 @@ export function WeeklyLogListView({
 }) {
   const router = useRouter();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [prevDepartmentId, setPrevDepartmentId] = useState(currentDepartmentId);
+
+  // 부서 필터가 바뀌면 항목 목록이 통째로 달라지므로 페이지를 1로 되돌린다.
+  // (렌더링 중 상태 조정 — https://react.dev/learn/you-might-not-need-an-effect)
+  if (currentDepartmentId !== prevDepartmentId) {
+    setPrevDepartmentId(currentDepartmentId);
+    setCurrentPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedItems = useMemo(
+    () => items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [items, safePage],
+  );
 
   // 부서 필터는 클라이언트 상태가 아니라 URL(?department=)로 관리한다 — 서버 컴포넌트가
   // searchParams를 읽어 매번 다시 조회한다. weekly_logs SELECT는 전 부서 공개이므로
@@ -101,8 +147,56 @@ export function WeeklyLogListView({
         />
       ) : (
         <>
-          <WeeklyLogTable items={items} showDepartment />
-          <WeeklyLogCardList items={items} showDepartment />
+          <WeeklyLogTable items={pagedItems} showDepartment />
+          <WeeklyLogCardList items={pagedItems} showDepartment />
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (safePage > 1) setCurrentPage(safePage - 1);
+                    }}
+                    className={safePage === 1 ? "pointer-events-none opacity-50" : undefined}
+                  />
+                </PaginationItem>
+                {getPageNumbers(safePage, totalPages).map((page, index) =>
+                  page === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        href="#"
+                        isActive={page === safePage}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage(page);
+                        }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (safePage < totalPages) setCurrentPage(safePage + 1);
+                    }}
+                    className={
+                      safePage === totalPages ? "pointer-events-none opacity-50" : undefined
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </>
       )}
     </div>

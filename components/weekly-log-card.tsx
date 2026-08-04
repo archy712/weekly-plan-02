@@ -15,7 +15,7 @@ export function WeeklyLogCard({
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 p-4 pb-2">
         <CardTitle className="text-base">
           <Link
             href={`/protected/weekly-logs/${item.id}`}
@@ -29,7 +29,7 @@ export function WeeklyLogCard({
         </CardTitle>
         <StatusBadge isCompleted={item.is_completed} />
       </CardHeader>
-      <CardContent className="flex flex-col gap-1 text-sm text-muted-foreground">
+      <CardContent className="flex flex-col gap-0.5 p-4 pt-0 text-sm text-muted-foreground">
         {showDepartment && <span>{item.department_name}</span>}
         <span>
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
@@ -47,7 +47,7 @@ export function WeeklyLogCardList({
   showDepartment?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 md:hidden">
+    <div className="flex flex-col gap-2 md:hidden">
       {items.map((item) => (
         <WeeklyLogCard key={item.id} item={item} showDepartment={showDepartment} />
       ))}
