@@ -373,6 +373,27 @@
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정으로 실제 작성 화면에서 굵게·글머리 기호 목록·링크(브라우저 `prompt()` 기반)를 적용해 HTML 태그 노출 없이 즉시 서식이 반영됨을 확인 → 저장 → 상세 페이지 렌더링이 편집 화면과 완전히 동일함을 스크린샷으로 대조 → 수정 진입 시 저장된 HTML이 다시 WYSIWYG로 정확히 복원(굵게/목록/링크 버튼이 눌림 상태로 표시)됨을 확인. **XSS 방어 검증**: `<script>`, `<img onerror>`, `<p onclick>`, `<iframe src="javascript:...">`를 포함한 합성 `paste` 이벤트를 에디터에 직접 dispatch — ProseMirror 스키마 파싱 단계에서 이미 전부 제거되어(`<p>클릭 테스트</p>`만 남음) 전역 XSS 플래그가 하나도 설정되지 않음을 확인, SQL로 저장된 content도 순수하게 정제된 상태임을 재확인. 전 구간 콘솔 에러 0건. 테스트 계정·데이터는 정리
   - **범위 밖 유지**: 표/이미지 삽입, 글자수 실시간 카운터, placeholder 힌트 문구는 요청 범위 밖이라 추가하지 않음(글자수 제한은 기존과 동일하게 저장 시 zod `max(5000)` 검증으로만 처리)
 
+- **Task 022: 주간업무일지 첨부파일 업로드 구현 (F017 신규)** ✅ (2026-08-04)
+  - [x] **DB 마이그레이션** — `weekly_log_attachments` 테이블 신규 생성(`id`, `weekly_log_id → weekly_logs(id) on delete cascade`, `department_id → departments(id)`, `file_name`, `file_path unique`, `file_size integer CHECK (0 < size <= 5242880)`, `content_type`, `uploaded_by → profiles(id)`, `created_at`) + `weekly_log_id` 인덱스. RLS는 `weekly_logs`와 동일한 관례로 SELECT 전 부서 공개, INSERT/DELETE만 업로더 소속 부서 또는 `admin`(UPDATE 정책 없음 — 삭제 후 재업로드 방식)
+  - [x] **Storage 버킷 신규 생성** — `weekly-log-attachments`(private, `file_size_limit` 5MB). 경로 규칙 `{department_id}/{weekly_log_id}/{uuid}-{파일명}`을 전제로, 스토리지 RLS는 `(storage.foldername(name))[1] = current_department_id()`(또는 `is_admin()`)일 때만 INSERT/DELETE 허용, SELECT는 인증 사용자 전체 공개 — 테이블 RLS와 동일한 부서 기반 관례를 스토리지 레벨까지 확장
+  - [x] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성
+  - [x] **업로드 진행률 구현** — `supabase-js`의 기본 `storage.upload()`가 fetch 기반이라 진행률 이벤트를 제공하지 않아, `lib/storage/weekly-log-attachments.ts`에서 `createSignedUploadUrl` 발급 후 그 URL에 직접 XHR PUT(`xhr.upload.onprogress`)하는 방식으로 실제 업로드 퍼센트를 추적. 다운로드는 `createSignedUrl`(60초 만료)로 서명 URL을 매번 새로 발급
+  - [x] `lib/actions/weekly-log-attachments.ts` 신규 — `createWeeklyLogAttachmentAction`(메타데이터 insert, file_size 재검증), `deleteWeeklyLogAttachmentAction`(DB 행 삭제 후 storage 객체 best-effort 삭제)
+  - [x] `hooks/use-weekly-log-attachments.ts` 신규 — 선택된 파일(5MB 초과 시 즉시 `sonner` 토스트로 거부) 상태, 파일별 업로드 진행률/상태(pending·uploading·error), 기존 첨부파일 목록과 삭제(낙관적 업데이트 + 실패 시 롤백)를 관리. `uploadAll()`은 Promise.all 결과에서 직접 실패 개수를 반환해, 호출 직후 아직 리렌더되지 않은 state를 다시 읽는 stale-closure 문제를 피함
+  - [x] `components/ui/progress.tsx`(`npx shadcn add progress`) + `components/weekly-log-attachment-field.tsx` 신규 — 파일 선택 버튼, 파일별 진행률 바, 5MB 초과 즉시 거부, 실패 시 재시도 버튼, 기존 첨부파일 다운로드/삭제. `onAddFiles`/`onRemoveAttachment` 등 prop이 없으면 자동으로 읽기 전용(다운로드만 가능)으로 렌더링되어 작성/수정 폼과 상세 페이지 읽기 전용 뷰가 컴포넌트를 공유
+  - [x] **신규 작성 시 업로드 타이밍** — `weekly_log_id`가 저장 전에는 존재하지 않아, 실제 파일 업로드는 "저장" 클릭 → `createWeeklyLogAction` 성공(이번에 `{success, id, departmentId}`를 반환하도록 확장) → 반환된 id/departmentId로 업로드, 순서로 진행. `components/weekly-log-new-form.tsx`는 최초 저장 성공 시의 `{id, departmentId}`를 `useRef`에 보관해, 일부 첨부파일 업로드 실패로 재제출되어도 `weekly_logs` row를 중복 생성하지 않고 실패한 파일만 재시도. 저장 성공 후 이동 대상도 목록 페이지에서 **방금 생성한 상세 페이지**로 변경(첨부파일 업로드 결과를 바로 확인할 수 있도록)
+  - [x] 수정 플로우는 `weekly_log_id`/`department_id`가 이미 존재해 이런 가드가 불필요 — `components/weekly-log-detail-view.tsx`가 `updateWeeklyLogAction` 성공 직후 곧바로 신규 첨부파일을 업로드
+  - [x] `app/protected/weekly-logs/[id]/page.tsx`에 첨부파일 조회 쿼리 추가, `lib/types/index.ts`의 `WeeklyLogDetail`에 `attachments: WeeklyLogAttachment[]` 추가. 상세 페이지(읽기 전용)에도 첨부파일이 있을 때만 다운로드 목록을 노출
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정으로 회원가입 → 부서 선택(Commerce시스템팀) → 작성 화면에서 6MB 더미 파일 선택 시 업로드 목록에 추가되지 않고 "첨부파일은 5.0MB 이하만 업로드할 수 있습니다" 토스트로 즉시 거부됨을 확인, 22바이트 정상 파일은 목록에 추가된 상태로 저장 → 상세 페이지로 자동 이동 및 첨부파일이 목록에 노출됨을 확인 → 파일명 클릭 시 서명된 다운로드 URL(`.../storage/v1/object/sign/...`)이 새 탭에서 정상 열림을 확인 → 수정 모드 진입 시 동일 첨부파일이 삭제 버튼과 함께 노출 → 삭제 클릭 후 목록에서 사라짐과 동시에 SQL로 `weekly_log_attachments` 행과 `storage.objects` 객체가 모두 실제로 제거되었음을 재확인. 전 구간 콘솔 에러 0건. 테스트로 만든 로그 1건과 QA 계정은 정리(QA 계정은 이번엔 삭제하지 않고 남겨둠 — 아래 참고)
+  - **참고 (버그 아님, 테스트 환경 이슈)**: 검증 시작 시 이전 세션(Task021)에서 남겨둔 `qa-tiptap@example.com` 세션 쿠키가 브라우저에 남아있었는데, 정작 `auth.users`에서는 이미 삭제된 계정이었음. `getClaims()`는 네트워크 왕복 없이 JWT를 로컬 디코딩만 하므로(코드베이스 관례상 `getUser()`보다 빠르다는 이유로 채택) 삭제된 사용자의 세션도 만료 전까지는 "로그인된 것처럼" 통과된다는 점을 실측 — 코드 결함이 아니라 QA 계정을 삭제하고 브라우저 세션은 정리하지 않았을 때 발생하는 테스트 환경의 자연스러운 결과. 로그아웃 후 신규 QA 계정(`qa-attach-test@example.com`)으로 재검증
+  - **테스트 체크리스트**
+    - [x] 5MB 초과 파일 선택 시 업로드 목록에 추가되지 않고 즉시 거부 토스트가 표시되는지 확인
+    - [x] 5MB 이하 파일은 정상적으로 선택 목록에 추가되고, 저장 시 진행률과 함께 업로드되는지 확인
+    - [x] 저장 성공 후 상세 페이지에서 업로드한 첨부파일이 다운로드 가능한지 확인
+    - [x] 수정 모드에서 기존 첨부파일 삭제 시 DB 행과 storage 객체가 모두 삭제되는지 확인
+    - [x] 타 부서 사용자가 첨부파일 스토리지 경로에 쓰기를 시도할 경우 RLS로 차단되는지는 코드 리뷰로 확인(부서 필터 조작 방어와 동일한 패턴, 실사용자 시나리오로는 미검증)
+  - **범위 밖 유지**: 첨부파일 미리보기(이미지 썸네일 등), 다중 파일 드래그앤드롭 영역, 업로드 취소 버튼은 요청 범위 밖이라 추가하지 않음
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -394,6 +415,7 @@
 | F014 | 반응형 레이아웃 | Task 004~007, Task 015 |
 | F015 | 랜딩 기능 소개 카드 | Task 005 |
 | F016 | 제목/내용 키워드 검색 | Task 018 |
+| F017 | 첨부파일 업로드 | Task 022 |
 
 ## 주요 리스크 및 결정 필요 사항
 

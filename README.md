@@ -16,6 +16,7 @@
 ## 주요 기능
 
 - **주간업무일지 CRUD** — 시작일/목표종료일/업무명/업무 상세 내용(리치 텍스트 에디터, +예상 M/M·예상 금액·협력사, 모두 선택 입력)으로 업무를 기록·수정·삭제
+- **첨부파일 업로드** — 작성/수정 화면에서 파일당 최대 5MB 첨부파일을 업로드(파일별 진행률 표시, 5MB 초과 시 즉시 거부), 상세 페이지에서 다운로드·삭제
 - **진행상태 추적** — 예정/진행중/완료 3단계 상태 전환
 - **부서 기반 접근 제어** — 조회는 로그인한 모든 사용자에게 부서 무관하게 공개, 쓰기(작성/수정/삭제/진행상태변경)는 작성자의 소속 부서 또는 관리자로 제한
 - **검색·필터·페이지네이션** — 제목/내용 키워드 검색, 부서 필터(기본값은 일반 사용자는 자기 부서·관리자는 전체), 20건 단위 페이지네이션
@@ -29,7 +30,7 @@
 ## 기술 스택
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
-- **Supabase** — Auth(이메일/비밀번호 + 구글 OAuth), PostgreSQL(Row Level Security), `@supabase/ssr` 쿠키 기반 세션
+- **Supabase** — Auth(이메일/비밀번호 + 구글 OAuth), PostgreSQL(Row Level Security), Storage(첨부파일, 서명 URL 기반 업로드/다운로드), `@supabase/ssr` 쿠키 기반 세션
 - **Tailwind CSS v4** + **shadcn/ui**(`new-york` 스타일), **next-themes** 다크모드
 - **React Hook Form** + **Zod** 폼 검증
 - **Tiptap** — 업무 상세 내용용 WYSIWYG 리치 텍스트 에디터, **DOMPurify**(`isomorphic-dompurify`)로 저장·렌더링 이중 sanitize

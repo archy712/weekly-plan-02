@@ -88,6 +88,16 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **sanitize는 저장 시점과 렌더링 시점 양쪽에서 수행**합니다 — `lib/actions/weekly-log.ts`의 `toWeeklyLogPayload()`가 저장 전에, `components/html-content.tsx`가 렌더링 직전에 각각 `lib/sanitize-html.ts`의 `sanitizeWeeklyLogContent()`를 호출합니다. `sanitize-html.ts`는 `isomorphic-dompurify`를 쓰며 `<a>` 태그에는 `afterSanitizeAttributes` 훅으로 `target="_blank" rel="noopener noreferrer"`를 항상 강제합니다.
 - ProseMirror는 스키마 기반 구조 편집기라 사용자가 에디터에 `<script>` 등을 "타이핑"해서 넣을 방법이 없고, 붙여넣기로 들어오는 외부 HTML도 스키마에 없는 태그/속성은 자동으로 걸러집니다. 위 sanitize는 그 위에 추가되는 이중 방어입니다.
 
+### 첨부파일 업로드 (주간업무일지)
+
+- `weekly_log_attachments` 테이블(메타데이터)과 `weekly-log-attachments` private Storage 버킷(실제 파일, `file_size_limit` 5MB)으로 구성됩니다. 경로 규칙은 `{department_id}/{weekly_log_id}/{uuid}-{파일명}`이며, 스토리지 RLS는 `(storage.foldername(name))[1]`(최상위 폴더 = 부서 id)이 `current_department_id()`와 일치해야 쓰기를 허용합니다 — `weekly_logs` 테이블 RLS와 동일한 부서 기반 관례를 스토리지 레벨까지 그대로 확장한 것입니다.
+- 5MB 제한은 **클라이언트 선택 즉시 거부(`hooks/use-weekly-log-attachments.ts`) → 버킷 `file_size_limit` → `weekly_log_attachments.file_size` CHECK 제약**, 3중으로 강제합니다. 하나만 믿지 말 것 — DB 제약은 클라이언트가 보낸 크기값을 검증하는 것이라 실제 업로드 자체는 버킷 설정이 최종 방어선입니다.
+- **업로드 진행률은 `createSignedUploadUrl` + 직접 XHR PUT**으로 구현합니다(`lib/storage/weekly-log-attachments.ts`의 `uploadAttachmentWithProgress`). `supabase-js`의 기본 `storage.upload()`는 fetch 기반이라 진행률 이벤트를 제공하지 않기 때문에, 서명된 업로드 URL을 발급받은 뒤 그 URL에 `xhr.upload.onprogress`로 직접 PUT합니다.
+- **신규 작성 시 첨부파일 실제 업로드는 "저장" 성공 이후**에 실행됩니다. `weekly_log_id`가 스토리지 경로에 필요한데 row 생성 전에는 존재하지 않기 때문입니다(`createWeeklyLogAction`이 성공 시 `{id, departmentId}`를 반환하도록 되어 있는 이유). `components/weekly-log-new-form.tsx`는 최초 저장 성공 시의 `{id, departmentId}`를 `useRef`에 보관해두고, 일부 첨부파일 업로드가 실패해 재제출되더라도 `weekly_logs` row를 중복 생성하지 않고 실패한 파일만 재시도하도록 합니다. 이 가드를 제거하면 첨부파일 업로드 실패 후 재시도 시 동일 내용의 로그가 중복 생성됩니다.
+- 수정(edit) 플로우는 `weekly_log_id`/`department_id`가 이미 존재하므로 이런 가드가 필요 없고, `components/weekly-log-detail-view.tsx`가 `updateWeeklyLogAction` 성공 후 곧바로 신규 첨부파일을 업로드합니다.
+- 핵심 파일: `lib/storage/weekly-log-attachments.ts`(경로 생성·업로드·다운로드 URL 발급), `lib/actions/weekly-log-attachments.ts`(메타데이터 insert/delete 서버 액션), `hooks/use-weekly-log-attachments.ts`(pending files·진행률·기존 첨부파일 상태 관리), `components/weekly-log-attachment-field.tsx`(작성/수정 폼과 읽기 전용 상세 화면이 공유하는 UI, `onAddFiles`/`onRemoveAttachment` 등 prop이 없으면 자동으로 읽기 전용으로 렌더링됨).
+- 다운로드는 버킷이 private이므로 항상 `createSignedUrl`(짧은 만료 시간)로 서명된 URL을 새로 발급받아 사용합니다. 공개 URL(`getPublicUrl`)은 사용하지 않습니다.
+
 ## Claude Code 커스텀 설정
 
 - `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다(Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다):
