@@ -11,3 +11,7 @@ export function formatDate(value: string | Date): string {
 export function getCompletionLabel(isCompleted: boolean): string {
   return isCompleted ? "완료" : "진행중";
 }
+
+export function formatCurrency(value: number): string {
+  return `${value.toLocaleString("ko-KR")}원`;
+}

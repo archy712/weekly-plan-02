@@ -39,7 +39,7 @@ async function WeeklyLogDetailContent({
   const { data: log, error: logError } = await supabase
     .from("weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, is_completed, department_id, departments(name), profiles(email)",
+      "id, title, content, start_date, target_end_date, is_completed, department_id, estimated_mm, estimated_cost, partner_company, departments(name), profiles(email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -66,6 +66,9 @@ async function WeeklyLogDetailContent({
         target_end_date: log.target_end_date,
         is_completed: log.is_completed,
         department_id: log.department_id,
+        estimated_mm: log.estimated_mm,
+        estimated_cost: log.estimated_cost,
+        partner_company: log.partner_company,
         department_name: log.departments?.name ?? "",
         author_email: log.profiles?.email ?? null,
       }}

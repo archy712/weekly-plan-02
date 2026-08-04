@@ -9,6 +9,19 @@ export type WeeklyLogActionResult =
   | { success: true }
   | { success: false; error: string };
 
+// 폼에서는 문자열로 받고(빈 값도 허용), DB 컬럼 타입(number | null, text | null)에 맞춰 변환한다.
+function toWeeklyLogPayload(data: WeeklyLogFormData) {
+  return {
+    title: data.title,
+    content: data.content,
+    start_date: data.start_date,
+    target_end_date: data.target_end_date,
+    estimated_mm: data.estimated_mm ? Number(data.estimated_mm) : null,
+    estimated_cost: data.estimated_cost ? Number(data.estimated_cost) : null,
+    partner_company: data.partner_company?.trim() ? data.partner_company.trim() : null,
+  };
+}
+
 async function requireAuthorProfile(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<
@@ -52,7 +65,7 @@ export async function createWeeklyLogAction(
 
   // department_id는 폼 입력이 아니라 작성자 프로필 기준으로 서버에서 지정한다.
   const { error } = await supabase.from("weekly_logs").insert({
-    ...parsed.data,
+    ...toWeeklyLogPayload(parsed.data),
     department_id: author.departmentId,
     author_id: author.userId,
   });
@@ -85,7 +98,7 @@ export async function updateWeeklyLogAction(
 
   const { data: updated, error } = await supabase
     .from("weekly_logs")
-    .update(parsed.data)
+    .update(toWeeklyLogPayload(parsed.data))
     .eq("id", id)
     .select("id")
     .maybeSingle();

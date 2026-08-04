@@ -26,6 +26,9 @@ export type WeeklyLogDetail = Pick<
   | "target_end_date"
   | "is_completed"
   | "department_id"
+  | "estimated_mm"
+  | "estimated_cost"
+  | "partner_company"
 > & {
   department_name: string;
   author_email: string | null;

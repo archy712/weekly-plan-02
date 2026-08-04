@@ -73,8 +73,11 @@ export type Database = {
           content: string
           created_at: string
           department_id: string
+          estimated_cost: number | null
+          estimated_mm: number | null
           id: string
           is_completed: boolean
+          partner_company: string | null
           start_date: string
           target_end_date: string
           title: string
@@ -85,8 +88,11 @@ export type Database = {
           content: string
           created_at?: string
           department_id: string
+          estimated_cost?: number | null
+          estimated_mm?: number | null
           id?: string
           is_completed?: boolean
+          partner_company?: string | null
           start_date: string
           target_end_date: string
           title: string
@@ -97,8 +103,11 @@ export type Database = {
           content?: string
           created_at?: string
           department_id?: string
+          estimated_cost?: number | null
+          estimated_mm?: number | null
           id?: string
           is_completed?: boolean
+          partner_company?: string | null
           start_date?: string
           target_end_date?: string
           title?: string

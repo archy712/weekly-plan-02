@@ -35,6 +35,9 @@ export function WeeklyLogForm({
       content: defaultValues?.content ?? "",
       start_date: defaultValues?.start_date ?? "",
       target_end_date: defaultValues?.target_end_date ?? "",
+      estimated_mm: defaultValues?.estimated_mm ?? "",
+      estimated_cost: defaultValues?.estimated_cost ?? "",
+      partner_company: defaultValues?.partner_company ?? "",
     },
   });
 
@@ -91,7 +94,7 @@ export function WeeklyLogForm({
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>제목</FormLabel>
+              <FormLabel>업무명</FormLabel>
               <FormControl>
                 <Input maxLength={100} {...field} />
               </FormControl>
@@ -104,7 +107,7 @@ export function WeeklyLogForm({
           name="content"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>본문</FormLabel>
+              <FormLabel>업무 상세 내용 (주요 키워드 중심으로 작성해 주세요)</FormLabel>
               <FormControl>
                 <Textarea maxLength={5000} rows={10} {...field} />
               </FormControl>
@@ -112,6 +115,59 @@ export function WeeklyLogForm({
             </FormItem>
           )}
         />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="estimated_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>예상 소요 M/M</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="예: 1.5"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="estimated_cost"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>예상 소요 금액</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="예: 5000000"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="partner_company"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>관련 협력 회사</FormLabel>
+                <FormControl>
+                  <Input maxLength={100} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div className="flex justify-end gap-2">
           <Button
             type="button"

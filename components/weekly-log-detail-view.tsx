@@ -24,7 +24,7 @@ import { StatusBadge } from "@/components/status-badge";
 import {
   WeeklyLogForm,
 } from "@/components/weekly-log-form";
-import { formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { WeeklyLogDetail } from "@/lib/types";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import {
@@ -126,6 +126,9 @@ export function WeeklyLogDetailView({
             content: log.content,
             start_date: log.start_date,
             target_end_date: log.target_end_date,
+            estimated_mm: log.estimated_mm != null ? String(log.estimated_mm) : "",
+            estimated_cost: log.estimated_cost != null ? String(log.estimated_cost) : "",
+            partner_company: log.partner_company ?? "",
           }}
           submitLabel="수정 완료"
           onSubmit={handleEditSubmit}
@@ -149,6 +152,28 @@ export function WeeklyLogDetailView({
           {formatDate(log.start_date)} ~ {formatDate(log.target_end_date)}
         </span>
       </div>
+      {(log.estimated_mm != null || log.estimated_cost != null || log.partner_company) && (
+        <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-4 py-3 text-sm">
+          {log.estimated_mm != null && (
+            <div>
+              <span className="text-muted-foreground">예상 소요 M/M</span>{" "}
+              <span className="font-medium">{log.estimated_mm} M/M</span>
+            </div>
+          )}
+          {log.estimated_cost != null && (
+            <div>
+              <span className="text-muted-foreground">예상 소요 금액</span>{" "}
+              <span className="font-medium">{formatCurrency(log.estimated_cost)}</span>
+            </div>
+          )}
+          {log.partner_company && (
+            <div>
+              <span className="text-muted-foreground">관련 협력 회사</span>{" "}
+              <span className="font-medium">{log.partner_company}</span>
+            </div>
+          )}
+        </div>
+      )}
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{log.content}</p>
       {canWrite && (
         <>
