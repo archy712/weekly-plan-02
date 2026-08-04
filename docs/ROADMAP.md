@@ -406,6 +406,15 @@
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 회원가입 QA 계정(`profile-test-20260804@example.com`)으로 Playwright 실사용 테스트: 전화번호 입력창에 `01099998888`을 입력하면 즉시 `010-9999-8888`로 자동 포맷됨을 확인, 아바타를 기본값(🦊)에서 🐱로 클릭 전환 시 `ring` 스타일이 즉시 이동함을 확인, 자기소개 입력 후 부서 선택·저장 → `profiles` 테이블에 세 값 모두 정확히 반영됨을 SQL로 재확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리
   - **범위 밖 유지**: 실제 이미지 업로드형 아바타(프로필 사진), 전화번호 국가 코드/국제 형식 지원은 요청 범위 밖이라 추가하지 않음 — 아바타는 프리셋 선택 방식, 전화번호는 국내 형식(`000-0000-0000`) 고정
 
+- **Task 024: 아바타 헤더 노출, 프리셋 확장·팝업 선택 UX, 인증 화면 반응형·회원가입 필드 확장 (F018 보강)** ✅ (2026-08-04)
+  - [x] **헤더에 아바타 노출** — `components/header-nav.tsx`(데스크탑)·`components/mobile-nav.tsx`(모바일 시트)가 `profiles.avatar_key`를 함께 조회해 이메일 앞에 프리셋 아바타(`ui/avatar`+`AvatarFallback`)를 표시. 공통 헤더(`site-header.tsx`)가 전 페이지에서 공유되므로 주간업무일지 목록을 포함한 모든 보호된 페이지에 자동 반영됨(사용자가 요청한 목록 화면뿐 아니라 헤더가 노출되는 모든 화면에 동일하게 적용)
+  - [x] **아바타 프리셋 8종 → 24종 확장** — `lib/constants/avatars.ts`의 `AVATAR_PRESETS`에 dog/lion/koala/cow/pig/frog/monkey/unicorn/wolf/raccoon/hamster/hedgehog/chicken/duck/butterfly/turtle 16종 추가. DB `profiles_avatar_key_check` CHECK 제약도 마이그레이션(`expand_profile_avatar_presets`)으로 24종 전체를 허용하도록 동기화(기존 CHECK를 DROP 후 확장된 목록으로 재생성)
+  - [x] **아바타 선택을 팝업 다이얼로그로 전환** — `components/avatar-picker-dialog.tsx` 신규(기존 `ui/dialog` 재사용, 별도 라이브러리 추가 없음). 현재 아바타를 보여주는 트리거 버튼 → 클릭 시 24개 프리셋을 4~6열 그리드로 보여주는 `Dialog` → 항목 클릭 시 즉시 반영 후 자동 닫힘. `value`/`onChange`만 받는 순수 컴포넌트로 만들어 `profile-form.tsx`(RHF `FormField`)와 `sign-up-form.tsx`(일반 `useState`) 양쪽에서 재사용, 기존 `profile-form.tsx`의 인라인 8개 그리드는 이 컴포넌트로 완전히 대체
+  - [x] **로그인/회원가입 화면 반응형 너비** — 사용자에게 "공통 헤더/푸터를 프로필 화면처럼 적용" vs "카드 너비만 반응형 확장" 두 방향을 제시해 후자를 선택받음. `app/auth/login/page.tsx`·`app/auth/sign-up/page.tsx`의 카드 컨테이너를 고정 `max-w-sm`에서 `max-w-sm sm:max-w-md md:max-w-lg`로 변경(헤더 없는 기존 중앙 정렬 레이아웃 자체는 유지)
+  - [x] **회원가입 화면에 프로필 상세 정보 입력 추가** — "프로필 화면에 신규 추가된 속성"(부서 선택은 이미 있던 기능이라 제외, 전화번호·아바타·자기소개만 해당)을 `components/sign-up-form.tsx`에 추가. 전화번호(자동 하이픈, `profileSchema.shape.phone_number.safeParse()`로 검증 로직 재사용)·아바타(`AvatarPickerDialog`)·자기소개, 모두 선택 입력. `supabase.auth.signUp()` 성공 후 `handle_new_user` 트리거가 이미 생성한 `profiles` row에 이 값들을 곧바로 `update()`하며, 이 2차 업데이트가 실패해도 계정 생성 자체는 막지 않음(선택 입력이라 나중에 프로필 화면에서 채울 수 있음)
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 매 변경마다 무오류. 임시 회원가입 QA 계정 3개로 각각 Playwright 실사용 테스트 — (1) `header-avatar-test@example.com`: 부서·아바타(🦉) 저장 후 데스크탑 헤더·모바일 햄버거 메뉴 양쪽에서 이메일 앞에 아바타가 정상 노출됨을 스크린샷으로 확인, (2) `avatar-dialog-test@example.com`: 트리거 버튼 클릭 시 24개 프리셋이 담긴 다이얼로그가 열리고 유니콘 선택 시 즉시 트리거 버튼에 반영되며 다이얼로그가 자동으로 닫힘을 확인, 저장 후 `avatar_key`가 SQL로 `unicorn`임을 재확인(신규 CHECK 제약이 확장된 24종을 정상 허용함을 실증), (3) `signup-fields-test@example.com`: 회원가입 화면에서 전화번호(`01055556666`→`010-5555-6666` 자동 포맷)·코알라 아바타·자기소개를 입력해 가입 → `/protected/profile` 재방문 시 세 값이 그대로 프리필됨을 확인, SQL로도 `profiles` row에 정확히 반영됨을 재확인. 로그인/회원가입 카드 반응형 너비는 1280px(데스크탑, `md:max-w-lg`)·390px(모바일, `max-w-sm`) 두 뷰포트 스크린샷으로 대조 확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정 3개는 모두 `auth.users` DELETE로 정리
+  - **범위 밖 유지**: `forgot-password`/`update-password` 등 다른 인증 보조 화면의 너비는 이번 요청 범위(로그인·회원가입)에 포함되지 않아 변경하지 않음. 회원가입 화면에 부서 선택은 추가하지 않음 — 부서는 "신규 추가된 속성"이 아니라 기존 온보딩(F012) 기능이므로 요청 범위 밖으로 판단
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -428,7 +437,7 @@
 | F015 | 랜딩 기능 소개 카드 | Task 005 |
 | F016 | 제목/내용 키워드 검색 | Task 018 |
 | F017 | 첨부파일 업로드 | Task 022 |
-| F018 | 프로필 상세 정보 관리 | Task 023 |
+| F018 | 프로필 상세 정보 관리 | Task 023, Task 024(헤더 노출·프리셋 확장·팝업 UX·회원가입 입력) |
 
 ## 주요 리스크 및 결정 필요 사항
 
