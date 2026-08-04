@@ -394,6 +394,18 @@
     - [x] 타 부서 사용자가 첨부파일 스토리지 경로에 쓰기를 시도할 경우 RLS로 차단되는지는 코드 리뷰로 확인(부서 필터 조작 방어와 동일한 패턴, 실사용자 시나리오로는 미검증)
   - **범위 밖 유지**: 첨부파일 미리보기(이미지 썸네일 등), 다중 파일 드래그앤드롭 영역, 업로드 취소 버튼은 요청 범위 밖이라 추가하지 않음
 
+- **Task 023: 프로필 상세 정보(전화번호·아바타·자기소개) 추가 (F018 신규)** ✅ (2026-08-04)
+  - [x] **DB 마이그레이션** — `profiles`에 `phone_number`(text, nullable, `^\d{3}-\d{4}-\d{4}$` CHECK)·`avatar_key`(text, not null, 8개 프리셋 키 CHECK, 기본값 `'fox'`)·`bio`(text, nullable, 500자 이하 CHECK) 컬럼 추가
+  - [x] **기존 34개 프로필 더미 데이터 백필** — `phone_number`는 최초엔 행별로 결정론적으로 다른 값(`010-{...}-{...}`)을 채웠다가, 사용자 요청에 따라 전원 `010-0000-0000`으로 통일. `avatar_key`는 8개 프리셋을 순환 배정, `bio`는 이메일 아이디를 포함한 한 줄 인삿말로 채움
+  - [x] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성
+  - [x] `lib/constants/avatars.ts` 신규 — 이모지 기반 프리셋 8종(fox/bear/cat/panda/rabbit/owl/penguin/tiger) 정의, 이미지 업로드나 Storage 버킷 없이 emoji + 배경색 클래스만으로 아바타 구현
+  - [x] `lib/utils.ts`에 `formatPhoneNumberInput()` 추가 — 숫자만 추출해 3-4-4자리로 하이픈 자동 삽입(최대 11자리)
+  - [x] `lib/schemas/profile.ts` 확장 — `phone_number`(선택, 형식 정규식 검증)·`avatar_key`(`AVATAR_KEYS` enum)·`bio`(선택, 500자 이하) 추가
+  - [x] `components/profile-form.tsx` **React Hook Form + Zod로 전환** — 기존 수동 `useState` 폼을 `weekly-log-form.tsx`와 동일한 `useForm`+`zodResolver`+shadcn `Form`/`FormField`/`FormMessage` 패턴으로 재작성. 전화번호 입력은 `010-1234-5678` placeholder 힌트와 함께 `onChange`에서 `formatPhoneNumberInput()`을 거쳐 자동 하이픈 삽입, 아바타는 `npx shadcn add avatar`로 신규 설치한 `ui/avatar`(`AvatarFallback`)로 8개 프리셋을 클릭 선택 가능한 그리드로 렌더링(선택된 프리셋에 `ring` 스타일), 자기소개는 `ui/textarea`(`maxLength=500`)
+  - [x] `app/protected/profile/page.tsx` — `profiles` 조회 컬럼에 `phone_number, avatar_key, bio` 추가, 신규 사용자 기본값(`avatar_key: "fox"`, 나머지 `null`) 반영
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 회원가입 QA 계정(`profile-test-20260804@example.com`)으로 Playwright 실사용 테스트: 전화번호 입력창에 `01099998888`을 입력하면 즉시 `010-9999-8888`로 자동 포맷됨을 확인, 아바타를 기본값(🦊)에서 🐱로 클릭 전환 시 `ring` 스타일이 즉시 이동함을 확인, 자기소개 입력 후 부서 선택·저장 → `profiles` 테이블에 세 값 모두 정확히 반영됨을 SQL로 재확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리
+  - **범위 밖 유지**: 실제 이미지 업로드형 아바타(프로필 사진), 전화번호 국가 코드/국제 형식 지원은 요청 범위 밖이라 추가하지 않음 — 아바타는 프리셋 선택 방식, 전화번호는 국내 형식(`000-0000-0000`) 고정
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -416,6 +428,7 @@
 | F015 | 랜딩 기능 소개 카드 | Task 005 |
 | F016 | 제목/내용 키워드 검색 | Task 018 |
 | F017 | 첨부파일 업로드 | Task 022 |
+| F018 | 프로필 상세 정보 관리 | Task 023 |
 
 ## 주요 리스크 및 결정 필요 사항
 
