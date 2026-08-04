@@ -57,6 +57,17 @@ async function WeeklyLogDetailContent({
   // 쓰기(수정/삭제/완료토글)는 RLS에서 소속 부서 또는 admin으로만 허용된다.
   const canWrite = profile.role === "admin" || log.department_id === profile.department_id;
 
+  // 첨부파일도 weekly_logs와 동일하게 SELECT는 전 부서 공개다.
+  const { data: attachments, error: attachmentsError } = await supabase
+    .from("weekly_log_attachments")
+    .select("id, file_name, file_path, file_size, content_type, created_at")
+    .eq("weekly_log_id", id)
+    .order("created_at", { ascending: true });
+
+  if (attachmentsError) {
+    throw attachmentsError;
+  }
+
   return (
     <WeeklyLogDetailView
       log={{
@@ -72,6 +83,7 @@ async function WeeklyLogDetailContent({
         partner_company: log.partner_company,
         department_name: log.departments?.name ?? "",
         author_email: log.profiles?.email ?? null,
+        attachments: attachments ?? [],
       }}
       canWrite={canWrite}
     />

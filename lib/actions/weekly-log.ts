@@ -11,6 +11,10 @@ export type WeeklyLogActionResult =
   | { success: true }
   | { success: false; error: string };
 
+export type CreateWeeklyLogActionResult =
+  | { success: true; id: string; departmentId: string }
+  | { success: false; error: string };
+
 // 폼에서는 문자열로 받고(빈 값도 허용), DB 컬럼 타입(number | null, text | null)에 맞춰 변환한다.
 // content는 에디터가 만든 HTML을 그대로 신뢰하지 않고 저장 전에 한 번 더 sanitize한다
 // (렌더링 시점 sanitize와 별개로, 저장되는 데이터 자체를 안전하게 유지하기 위함).
@@ -26,7 +30,7 @@ function toWeeklyLogPayload(data: WeeklyLogFormData) {
   };
 }
 
-async function requireAuthorProfile(
+export async function requireAuthorProfile(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<
   | { userId: string; departmentId: string }
@@ -52,7 +56,7 @@ async function requireAuthorProfile(
 
 export async function createWeeklyLogAction(
   values: WeeklyLogFormData,
-): Promise<WeeklyLogActionResult> {
+): Promise<CreateWeeklyLogActionResult> {
   const parsed = weeklyLogSchema.safeParse(values);
   if (!parsed.success) {
     return {
@@ -68,18 +72,23 @@ export async function createWeeklyLogAction(
   }
 
   // department_id는 폼 입력이 아니라 작성자 프로필 기준으로 서버에서 지정한다.
-  const { error } = await supabase.from("weekly_logs").insert({
-    ...toWeeklyLogPayload(parsed.data),
-    department_id: author.departmentId,
-    author_id: author.userId,
-  });
+  const { data: inserted, error } = await supabase
+    .from("weekly_logs")
+    .insert({
+      ...toWeeklyLogPayload(parsed.data),
+      department_id: author.departmentId,
+      author_id: author.userId,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     return { success: false, error: "주간업무일지 저장 중 오류가 발생했습니다." };
   }
 
   revalidatePath("/protected/weekly-logs");
-  return { success: true };
+  // 첨부파일은 클라이언트가 이 id/department_id로 storage 업로드 경로를 구성해 저장 직후 업로드한다.
+  return { success: true, id: inserted.id, departmentId: author.departmentId };
 }
 
 export async function updateWeeklyLogAction(

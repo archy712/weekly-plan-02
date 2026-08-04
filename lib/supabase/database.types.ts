@@ -67,6 +67,64 @@ export type Database = {
           },
         ]
       }
+      weekly_log_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          department_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          uploaded_by: string
+          weekly_log_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          department_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          uploaded_by: string
+          weekly_log_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          department_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          uploaded_by?: string
+          weekly_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_log_attachments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_attachments_weekly_log_id_fkey"
+            columns: ["weekly_log_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_logs: {
         Row: {
           author_id: string

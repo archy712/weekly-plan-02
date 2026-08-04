@@ -31,6 +31,8 @@ import { StatusBadge } from "@/components/status-badge";
 import {
   WeeklyLogForm,
 } from "@/components/weekly-log-form";
+import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
+import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
 import type { WeeklyLogDetail, WeeklyLogStatus } from "@/lib/types";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
@@ -56,6 +58,7 @@ export function WeeklyLogDetailView({
   const [isDeleting, setIsDeleting] = useState(false);
   // isDeleting 리렌더 반영 전에 도착하는 연속 클릭(더블클릭)을 막기 위한 동기 가드.
   const isDeletingRef = useRef(false);
+  const attachmentsState = useWeeklyLogAttachments(log.attachments);
 
   const handleEditSubmit = async (values: WeeklyLogFormData) => {
     let result;
@@ -69,6 +72,15 @@ export function WeeklyLogDetailView({
       toast.error(result.error);
       return;
     }
+
+    if (attachmentsState.hasPendingUploads) {
+      const { failedCount } = await attachmentsState.uploadAll(log.id, log.department_id);
+      if (failedCount > 0) {
+        toast.error(`수정되었지만 첨부파일 ${failedCount}개 업로드에 실패했습니다. 다시 시도해주세요.`);
+        return;
+      }
+    }
+
     toast.success("수정되었습니다.");
     setIsEditing(false);
     router.refresh();
@@ -143,6 +155,12 @@ export function WeeklyLogDetailView({
           submitLabel="수정 완료"
           onSubmit={handleEditSubmit}
           onCancel={() => setIsEditing(false)}
+          attachments={attachmentsState.attachments}
+          pendingFiles={attachmentsState.pendingFiles}
+          onAddFiles={attachmentsState.addFiles}
+          onRemovePendingFile={attachmentsState.removePendingFile}
+          onRetryUpload={(id) => attachmentsState.retryUpload(id, log.id, log.department_id)}
+          onRemoveAttachment={attachmentsState.removeExistingAttachment}
         />
       </div>
     );
@@ -185,6 +203,9 @@ export function WeeklyLogDetailView({
         </div>
       )}
       <HtmlContent html={log.content} />
+      {attachmentsState.attachments.length > 0 && (
+        <WeeklyLogAttachmentField attachments={attachmentsState.attachments} pendingFiles={[]} />
+      )}
       {canWrite && (
         <>
           <div className="flex items-center gap-2">

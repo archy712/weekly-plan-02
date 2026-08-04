@@ -21,6 +21,11 @@ export type WeeklyLogListItem = Pick<
   department_name: string;
 };
 
+export type WeeklyLogAttachment = Pick<
+  Tables<"weekly_log_attachments">,
+  "id" | "file_name" | "file_path" | "file_size" | "content_type" | "created_at"
+>;
+
 export type WeeklyLogDetail = Pick<
   WeeklyLog,
   | "id"
@@ -36,6 +41,7 @@ export type WeeklyLogDetail = Pick<
 > & {
   department_name: string;
   author_email: string | null;
+  attachments: WeeklyLogAttachment[];
 };
 
 export const ALL_DEPARTMENTS_FILTER = "all" as const;

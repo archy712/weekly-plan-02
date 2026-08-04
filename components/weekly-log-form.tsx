@@ -15,18 +15,33 @@ import {
 } from "@/components/ui/form";
 import { HtmlEditor } from "@/components/html-editor";
 import { Input } from "@/components/ui/input";
+import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
+import type { PendingAttachment } from "@/hooks/use-weekly-log-attachments";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
+import type { WeeklyLogAttachment } from "@/lib/types";
 
 export function WeeklyLogForm({
   defaultValues,
   submitLabel = "저장",
   onSubmit,
   onCancel,
+  attachments,
+  pendingFiles,
+  onAddFiles,
+  onRemovePendingFile,
+  onRetryUpload,
+  onRemoveAttachment,
 }: {
   defaultValues?: Partial<WeeklyLogFormData>;
   submitLabel?: string;
   onSubmit: (values: WeeklyLogFormData) => Promise<void> | void;
   onCancel: () => void;
+  attachments: WeeklyLogAttachment[];
+  pendingFiles: PendingAttachment[];
+  onAddFiles: (files: FileList) => void;
+  onRemovePendingFile: (id: string) => void;
+  onRetryUpload: (id: string) => void;
+  onRemoveAttachment: (attachment: WeeklyLogAttachment) => void;
 }) {
   const form = useForm<WeeklyLogFormData>({
     resolver: zodResolver(weeklyLogSchema),
@@ -168,6 +183,15 @@ export function WeeklyLogForm({
             )}
           />
         </div>
+        <WeeklyLogAttachmentField
+          attachments={attachments}
+          pendingFiles={pendingFiles}
+          onAddFiles={onAddFiles}
+          onRemovePendingFile={onRemovePendingFile}
+          onRetryUpload={onRetryUpload}
+          onRemoveAttachment={onRemoveAttachment}
+          disabled={isSubmitting}
+        />
         <div className="flex justify-end gap-2">
           <Button
             type="button"
