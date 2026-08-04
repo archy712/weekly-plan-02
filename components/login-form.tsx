@@ -91,16 +91,8 @@ export function LoginForm({
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">비밀번호</Label>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    비밀번호를 잊으셨나요?
-                  </Link>
-                </div>
+              <div className="relative grid gap-2">
+                <Label htmlFor="password">비밀번호</Label>
                 <Input
                   id="password"
                   type="password"
@@ -108,6 +100,14 @@ export function LoginForm({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {/* DOM 순서를 비밀번호 입력 뒤로 옮겨 Tab 이동이 이메일 → 비밀번호로 바로 가도록 하고,
+                    절대 위치로 원래 위치(라벨과 같은 줄, 우측)에 시각적으로만 되돌린다. */}
+                <Link
+                  href="/auth/forgot-password"
+                  className="absolute top-0 right-0 inline-block text-sm underline-offset-4 hover:underline"
+                >
+                  비밀번호를 잊으셨나요?
+                </Link>
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
