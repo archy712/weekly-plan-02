@@ -7,8 +7,8 @@
 부서별 주간업무일지 관리는 여러 부서로 구성된 조직의 실무자와 관리자를 위한 주간 업무 기록·추적 서비스로 다음 기능을 제공합니다:
 
 - **주간업무일지 CRUD**: 시작일/목표종료일/제목/본문으로 주간 업무를 기록하고 수정·삭제 (F001~F005)
-- **완료 상태 추적**: 업무의 완료/미완료 상태를 전환하며 진행 여부를 관리 (F006)
-- **부서 기반 접근 제어**: 조회(SELECT)는 전 부서 공개, 쓰기(작성/수정/삭제/완료처리)는 자기 부서 또는 관리자로 제한 (F007, F012)
+- **진행상태 추적**: 업무를 예정/진행중/완료 3단계로 전환하며 진행 상황을 관리 (F006)
+- **부서 기반 접근 제어**: 조회(SELECT)는 전 부서 공개, 쓰기(작성/수정/삭제/진행상태변경)는 자기 부서 또는 관리자로 제한 (F007, F012)
 - **PDF 리포팅**: 현재 조회 중인 부서의 리스트를 표 형태 PDF로 다운로드 (F008)
 - **검색·페이지네이션**: 제목/내용 키워드 검색과 20건 단위 페이지네이션으로 목록 탐색 (F016)
 
@@ -341,6 +341,21 @@
   - **검증**: 검색·페이지네이션·모바일 카드 간격·로그인 자동완성 DOM 속성은 이번 문서화 작업과 같은 세션에서 Playwright MCP로 직접 확인(임시 미리보기 라우트에 20/45건 더미 데이터를 넣어 페이지네이션 동작, 검색 필터링 결과, 빈 검색 결과 문구, 데스크탑/모바일 레이아웃을 스크린샷으로 대조한 뒤 라우트는 정리; 로그인 폼은 실제 `/auth/login`에서 `name`/`autocomplete` 속성이 DOM에 정확히 반영됨을 확인). 브라우저 비밀번호 관리자의 실제 저장·자동입력 동작 자체는 격리된 자동화 브라우저 프로필로는 검증 불가능해 사용자가 실제 브라우저로 최종 확인해야 하는 항목으로 남김. `npx tsc --noEmit`/`npm run lint`/`npm run build` 매 변경마다 무오류 확인. 부서 접근 권한 확장·필터 기본값·작성 폼 필드 추가·UI 스타일 항목들은 각 커밋 시점에 이미 반영·확인된 변경으로, 이번 로드맵 갱신 작업에서는 커밋 diff 검토로 내용만 재확인함(재검증 테스트는 다시 수행하지 않음)
   - **범위 밖 유지**: 부서 관리 UI, 관리자 지정 UI, 기간 범위 검색/필터는 PRD상 여전히 MVP 이후 범위로 제외
 
+- **Task 019: 진행상태 3단계(예정/진행중/완료) 확장 (F006)** ✅ (2026-08-04)
+  - [x] **DB 마이그레이션** — `weekly_logs.is_completed`(boolean) 컬럼을 제거하고 `status`(text, `planned`/`in_progress`/`completed` CHECK 제약, 기본값 `in_progress`) 컬럼으로 교체. 기존 값은 `true`→`completed`, `false`→`in_progress`로 결정론적 백필 후 컬럼 삭제(마이그레이션 1건). `weekly_logs` RLS 정책은 `is_completed`/`status`를 조건절에서 참조하지 않아(SELECT `true`, 쓰기는 `department_id`/`author_id` 기준) 정책 변경 없이 그대로 유효함을 `pg_policies` 조회로 사전 확인
+  - [x] **기존 데이터 표본 갱신** — 사용자 요청에 따라 기존 165건 중 무작위 10%(`order by random() limit round(0.1 * count(*))`)를 `planned`(예정)으로 변경(17건, 나머지는 `in_progress` 77건·`completed` 71건으로 유지)
+  - [x] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성
+  - [x] `lib/types/index.ts`에 `WeeklyLogStatus = "planned" | "in_progress" | "completed"` 타입 추가, `WeeklyLogListItem`/`WeeklyLogDetail`의 `is_completed` 필드를 `status`로 교체
+  - [x] `lib/format.ts`의 `getCompletionLabel(boolean)`을 `getStatusLabel(WeeklyLogStatus)`(예정/진행중/완료 라벨 매핑)로 교체
+  - [x] `components/status-badge.tsx` — `isCompleted: boolean` prop을 `status: WeeklyLogStatus` prop으로 교체, 배지 색상은 예정=outline·진행중=secondary·완료=success(`Badge` 기존 variant 재사용, 신규 variant 추가 없음)
+  - [x] `components/weekly-log-card.tsx`/`weekly-log-table.tsx` — 완료 시 취소선 스타일 조건을 `item.status === "completed"`로 변경, 목록 테이블 헤더 라벨 "완료상태" → "진행상태"
+  - [x] `components/weekly-log-detail-view.tsx` — 완료 처리 `ui/checkbox`를 예정/진행중/완료 3개 옵션의 `ui/select`로 교체(`components/weekly-log-list-view.tsx`의 부서 필터와 동일한 shadcn Select 패턴 재사용), 상태 변경 시 낙관적 업데이트 + 실패 시 롤백은 기존 완료 토글 로직 그대로 유지
+  - [x] `lib/actions/weekly-log.ts` — `toggleWeeklyLogCompletionAction(id, boolean)`을 `updateWeeklyLogStatusAction(id, WeeklyLogStatus)`로 교체(`update({ status })`)
+  - [x] `app/protected/weekly-logs/page.tsx`, `app/protected/weekly-logs/[id]/page.tsx` — Supabase 조회 컬럼 목록을 `is_completed` → `status`로 변경, DB의 `status: string` 결과를 `WeeklyLogStatus`로 캐스팅해 목록/상세 아이템에 매핑
+  - [x] `lib/pdf/weekly-log-pdf.ts` — PDF 표 값·헤더 라벨을 `getStatusLabel(item.status)`/"진행상태"로 교체
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. `mcp__supabase__execute_sql`로 상태별 건수(예정 17·진행중 77·완료 71 = 총 165건) 재확인. 임시 QA 계정으로 회원가입 → 부서 선택(Commerce시스템팀) → 목록 페이지에서 예정/진행중/완료 배지가 각각 올바른 스타일로 렌더링됨을 스크린샷으로 확인, 상세 페이지에서 예정 항목의 상태를 진행중으로 변경 → 토스트("진행중 상태로 변경되었습니다") 및 배지 즉시 반영 확인 후 원래 값(예정)으로 되돌림. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리(FK로 `profiles` 행도 함께 제거됨)
+  - **범위 밖 유지**: 작성 폼에는 진행상태 입력 필드를 추가하지 않음 — 신규 작성 시 DB 기본값(`in_progress`)을 그대로 사용하고, 예정으로 등록하고 싶다면 저장 후 상세 페이지에서 상태를 변경하는 기존 흐름을 그대로 따름(요청 범위가 기존 2단계 상태에 "예정"을 추가하는 것이었고, 작성 폼 UX 변경은 별도 요청 없었음)
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -352,7 +367,7 @@
 | F003 | 주간업무일지 신규 작성 | Task 007(UI), Task 012 |
 | F004 | 주간업무일지 수정 | Task 007(UI), Task 012 |
 | F005 | 주간업무일지 삭제 | Task 007(UI), Task 012 |
-| F006 | 완료 처리 | Task 007(UI), Task 012 |
+| F006 | 진행상태 관리 | Task 007(UI), Task 012, Task 019(3단계 확장) |
 | F007 | 전체 부서 조회 | Task 008(RLS), Task 011, Task 018(전체 사용자로 SELECT 개방) |
 | F008 | 부서별 리스트 PDF 다운로드 | Task 013 |
 | F010 | 기본 인증 | 기존 구현 + Task 006(한국어화) |
