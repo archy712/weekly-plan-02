@@ -39,6 +39,8 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 4. 로그인/회원가입 폼(`components/*-form.tsx`)은 Server Action이 아니라 **Client Component에서 `supabase.auth.*`를 직접 호출**하는 패턴입니다(`login-form.tsx`, `profile-form.tsx` 참고).
 5. 회원가입은 Supabase의 Confirm Email 옵션이 꺼져 있어 이메일 인증 없이 가입 즉시 로그인됩니다(`sign-up-form.tsx`, `app/auth/sign-up-success/page.tsx`).
 6. **로그인/로그아웃 성공 후에는 `router.push`가 아니라 `window.location.href`로 하드 네비게이션**할 것(`login-form.tsx`, `logout-button.tsx`). 이유는 두 가지: (1) 클라이언트 라우터 캐시에 남은 이전 세션의 리다이렉트 결과를 재사용하지 않아야 부서 설정 여부 같은 분기가 최신 상태를 반영하고, (2) 완전한 페이지 탐색이어야 브라우저의 비밀번호 관리자가 로그인 폼을 안정적으로 재인식해 자동완성/저장 제안이 정상 동작합니다.
+7. 구글 OAuth는 `app/auth/callback/route.ts`(Route Handler)가 `exchangeCodeForSession()`으로 코드를 세션으로 교환하고 `next` 쿼리 파라미터(기본값 `/protected`)로 리다이렉트합니다. 실패 시 `/auth/error`로 이동.
+8. **부서 미설정 사용자는 모든 보호 페이지에서 `/protected/profile`로 리다이렉트**됩니다. 이 체크는 공통 레이아웃 한 곳이 아니라 `app/protected/page.tsx`, `app/protected/weekly-logs/page.tsx`, `weekly-logs/new/page.tsx`, `weekly-logs/[id]/page.tsx` 등 **개별 페이지마다 `profiles.department_id`를 조회해 반복**합니다. 새 보호 페이지를 추가할 때 이 체크를 빠뜨리지 말 것.
 
 ### DB 타입
 
@@ -69,7 +71,20 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 `src/` 없이 `components/` 루트에 페이지별 컴포넌트를 평평하게 배치하고, `components/ui/`는 shadcn/ui가 생성한 프리미티브(추가는 `npx shadcn@latest add`), `components/tutorial/`은 스타터킷 온보딩 전용 컴포넌트입니다. 파일명은 전부 kebab-case, 컴포넌트명은 PascalCase입니다.
 
+### 폼 처리
+
+React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의, 에러 표시, 서버 에러 매핑 등)은 `docs/guides/forms-react-hook-form.md`를 참고하세요.
+
+### PDF 생성
+
+`lib/pdf/weekly-log-pdf.ts`가 jsPDF + jspdf-autotable로 **클라이언트 사이드**에서 PDF를 생성합니다. jsPDF 기본 폰트가 한글을 지원하지 않아 `/public/fonts/NotoSansKR-Regular.ttf`를 런타임에 fetch해 base64로 임베딩하며, 폰트 용량(~2.5MB) 때문에 `String.fromCharCode`를 청크 단위로 호출해 콜스택 초과를 피합니다. 이 변환 로직은 그대로 유지할 것.
+
 ## Claude Code 커스텀 설정
 
-- `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다: `dev/nextjs-supabase-developer`(Next.js+Supabase 기능 구현), `dev/ui-markup-specialist`(정적 마크업/스타일링), `dev/nextjs-app-developer`(라우팅/레이아웃 구조), `dev/code-reviewer`, `dev/development-planner`(ROADMAP.md), `docs/prd-generator`, `docs/prd-validator` 등.
+- `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다(Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다):
+  - `nextjs-supabase-expert`(`dev/nextjs-supabase-developer.md`) — Next.js+Supabase 기능 구현
+  - `ui-markup-specialist`(`dev/ui-markup-specialist.md`) — 정적 마크업/스타일링
+  - `nextjs-app-developer`(`dev/nextjs-app-developer.md`) — 라우팅/레이아웃 구조
+  - `code-reviewer`(`dev/code-reviewer.md`), `development-planner`(`dev/development-planner.md`, ROADMAP.md 관리), `starter-cleaner`(`dev/starter-cleaner.md`), `notion-api-database-expert`(`dev/notion-api-database-expert.md`)
+  - `prd-generator`, `prd-validator`(`docs/`)
 - `.claude/commands/git/`에 `commit`, `pr`, `merge`, `branch`, `update-roadmap` 슬래시 커맨드가 정의되어 있습니다.
