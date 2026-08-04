@@ -10,6 +10,8 @@ const STATUS_VARIANTS: Record<WeeklyLogStatus, "secondary" | "success" | "warnin
 
 export function StatusBadge({ status }: { status: WeeklyLogStatus }) {
   return (
-    <Badge variant={STATUS_VARIANTS[status]}>{getStatusLabel(status)}</Badge>
+    <Badge variant={STATUS_VARIANTS[status]} className="w-16 justify-center">
+      {getStatusLabel(status)}
+    </Badge>
   );
 }
