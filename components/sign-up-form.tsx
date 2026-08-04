@@ -102,8 +102,7 @@ export function SignUpForm({
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                가입 후 입력하신 이메일로 인증 링크가 발송됩니다. 메일함에서
-                인증을 완료해야 로그인할 수 있습니다.
+                가입 완료 후 바로 이용하실 수 있습니다.
               </p>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>

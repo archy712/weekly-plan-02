@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 import {
   Card,
   CardContent,
@@ -7,6 +12,15 @@ import {
 } from "@/components/ui/card";
 
 export default function Page() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push("/");
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
@@ -16,12 +30,11 @@ export default function Page() {
               <CardTitle className="text-2xl">
                 회원가입이 완료되었습니다!
               </CardTitle>
-              <CardDescription>이메일을 확인해주세요</CardDescription>
+              <CardDescription>잠시 후 메인 화면으로 이동합니다</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                가입하신 이메일로 인증 메일을 보내드렸습니다. 로그인하기 전에
-                메일함에서 계정 인증을 완료해주세요.
+                가입해 주셔서 감사합니다. 곧 메인 화면으로 자동 이동합니다.
               </p>
             </CardContent>
           </Card>
