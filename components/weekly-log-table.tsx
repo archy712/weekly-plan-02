@@ -26,21 +26,21 @@ export function WeeklyLogTable({
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="h-11 pl-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
               제목
             </TableHead>
             {showDepartment && (
-              <TableHead className="h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                 부서
               </TableHead>
             )}
-            <TableHead className="h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
               시작일
             </TableHead>
-            <TableHead className="h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
               목표종료일
             </TableHead>
-            <TableHead className="h-11 pr-4 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
               완료상태
             </TableHead>
           </TableRow>
