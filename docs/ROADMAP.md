@@ -356,6 +356,13 @@
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. `mcp__supabase__execute_sql`로 상태별 건수(예정 17·진행중 77·완료 71 = 총 165건) 재확인. 임시 QA 계정으로 회원가입 → 부서 선택(Commerce시스템팀) → 목록 페이지에서 예정/진행중/완료 배지가 각각 올바른 스타일로 렌더링됨을 스크린샷으로 확인, 상세 페이지에서 예정 항목의 상태를 진행중으로 변경 → 토스트("진행중 상태로 변경되었습니다") 및 배지 즉시 반영 확인 후 원래 값(예정)으로 되돌림. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리(FK로 `profiles` 행도 함께 제거됨)
   - **범위 밖 유지**: 작성 폼에는 진행상태 입력 필드를 추가하지 않음 — 신규 작성 시 DB 기본값(`in_progress`)을 그대로 사용하고, 예정으로 등록하고 싶다면 저장 후 상세 페이지에서 상태를 변경하는 기존 흐름을 그대로 따름(요청 범위가 기존 2단계 상태에 "예정"을 추가하는 것이었고, 작성 폼 UX 변경은 별도 요청 없었음)
 
+- **Task 020: 진행상태 배지 색상 커스터마이징 (F006)** ✅ (2026-08-04)
+  - [x] **`warning`(주황) 색상 토큰 신규 추가** — Task004에서 도입한 `success` 토큰과 동일한 패턴으로 `app/globals.css`의 `:root`/`.dark`에 `--warning`/`--warning-foreground` HSL 변수 추가, `tailwind.config.ts`의 `theme.extend.colors`에 `warning: { DEFAULT, foreground }` 매핑 추가(CLAUDE.md의 "새 색상 토큰은 두 파일 함께 수정" 규칙 준수)
+  - [x] `components/ui/badge.tsx`의 `badgeVariants`에 `warning` variant 추가(`bg-warning text-warning-foreground`, 기존 `success`/`secondary`/`outline`과 동일한 톤)
+  - [x] `components/status-badge.tsx`의 `STATUS_VARIANTS` 매핑을 요청받은 배색으로 교체 — Task019에서 정한 예정=outline·진행중=secondary·완료=success를 **예정=warning(주황)·진행중=success(초록)·완료=secondary(회색)**로 변경(3색 모두 서로 다른 배지 색을 쓰도록 재구성)
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정(`qa-badge-check@example.com`)으로 목록 페이지를 라이트/다크 테마 양쪽에서 스크린샷 대조 — 예정(주황)·진행중(초록)·완료(회색) 배지가 요청한 배색대로 렌더링되고 다크모드에서도 대비가 충분함을 확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리
+  - **범위 밖 유지**: 완료 항목의 취소선(`italic line-through`) 등 배지 외 스타일은 변경하지 않음 — 요청이 배지 색상에 한정됨
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -367,7 +374,7 @@
 | F003 | 주간업무일지 신규 작성 | Task 007(UI), Task 012 |
 | F004 | 주간업무일지 수정 | Task 007(UI), Task 012 |
 | F005 | 주간업무일지 삭제 | Task 007(UI), Task 012 |
-| F006 | 진행상태 관리 | Task 007(UI), Task 012, Task 019(3단계 확장) |
+| F006 | 진행상태 관리 | Task 007(UI), Task 012, Task 019(3단계 확장), Task 020(배지 색상) |
 | F007 | 전체 부서 조회 | Task 008(RLS), Task 011, Task 018(전체 사용자로 SELECT 개방) |
 | F008 | 부서별 리스트 PDF 다운로드 | Task 013 |
 | F010 | 기본 인증 | 기존 구현 + Task 006(한국어화) |
