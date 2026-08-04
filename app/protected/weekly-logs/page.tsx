@@ -21,7 +21,7 @@ async function WeeklyLogsContent({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("department_id, role, departments(name)")
+    .select("department_id")
     .eq("id", data.claims.sub)
     .maybeSingle();
 
@@ -29,11 +29,10 @@ async function WeeklyLogsContent({
     redirect("/protected/profile");
   }
 
-  const isAdmin = profile.role === "admin";
   const { department: departmentParam } = await searchParams;
-  // 관리자가 아니면 department 파라미터는 서버에서 완전히 무시한다(UI 은닉만으로 방어 금지).
-  const selectedDepartment: DepartmentFilter =
-    isAdmin && departmentParam ? departmentParam : ALL_DEPARTMENTS_FILTER;
+  // weekly_logs SELECT는 전 부서 공개이므로 department 파라미터는 누구나 사용할 수 있다.
+  // 쓰기(등록/수정/삭제)는 RLS에서 여전히 소속 부서(또는 admin)로만 제한된다.
+  const selectedDepartment: DepartmentFilter = departmentParam || ALL_DEPARTMENTS_FILTER;
 
   let logsQuery = supabase
     .from("weekly_logs")
@@ -43,7 +42,7 @@ async function WeeklyLogsContent({
     .order("start_date", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (isAdmin && selectedDepartment !== ALL_DEPARTMENTS_FILTER) {
+  if (selectedDepartment !== ALL_DEPARTMENTS_FILTER) {
     logsQuery = logsQuery.eq("department_id", selectedDepartment);
   }
 
@@ -63,28 +62,20 @@ async function WeeklyLogsContent({
     department_name: log.departments?.name ?? "",
   }));
 
-  let departments: Department[] = [];
-  let currentDepartmentName: string | null = null;
-
-  if (isAdmin) {
-    const { data: departmentRows } = await supabase
-      .from("departments")
-      .select("id, name, created_at")
-      .order("name");
-    departments = departmentRows ?? [];
-    currentDepartmentName =
-      selectedDepartment === ALL_DEPARTMENTS_FILTER
-        ? null
-        : (departments.find((dept) => dept.id === selectedDepartment)?.name ?? null);
-  } else {
-    currentDepartmentName = profile.departments?.name ?? null;
-  }
+  const { data: departmentRows } = await supabase
+    .from("departments")
+    .select("id, name, created_at")
+    .order("name");
+  const departments: Department[] = departmentRows ?? [];
+  const currentDepartmentName: string | null =
+    selectedDepartment === ALL_DEPARTMENTS_FILTER
+      ? null
+      : (departments.find((dept) => dept.id === selectedDepartment)?.name ?? null);
 
   return (
     <WeeklyLogListView
       items={items}
       departments={departments}
-      isAdmin={isAdmin}
       currentDepartmentId={selectedDepartment}
       currentDepartmentName={currentDepartmentName}
     />

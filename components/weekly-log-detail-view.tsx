@@ -33,7 +33,13 @@ import {
   updateWeeklyLogAction,
 } from "@/lib/actions/weekly-log";
 
-export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
+export function WeeklyLogDetailView({
+  log,
+  canWrite,
+}: {
+  log: WeeklyLogDetail;
+  canWrite: boolean;
+}) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(log.is_completed);
@@ -144,41 +150,45 @@ export function WeeklyLogDetailView({ log }: { log: WeeklyLogDetail }) {
         </span>
       </div>
       <p className="whitespace-pre-wrap text-sm leading-relaxed">{log.content}</p>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="is_completed"
-          checked={isCompleted}
-          disabled={isTogglingCompletion}
-          onCheckedChange={(checked) => handleCompletionChange(checked === true)}
-        />
-        <Label htmlFor="is_completed">완료 처리</Label>
-      </div>
-      <div className="flex justify-end gap-2">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button type="button" variant="destructive" disabled={isDeleting}>
-              삭제
+      {canWrite && (
+        <>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="is_completed"
+              checked={isCompleted}
+              disabled={isTogglingCompletion}
+              onCheckedChange={(checked) => handleCompletionChange(checked === true)}
+            />
+            <Label htmlFor="is_completed">완료 처리</Label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="destructive" disabled={isDeleting}>
+                  삭제
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>주간업무일지를 삭제하시겠습니까?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    삭제한 항목은 복구할 수 없습니다.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                    삭제
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button type="button" onClick={() => setIsEditing(true)}>
+              수정
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>주간업무일지를 삭제하시겠습니까?</AlertDialogTitle>
-              <AlertDialogDescription>
-                삭제한 항목은 복구할 수 없습니다.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-                삭제
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <Button type="button" onClick={() => setIsEditing(true)}>
-          수정
-        </Button>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

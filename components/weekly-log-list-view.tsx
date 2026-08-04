@@ -27,13 +27,11 @@ import type {
 export function WeeklyLogListView({
   items,
   departments,
-  isAdmin,
   currentDepartmentId,
   currentDepartmentName,
 }: {
   items: WeeklyLogListItem[];
   departments: Department[];
-  isAdmin: boolean;
   currentDepartmentId: DepartmentFilter;
   currentDepartmentName?: string | null;
 }) {
@@ -41,16 +39,14 @@ export function WeeklyLogListView({
   const [isDownloading, setIsDownloading] = useState(false);
 
   // 부서 필터는 클라이언트 상태가 아니라 URL(?department=)로 관리한다 — 서버 컴포넌트가
-  // searchParams를 읽어 매번 다시 조회하므로, 관리자가 아니면 이 파라미터는 서버에서
-  // 무시된다(UI 은닉만으로 방어하지 않음).
+  // searchParams를 읽어 매번 다시 조회한다. weekly_logs SELECT는 전 부서 공개이므로
+  // 이 필터는 관리자 여부와 관계없이 누구나 사용할 수 있다.
   const handleDepartmentChange = (value: string) => {
     const query = value === ALL_DEPARTMENTS_FILTER ? "" : `?department=${value}`;
     router.push(`/protected/weekly-logs${query}`);
   };
 
-  const scopeLabel = isAdmin
-    ? (currentDepartmentName ?? "전체")
-    : (currentDepartmentName ?? "부서 미설정");
+  const scopeLabel = currentDepartmentName ?? "전체 부서";
 
   const handleDownloadPdf = async () => {
     setIsDownloading(true);
@@ -67,26 +63,22 @@ export function WeeklyLogListView({
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{scopeLabel}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {isAdmin ? (
-          <Select
-            value={currentDepartmentId}
-            onValueChange={handleDepartmentChange}
-          >
-            <SelectTrigger className="w-48" aria-label="부서 필터">
-              <SelectValue placeholder="부서 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <div />
-        )}
+        <Select
+          value={currentDepartmentId}
+          onValueChange={handleDepartmentChange}
+        >
+          <SelectTrigger className="w-48" aria-label="부서 필터">
+            <SelectValue placeholder="부서 선택" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex gap-2">
           <Button
             type="button"
@@ -108,8 +100,8 @@ export function WeeklyLogListView({
         />
       ) : (
         <>
-          <WeeklyLogTable items={items} showDepartment={isAdmin} />
-          <WeeklyLogCardList items={items} showDepartment={isAdmin} />
+          <WeeklyLogTable items={items} showDepartment />
+          <WeeklyLogCardList items={items} showDepartment />
         </>
       )}
     </div>

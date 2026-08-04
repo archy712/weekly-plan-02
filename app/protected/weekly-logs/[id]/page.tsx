@@ -28,7 +28,7 @@ async function WeeklyLogDetailContent({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("department_id")
+    .select("department_id, role")
     .eq("id", data.claims.sub)
     .maybeSingle();
 
@@ -48,11 +48,13 @@ async function WeeklyLogDetailContent({
     throw logError;
   }
 
-  // RLS가 타 부서 행을 이미 걸러내므로(관리자 제외), 존재하지 않거나 접근 권한이
-  // 없는 id는 동일하게 null로 돌아온다 — 두 경우 모두 404로 처리.
+  // weekly_logs SELECT는 전 부서 공개이므로, null이면 id 자체가 존재하지 않는 경우다 — 404로 처리.
   if (!log) {
     notFound();
   }
+
+  // 쓰기(수정/삭제/완료토글)는 RLS에서 소속 부서 또는 admin으로만 허용된다.
+  const canWrite = profile.role === "admin" || log.department_id === profile.department_id;
 
   return (
     <WeeklyLogDetailView
@@ -67,6 +69,7 @@ async function WeeklyLogDetailContent({
         department_name: log.departments?.name ?? "",
         author_email: log.profiles?.email ?? null,
       }}
+      canWrite={canWrite}
     />
   );
 }
