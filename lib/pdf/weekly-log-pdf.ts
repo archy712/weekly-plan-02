@@ -1,4 +1,4 @@
-import { formatDate, getCompletionLabel } from "@/lib/format";
+import { formatDate, getStatusLabel } from "@/lib/format";
 import type { WeeklyLogListItem } from "@/lib/types";
 
 const KOREAN_FONT_URL = "/fonts/NotoSansKR-Regular.ttf";
@@ -77,14 +77,14 @@ export async function downloadWeeklyLogListPdf({
           item.title,
           formatDate(item.start_date),
           formatDate(item.target_end_date),
-          getCompletionLabel(item.is_completed),
+          getStatusLabel(item.status),
         ]);
 
   // 한글 폰트는 normal 스타일만 등록했으므로, autoTable 기본값인 head bold를 그대로 두면
   // jsPDF가 폰트를 찾지 못해 기본 폰트(Helvetica)로 되돌아가 한글이 깨진다.
   autoTable(doc, {
     startY: 30,
-    head: [["제목", "시작일", "목표종료일", "완료상태"]],
+    head: [["제목", "시작일", "목표종료일", "진행상태"]],
     body,
     styles: { font: KOREAN_FONT_NAME, fontStyle: "normal" },
     headStyles: { font: KOREAN_FONT_NAME, fontStyle: "normal" },

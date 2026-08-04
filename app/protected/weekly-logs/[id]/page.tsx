@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
 import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton";
+import type { WeeklyLogStatus } from "@/lib/types";
 
 async function WeeklyLogDetailContent({
   params,
@@ -39,7 +40,7 @@ async function WeeklyLogDetailContent({
   const { data: log, error: logError } = await supabase
     .from("weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, is_completed, department_id, estimated_mm, estimated_cost, partner_company, departments(name), profiles(email)",
+      "id, title, content, start_date, target_end_date, status, department_id, estimated_mm, estimated_cost, partner_company, departments(name), profiles(email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -64,7 +65,7 @@ async function WeeklyLogDetailContent({
         content: log.content,
         start_date: log.start_date,
         target_end_date: log.target_end_date,
-        is_completed: log.is_completed,
+        status: log.status as WeeklyLogStatus,
         department_id: log.department_id,
         estimated_mm: log.estimated_mm,
         estimated_cost: log.estimated_cost,

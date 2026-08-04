@@ -41,7 +41,7 @@ export function WeeklyLogTable({
               목표종료일
             </TableHead>
             <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
-              완료상태
+              진행상태
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -53,7 +53,7 @@ export function WeeklyLogTable({
                   href={`/protected/weekly-logs/${item.id}`}
                   className={cn(
                     "group-hover:text-primary group-hover:underline",
-                    item.is_completed && "italic line-through text-muted-foreground",
+                    item.status === "completed" && "italic line-through text-muted-foreground",
                   )}
                 >
                   {item.title}
@@ -73,7 +73,7 @@ export function WeeklyLogTable({
                 {formatDate(item.target_end_date)}
               </TableCell>
               <TableCell className="py-3 pr-4 text-right">
-                <StatusBadge isCompleted={item.is_completed} />
+                <StatusBadge status={item.status} />
               </TableCell>
             </TableRow>
           ))}

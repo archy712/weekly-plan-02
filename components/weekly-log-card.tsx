@@ -21,13 +21,13 @@ export function WeeklyLogCard({
             href={`/protected/weekly-logs/${item.id}`}
             className={cn(
               "hover:underline",
-              item.is_completed && "italic line-through text-muted-foreground",
+              item.status === "completed" && "italic line-through text-muted-foreground",
             )}
           >
             {item.title}
           </Link>
         </CardTitle>
-        <StatusBadge isCompleted={item.is_completed} />
+        <StatusBadge status={item.status} />
       </CardHeader>
       <CardContent className="flex flex-col gap-0.5 p-4 pt-0 text-sm text-muted-foreground">
         {showDepartment && <span>{item.department_name}</span>}

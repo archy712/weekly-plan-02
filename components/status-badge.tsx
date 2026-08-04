@@ -1,10 +1,15 @@
 import { Badge } from "@/components/ui/badge";
-import { getCompletionLabel } from "@/lib/format";
+import { getStatusLabel } from "@/lib/format";
+import type { WeeklyLogStatus } from "@/lib/types";
 
-export function StatusBadge({ isCompleted }: { isCompleted: boolean }) {
+const STATUS_VARIANTS: Record<WeeklyLogStatus, "outline" | "secondary" | "success"> = {
+  planned: "outline",
+  in_progress: "secondary",
+  completed: "success",
+};
+
+export function StatusBadge({ status }: { status: WeeklyLogStatus }) {
   return (
-    <Badge variant={isCompleted ? "success" : "secondary"}>
-      {getCompletionLabel(isCompleted)}
-    </Badge>
+    <Badge variant={STATUS_VARIANTS[status]}>{getStatusLabel(status)}</Badge>
   );
 }

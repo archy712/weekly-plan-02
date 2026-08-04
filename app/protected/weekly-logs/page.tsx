@@ -6,10 +6,15 @@ import { WeeklyLogListView } from "@/components/weekly-log-list-view";
 import { WeeklyLogListSkeleton } from "@/components/weekly-log-list-skeleton";
 import { escapeLikePattern } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
-import type { Department, DepartmentFilter, WeeklyLogListItem } from "@/lib/types";
+import type {
+  Department,
+  DepartmentFilter,
+  WeeklyLogListItem,
+  WeeklyLogStatus,
+} from "@/lib/types";
 
 const LOGS_SELECT =
-  "id, title, start_date, target_end_date, is_completed, department_id, created_at, departments(name)";
+  "id, title, start_date, target_end_date, status, department_id, created_at, departments(name)";
 
 async function WeeklyLogsContent({
   searchParams,
@@ -92,7 +97,7 @@ async function WeeklyLogsContent({
     title: log.title,
     start_date: log.start_date,
     target_end_date: log.target_end_date,
-    is_completed: log.is_completed,
+    status: log.status as WeeklyLogStatus,
     department_id: log.department_id,
     department_name: log.departments?.name ?? "",
   }));

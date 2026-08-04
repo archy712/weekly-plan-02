@@ -18,20 +18,28 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
 import {
   WeeklyLogForm,
 } from "@/components/weekly-log-form";
-import { formatCurrency, formatDate } from "@/lib/format";
-import type { WeeklyLogDetail } from "@/lib/types";
+import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
+import type { WeeklyLogDetail, WeeklyLogStatus } from "@/lib/types";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import {
   deleteWeeklyLogAction,
-  toggleWeeklyLogCompletionAction,
+  updateWeeklyLogStatusAction,
   updateWeeklyLogAction,
 } from "@/lib/actions/weekly-log";
+
+const STATUS_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
 
 export function WeeklyLogDetailView({
   log,
@@ -42,8 +50,8 @@ export function WeeklyLogDetailView({
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(log.is_completed);
-  const [isTogglingCompletion, setIsTogglingCompletion] = useState(false);
+  const [status, setStatus] = useState<WeeklyLogStatus>(log.status);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // isDeleting 리렌더 반영 전에 도착하는 연속 클릭(더블클릭)을 막기 위한 동기 가드.
   const isDeletingRef = useRef(false);
@@ -65,24 +73,25 @@ export function WeeklyLogDetailView({
     router.refresh();
   };
 
-  const handleCompletionChange = async (checked: boolean) => {
-    const previous = isCompleted;
-    setIsCompleted(checked);
-    setIsTogglingCompletion(true);
+  const handleStatusChange = async (next: WeeklyLogStatus) => {
+    const previous = status;
+    if (next === previous) return;
+    setStatus(next);
+    setIsUpdatingStatus(true);
     try {
-      const result = await toggleWeeklyLogCompletionAction(log.id, checked);
+      const result = await updateWeeklyLogStatusAction(log.id, next);
       if (!result.success) {
-        setIsCompleted(previous);
+        setStatus(previous);
         toast.error(result.error);
         return;
       }
-      toast.success(checked ? "완료 처리되었습니다." : "미완료로 변경되었습니다.");
+      toast.success(`${getStatusLabel(next)} 상태로 변경되었습니다.`);
       router.refresh();
     } catch {
-      setIsCompleted(previous);
+      setStatus(previous);
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
-      setIsTogglingCompletion(false);
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -143,7 +152,7 @@ export function WeeklyLogDetailView({
       {backLink}
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold">{log.title}</h1>
-        <StatusBadge isCompleted={isCompleted} />
+        <StatusBadge status={status} />
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{log.department_name}</span>
@@ -178,13 +187,23 @@ export function WeeklyLogDetailView({
       {canWrite && (
         <>
           <div className="flex items-center gap-2">
-            <Checkbox
-              id="is_completed"
-              checked={isCompleted}
-              disabled={isTogglingCompletion}
-              onCheckedChange={(checked) => handleCompletionChange(checked === true)}
-            />
-            <Label htmlFor="is_completed">완료 처리</Label>
+            <Label htmlFor="status">진행 상태</Label>
+            <Select
+              value={status}
+              disabled={isUpdatingStatus}
+              onValueChange={(value) => handleStatusChange(value as WeeklyLogStatus)}
+            >
+              <SelectTrigger id="status" className="w-32" aria-label="진행 상태">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {getStatusLabel(option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex justify-end gap-2">
             <AlertDialog>

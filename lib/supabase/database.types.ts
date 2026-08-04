@@ -76,9 +76,9 @@ export type Database = {
           estimated_cost: number | null
           estimated_mm: number | null
           id: string
-          is_completed: boolean
           partner_company: string | null
           start_date: string
+          status: string
           target_end_date: string
           title: string
           updated_at: string
@@ -91,9 +91,9 @@ export type Database = {
           estimated_cost?: number | null
           estimated_mm?: number | null
           id?: string
-          is_completed?: boolean
           partner_company?: string | null
           start_date: string
+          status?: string
           target_end_date: string
           title: string
           updated_at?: string
@@ -106,9 +106,9 @@ export type Database = {
           estimated_cost?: number | null
           estimated_mm?: number | null
           id?: string
-          is_completed?: boolean
           partner_company?: string | null
           start_date?: string
+          status?: string
           target_end_date?: string
           title?: string
           updated_at?: string

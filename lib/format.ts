@@ -1,3 +1,5 @@
+import type { WeeklyLogStatus } from "@/lib/types";
+
 export function formatDate(value: string | Date): string {
   if (value instanceof Date) {
     const year = value.getFullYear();
@@ -8,8 +10,14 @@ export function formatDate(value: string | Date): string {
   return value.slice(0, 10);
 }
 
-export function getCompletionLabel(isCompleted: boolean): string {
-  return isCompleted ? "완료" : "진행중";
+const STATUS_LABELS: Record<WeeklyLogStatus, string> = {
+  planned: "예정",
+  in_progress: "진행중",
+  completed: "완료",
+};
+
+export function getStatusLabel(status: WeeklyLogStatus): string {
+  return STATUS_LABELS[status];
 }
 
 export function formatCurrency(value: number): string {

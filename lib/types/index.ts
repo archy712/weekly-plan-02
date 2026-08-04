@@ -8,11 +8,15 @@ export type Profile = Omit<Tables<"profiles">, "role"> & {
   role: UserRole;
 };
 
-export type WeeklyLog = Tables<"weekly_logs">;
+export type WeeklyLogStatus = "planned" | "in_progress" | "completed";
+
+export type WeeklyLog = Omit<Tables<"weekly_logs">, "status"> & {
+  status: WeeklyLogStatus;
+};
 
 export type WeeklyLogListItem = Pick<
   WeeklyLog,
-  "id" | "title" | "start_date" | "target_end_date" | "is_completed" | "department_id"
+  "id" | "title" | "start_date" | "target_end_date" | "status" | "department_id"
 > & {
   department_name: string;
 };
@@ -24,7 +28,7 @@ export type WeeklyLogDetail = Pick<
   | "content"
   | "start_date"
   | "target_end_date"
-  | "is_completed"
+  | "status"
   | "department_id"
   | "estimated_mm"
   | "estimated_cost"
