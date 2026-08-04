@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { Cpu } from "lucide-react";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { HeaderNav } from "@/components/header-nav";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -20,7 +21,10 @@ export function SiteHeader() {
   return (
     <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
       <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-        <Link href="/" className="font-semibold">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Cpu className="size-5" />
+          </span>
           IT부문 주간업무
         </Link>
         <div className="flex items-center gap-3">
