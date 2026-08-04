@@ -1,15 +1,18 @@
 import Link from "next/link";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileNav } from "@/components/mobile-nav";
+import { getAvatarPreset } from "@/lib/constants/avatars";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/types";
 
 type NavUser = {
   email: string;
   role: UserRole;
+  avatarKey: string;
 } | null;
 
 const navLinks: { href: string; label: string }[] = [];
@@ -25,13 +28,14 @@ async function getNavUser(): Promise<NavUser> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, avatar_key")
     .eq("id", claims.sub)
     .maybeSingle();
 
   return {
     email: claims.email ?? "",
     role: (profile?.role as UserRole | undefined) ?? "user",
+    avatarKey: profile?.avatar_key ?? "fox",
   };
 }
 
@@ -54,6 +58,11 @@ export async function HeaderNav() {
         {user ? (
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">
+              <Avatar size="sm" className={getAvatarPreset(user.avatarKey).bgClass}>
+                <AvatarFallback className="bg-transparent text-xs">
+                  {getAvatarPreset(user.avatarKey).emoji}
+                </AvatarFallback>
+              </Avatar>
               {user.email}
               {user.role === "admin" && (
                 <Badge variant="secondary">관리자</Badge>

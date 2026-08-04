@@ -1,7 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneNumberInput } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { AvatarPickerDialog } from "@/components/avatar-picker-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,9 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { AvatarKey } from "@/lib/constants/avatars";
+import { profileSchema } from "@/lib/schemas/profile";
 
 export function SignUpForm({
   className,
@@ -23,13 +27,15 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [avatarKey, setAvatarKey] = useState<AvatarKey>("fox");
+  const [bio, setBio] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
@@ -39,8 +45,17 @@ export function SignUpForm({
       return;
     }
 
+    const phoneCheck = profileSchema.shape.phone_number.safeParse(phoneNumber);
+    if (!phoneCheck.success) {
+      setError(phoneCheck.error.issues[0].message);
+      setIsLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -48,6 +63,20 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
+
+      // 가입 계정 생성은 이미 성공했으므로, 부가 프로필 정보 저장 실패는
+      // 가입 자체를 막지 않는다 — 실패해도 프로필 화면에서 나중에 입력 가능
+      if (data.user) {
+        await supabase
+          .from("profiles")
+          .update({
+            phone_number: phoneNumber || null,
+            avatar_key: avatarKey,
+            bio: bio || null,
+          })
+          .eq("id", data.user.id);
+      }
+
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.");
@@ -99,6 +128,31 @@ export function SignUpForm({
                   required
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">전화번호 (선택)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="010-1234-5678"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(formatPhoneNumberInput(e.target.value))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>아바타 (선택)</Label>
+                <AvatarPickerDialog value={avatarKey} onChange={setAvatarKey} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="bio">자기소개 (선택)</Label>
+                <Textarea
+                  id="bio"
+                  placeholder="간단한 자기소개를 입력해주세요."
+                  maxLength={500}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
                 />
               </div>
               <p className="text-sm text-muted-foreground">

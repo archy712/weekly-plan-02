@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -14,11 +15,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { LogoutButton } from "@/components/logout-button";
+import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/lib/types";
 
 type NavLink = { href: string; label: string };
-type NavUser = { email: string; role: UserRole } | null;
+type NavUser = { email: string; role: UserRole; avatarKey: string } | null;
 
 export function MobileNav({
   navLinks,
@@ -58,6 +60,11 @@ export function MobileNav({
           {user ? (
             <>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Avatar size="sm" className={getAvatarPreset(user.avatarKey).bgClass}>
+                  <AvatarFallback className="bg-transparent text-xs">
+                    {getAvatarPreset(user.avatarKey).emoji}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="truncate">{user.email}</span>
                 {user.role === "admin" && (
                   <Badge variant="secondary">관리자</Badge>

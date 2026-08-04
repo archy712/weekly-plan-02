@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarPickerDialog } from "@/components/avatar-picker-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,7 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/database.types";
-import { AVATAR_PRESETS, type AvatarKey } from "@/lib/constants/avatars";
+import type { AvatarKey } from "@/lib/constants/avatars";
 import { formatPhoneNumberInput } from "@/lib/utils";
 import { profileSchema, type ProfileFormData } from "@/lib/schemas/profile";
 
@@ -62,7 +62,7 @@ export function ProfileForm({
     defaultValues: {
       department_id: profile.department_id ?? "",
       phone_number: profile.phone_number ?? "",
-      avatar_key: (profile.avatar_key as AvatarKey) ?? AVATAR_PRESETS[0].key,
+      avatar_key: (profile.avatar_key as AvatarKey) ?? "fox",
       bio: profile.bio ?? "",
     },
   });
@@ -179,31 +179,7 @@ export function ProfileForm({
                   <FormItem>
                     <FormLabel>아바타</FormLabel>
                     <FormControl>
-                      <div className="flex flex-wrap gap-3">
-                        {AVATAR_PRESETS.map((preset) => {
-                          const isSelected = field.value === preset.key;
-                          return (
-                            <button
-                              key={preset.key}
-                              type="button"
-                              aria-pressed={isSelected}
-                              onClick={() => field.onChange(preset.key)}
-                              className={cn(
-                                "rounded-full p-1 outline-none transition-shadow",
-                                isSelected
-                                  ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                                  : "hover:ring-2 hover:ring-muted-foreground/30 hover:ring-offset-2 hover:ring-offset-background",
-                              )}
-                            >
-                              <Avatar size="lg" className={preset.bgClass}>
-                                <AvatarFallback className="bg-transparent text-xl">
-                                  {preset.emoji}
-                                </AvatarFallback>
-                              </Avatar>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <AvatarPickerDialog value={field.value} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
