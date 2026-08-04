@@ -28,12 +28,17 @@ import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
 import { downloadWeeklyLogListPdf } from "@/lib/pdf/weekly-log-pdf";
-import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
+import { getStatusLabel } from "@/lib/format";
+import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
   Department,
   DepartmentFilter,
+  StatusFilter,
   WeeklyLogListItem,
+  WeeklyLogStatus,
 } from "@/lib/types";
+
+const STATUS_FILTER_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
 
 const PAGE_SIZE = 20;
 
@@ -62,25 +67,27 @@ export function WeeklyLogListView({
   currentDepartmentId,
   currentDepartmentName,
   currentSearchQuery,
+  currentStatus,
 }: {
   items: WeeklyLogListItem[];
   departments: Department[];
   currentDepartmentId: DepartmentFilter;
   currentDepartmentName?: string | null;
   currentSearchQuery?: string;
+  currentStatus: StatusFilter;
 }) {
   const router = useRouter();
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(currentSearchQuery ?? "");
   const [prevKey, setPrevKey] = useState(
-    `${currentDepartmentId}::${currentSearchQuery ?? ""}`,
+    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}`,
   );
 
-  // 부서 필터나 검색어(서버에서 확정된 값)가 바뀌면 항목 목록이 통째로 달라지므로
+  // 부서/진행상태 필터나 검색어(서버에서 확정된 값)가 바뀌면 항목 목록이 통째로 달라지므로
   // 페이지를 1로 되돌리고 입력값도 최신 서버 상태와 맞춘다(뒤로가기 대응).
   // (렌더링 중 상태 조정 — https://react.dev/learn/you-might-not-need-an-effect)
-  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}`;
+  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}`;
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
     setCurrentPage(1);
@@ -99,9 +106,10 @@ export function WeeklyLogListView({
   // 전 부서 공개이므로 이 필터는 관리자 여부와 관계없이 누구나 사용할 수 있다.
   // "전체 부서"를 골랐을 때도 파라미터를 명시적으로 남겨야, 파라미터가 아예 없는
   // 최초 진입(기본값: admin은 전체, 일반 유저는 소속 부서)과 구분된다.
-  const navigate = (overrides: { department?: string; q?: string }) => {
+  const navigate = (overrides: { department?: string; q?: string; status?: string }) => {
     const params = new URLSearchParams();
     params.set("department", overrides.department ?? currentDepartmentId);
+    params.set("status", overrides.status ?? currentStatus);
     const q = (overrides.q ?? currentSearchQuery ?? "").trim();
     if (q) params.set("q", q);
     router.push(`/protected/weekly-logs?${params.toString()}`);
@@ -109,6 +117,10 @@ export function WeeklyLogListView({
 
   const handleDepartmentChange = (value: string) => {
     navigate({ department: value });
+  };
+
+  const handleStatusChange = (value: string) => {
+    navigate({ status: value });
   };
 
   const handleSearchSubmit = (e: FormEvent) => {
@@ -158,6 +170,19 @@ export function WeeklyLogListView({
               {departments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={currentStatus} onValueChange={handleStatusChange}>
+            <SelectTrigger className="w-36" aria-label="진행상태 필터">
+              <SelectValue placeholder="진행상태 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_STATUSES_FILTER}>전체</SelectItem>
+              {STATUS_FILTER_OPTIONS.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {getStatusLabel(status)}
                 </SelectItem>
               ))}
             </SelectContent>

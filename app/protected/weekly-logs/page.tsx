@@ -5,10 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogListView } from "@/components/weekly-log-list-view";
 import { WeeklyLogListSkeleton } from "@/components/weekly-log-list-skeleton";
 import { escapeLikePattern } from "@/lib/utils";
-import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
+import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
   Department,
   DepartmentFilter,
+  StatusFilter,
   WeeklyLogListItem,
   WeeklyLogStatus,
 } from "@/lib/types";
@@ -19,7 +20,7 @@ const LOGS_SELECT =
 async function WeeklyLogsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; q?: string }>;
+  searchParams: Promise<{ department?: string; q?: string; status?: string }>;
 }) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
@@ -39,13 +40,18 @@ async function WeeklyLogsContent({
   }
 
   const isAdmin = profile.role === "admin";
-  const { department: departmentParam, q: rawQuery } = await searchParams;
+  const { department: departmentParam, q: rawQuery, status: statusParam } = await searchParams;
   // weekly_logs SELECT는 전 부서 공개이므로 department 파라미터는 누구나 사용할 수 있다.
   // 쓰기(등록/수정/삭제)는 RLS에서 여전히 소속 부서(또는 admin)로만 제한된다.
   // 파라미터가 없는 첫 진입 시 기본값은 admin은 전체, 일반 유저는 소속 부서로 좁힌다.
   const selectedDepartment: DepartmentFilter =
     departmentParam || (isAdmin ? ALL_DEPARTMENTS_FILTER : profile.department_id);
   const searchQuery = rawQuery?.trim() ?? "";
+  const VALID_STATUSES: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
+  const selectedStatus: StatusFilter =
+    statusParam && VALID_STATUSES.includes(statusParam as WeeklyLogStatus)
+      ? (statusParam as WeeklyLogStatus)
+      : ALL_STATUSES_FILTER;
 
   let logs;
 
@@ -61,6 +67,11 @@ async function WeeklyLogsContent({
     if (selectedDepartment !== ALL_DEPARTMENTS_FILTER) {
       titleQuery = titleQuery.eq("department_id", selectedDepartment);
       contentQuery = contentQuery.eq("department_id", selectedDepartment);
+    }
+
+    if (selectedStatus !== ALL_STATUSES_FILTER) {
+      titleQuery = titleQuery.eq("status", selectedStatus);
+      contentQuery = contentQuery.eq("status", selectedStatus);
     }
 
     const [titleResult, contentResult] = await Promise.all([titleQuery, contentQuery]);
@@ -85,6 +96,10 @@ async function WeeklyLogsContent({
 
     if (selectedDepartment !== ALL_DEPARTMENTS_FILTER) {
       logsQuery = logsQuery.eq("department_id", selectedDepartment);
+    }
+
+    if (selectedStatus !== ALL_STATUSES_FILTER) {
+      logsQuery = logsQuery.eq("status", selectedStatus);
     }
 
     const { data, error: logsError } = await logsQuery;
@@ -119,6 +134,7 @@ async function WeeklyLogsContent({
       currentDepartmentId={selectedDepartment}
       currentDepartmentName={currentDepartmentName}
       currentSearchQuery={searchQuery}
+      currentStatus={selectedStatus}
     />
   );
 }
@@ -126,7 +142,7 @@ async function WeeklyLogsContent({
 export default function WeeklyLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; q?: string }>;
+  searchParams: Promise<{ department?: string; q?: string; status?: string }>;
 }) {
   return (
     <div className="flex-1 w-full flex flex-col gap-6">

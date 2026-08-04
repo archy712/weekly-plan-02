@@ -47,3 +47,7 @@ export type WeeklyLogDetail = Pick<
 export const ALL_DEPARTMENTS_FILTER = "all" as const;
 
 export type DepartmentFilter = typeof ALL_DEPARTMENTS_FILTER | string;
+
+export const ALL_STATUSES_FILTER = "all" as const;
+
+export type StatusFilter = typeof ALL_STATUSES_FILTER | WeeklyLogStatus;
