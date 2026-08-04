@@ -41,9 +41,10 @@ export function WeeklyLogListView({
   // 부서 필터는 클라이언트 상태가 아니라 URL(?department=)로 관리한다 — 서버 컴포넌트가
   // searchParams를 읽어 매번 다시 조회한다. weekly_logs SELECT는 전 부서 공개이므로
   // 이 필터는 관리자 여부와 관계없이 누구나 사용할 수 있다.
+  // "전체 부서"를 골랐을 때도 파라미터를 명시적으로 남겨야, 파라미터가 아예 없는
+  // 최초 진입(기본값: admin은 전체, 일반 유저는 소속 부서)과 구분된다.
   const handleDepartmentChange = (value: string) => {
-    const query = value === ALL_DEPARTMENTS_FILTER ? "" : `?department=${value}`;
-    router.push(`/protected/weekly-logs${query}`);
+    router.push(`/protected/weekly-logs?department=${value}`);
   };
 
   const scopeLabel = currentDepartmentName ?? "전체 부서";

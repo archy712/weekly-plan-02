@@ -21,7 +21,7 @@ async function WeeklyLogsContent({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("department_id")
+    .select("department_id, role")
     .eq("id", data.claims.sub)
     .maybeSingle();
 
@@ -29,10 +29,13 @@ async function WeeklyLogsContent({
     redirect("/protected/profile");
   }
 
+  const isAdmin = profile.role === "admin";
   const { department: departmentParam } = await searchParams;
   // weekly_logs SELECT는 전 부서 공개이므로 department 파라미터는 누구나 사용할 수 있다.
   // 쓰기(등록/수정/삭제)는 RLS에서 여전히 소속 부서(또는 admin)로만 제한된다.
-  const selectedDepartment: DepartmentFilter = departmentParam || ALL_DEPARTMENTS_FILTER;
+  // 파라미터가 없는 첫 진입 시 기본값은 admin은 전체, 일반 유저는 소속 부서로 좁힌다.
+  const selectedDepartment: DepartmentFilter =
+    departmentParam || (isAdmin ? ALL_DEPARTMENTS_FILTER : profile.department_id);
 
   let logsQuery = supabase
     .from("weekly_logs")
