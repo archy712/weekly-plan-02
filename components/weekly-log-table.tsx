@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -21,35 +22,57 @@ export function WeeklyLogTable({
   showDepartment?: boolean;
 }) {
   return (
-    <div className="hidden md:block rounded-md border">
+    <div className="hidden md:block overflow-hidden rounded-lg border shadow-sm">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>제목</TableHead>
-            {showDepartment && <TableHead>부서</TableHead>}
-            <TableHead>시작일</TableHead>
-            <TableHead>목표종료일</TableHead>
-            <TableHead className="text-right">완료상태</TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="h-11 pl-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              제목
+            </TableHead>
+            {showDepartment && (
+              <TableHead className="h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                부서
+              </TableHead>
+            )}
+            <TableHead className="h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              시작일
+            </TableHead>
+            <TableHead className="h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              목표종료일
+            </TableHead>
+            <TableHead className="h-11 pr-4 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              완료상태
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell className="whitespace-normal font-medium">
+            <TableRow key={item.id} className="group">
+              <TableCell className="max-w-md py-3 pl-4 whitespace-normal font-medium">
                 <Link
                   href={`/protected/weekly-logs/${item.id}`}
                   className={cn(
-                    "hover:underline",
+                    "group-hover:text-primary group-hover:underline",
                     item.is_completed && "italic line-through text-muted-foreground",
                   )}
                 >
                   {item.title}
                 </Link>
               </TableCell>
-              {showDepartment && <TableCell>{item.department_name}</TableCell>}
-              <TableCell>{formatDate(item.start_date)}</TableCell>
-              <TableCell>{formatDate(item.target_end_date)}</TableCell>
-              <TableCell className="text-right">
+              {showDepartment && (
+                <TableCell className="py-3">
+                  <Badge variant="outline" className="font-normal text-muted-foreground">
+                    {item.department_name}
+                  </Badge>
+                </TableCell>
+              )}
+              <TableCell className="py-3 tabular-nums text-muted-foreground">
+                {formatDate(item.start_date)}
+              </TableCell>
+              <TableCell className="py-3 tabular-nums text-muted-foreground">
+                {formatDate(item.target_end_date)}
+              </TableCell>
+              <TableCell className="py-3 pr-4 text-right">
                 <StatusBadge isCompleted={item.is_completed} />
               </TableCell>
             </TableRow>
