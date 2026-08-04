@@ -12,7 +12,7 @@ type NavUser = {
   role: UserRole;
 } | null;
 
-const navLinks = [{ href: "/protected/weekly-logs", label: "주간업무일지" }];
+const navLinks: { href: string; label: string }[] = [];
 
 async function getNavUser(): Promise<NavUser> {
   const supabase = await createClient();
