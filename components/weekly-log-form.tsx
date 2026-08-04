@@ -13,8 +13,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { HtmlEditor } from "@/components/html-editor";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 
 export function WeeklyLogForm({
@@ -109,7 +109,7 @@ export function WeeklyLogForm({
             <FormItem>
               <FormLabel>업무 상세 내용 (주요 키워드 중심으로 작성해 주세요)</FormLabel>
               <FormControl>
-                <Textarea maxLength={5000} rows={10} {...field} />
+                <HtmlEditor {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

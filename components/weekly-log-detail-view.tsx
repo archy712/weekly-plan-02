@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { HtmlContent } from "@/components/html-content";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -183,7 +184,7 @@ export function WeeklyLogDetailView({
           )}
         </div>
       )}
-      <p className="whitespace-pre-wrap text-sm leading-relaxed">{log.content}</p>
+      <HtmlContent html={log.content} />
       {canWrite && (
         <>
           <div className="flex items-center gap-2">

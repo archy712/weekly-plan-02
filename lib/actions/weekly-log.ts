@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogStatus } from "@/lib/types";
 
@@ -11,10 +12,12 @@ export type WeeklyLogActionResult =
   | { success: false; error: string };
 
 // 폼에서는 문자열로 받고(빈 값도 허용), DB 컬럼 타입(number | null, text | null)에 맞춰 변환한다.
+// content는 에디터가 만든 HTML을 그대로 신뢰하지 않고 저장 전에 한 번 더 sanitize한다
+// (렌더링 시점 sanitize와 별개로, 저장되는 데이터 자체를 안전하게 유지하기 위함).
 function toWeeklyLogPayload(data: WeeklyLogFormData) {
   return {
     title: data.title,
-    content: data.content,
+    content: sanitizeWeeklyLogContent(data.content),
     start_date: data.start_date,
     target_end_date: data.target_end_date,
     estimated_mm: data.estimated_mm ? Number(data.estimated_mm) : null,
