@@ -19,7 +19,7 @@ async function ProfileContent() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, email, department_id")
+        .select("id, email, department_id, phone_number, avatar_key, bio")
         .eq("id", userId)
         .maybeSingle(),
       supabase.from("departments").select("id, name").order("name"),
@@ -39,6 +39,9 @@ async function ProfileContent() {
           id: userId,
           email: data.claims.email ?? null,
           department_id: null,
+          phone_number: null,
+          avatar_key: "fox",
+          bio: null,
         }
       }
       departments={departments ?? []}

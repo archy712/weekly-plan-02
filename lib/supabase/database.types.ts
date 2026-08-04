@@ -34,26 +34,35 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_key: string
+          bio: string | null
           created_at: string
           department_id: string | null
           email: string | null
           id: string
+          phone_number: string | null
           role: string
           updated_at: string
         }
         Insert: {
+          avatar_key?: string
+          bio?: string | null
           created_at?: string
           department_id?: string | null
           email?: string | null
           id: string
+          phone_number?: string | null
           role?: string
           updated_at?: string
         }
         Update: {
+          avatar_key?: string
+          bio?: string | null
           created_at?: string
           department_id?: string | null
           email?: string | null
           id?: string
+          phone_number?: string | null
           role?: string
           updated_at?: string
         }

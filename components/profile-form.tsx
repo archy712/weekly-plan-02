@@ -1,7 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,11 +31,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/database.types";
+import { AVATAR_PRESETS, type AvatarKey } from "@/lib/constants/avatars";
+import { formatPhoneNumberInput } from "@/lib/utils";
+import { profileSchema, type ProfileFormData } from "@/lib/schemas/profile";
 
-type Profile = Pick<Tables<"profiles">, "id" | "email" | "department_id">;
+type Profile = Pick<
+  Tables<"profiles">,
+  "id" | "email" | "department_id" | "phone_number" | "avatar_key" | "bio"
+>;
 type Department = Pick<Tables<"departments">, "id" | "name">;
 
 export function ProfileForm({
@@ -35,31 +54,44 @@ export function ProfileForm({
   profile: Profile;
   departments: Department[];
 } & React.ComponentPropsWithoutRef<"div">) {
-  const [departmentId, setDepartmentId] = useState(profile.department_id ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const isFirstTimeSetup = !profile.department_id;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      department_id: profile.department_id ?? "",
+      phone_number: profile.phone_number ?? "",
+      avatar_key: (profile.avatar_key as AvatarKey) ?? AVATAR_PRESETS[0].key,
+      bio: profile.bio ?? "",
+    },
+  });
+
+  const isLoading = form.formState.isSubmitting;
+
+  const handleSubmit = async (values: ProfileFormData) => {
     const supabase = createClient();
-    setIsLoading(true);
     setError(null);
 
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ department_id: departmentId })
+        .update({
+          department_id: values.department_id,
+          phone_number: values.phone_number || null,
+          avatar_key: values.avatar_key,
+          bio: values.bio || null,
+        })
         .eq("id", profile.id);
       if (error) throw error;
 
       const departmentName =
-        departments.find((department) => department.id === departmentId)?.name ??
-        "선택한 부서";
+        departments.find((department) => department.id === values.department_id)
+          ?.name ?? "선택한 부서";
       toast.success(
         isFirstTimeSetup
           ? `${departmentName}으로 설정되었습니다.`
-          : `${departmentName}으로 변경되었습니다.`,
+          : "프로필이 저장되었습니다.",
       );
 
       // 토스트가 잠깐 보인 뒤 목록 화면으로 이동
@@ -67,8 +99,9 @@ export function ProfileForm({
         window.location.href = "/protected/weekly-logs";
       }, 900);
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "부서 저장 중 오류가 발생했습니다.");
-      setIsLoading(false);
+      setError(
+        error instanceof Error ? error.message : "프로필 저장 중 오류가 발생했습니다.",
+      );
     }
   };
 
@@ -77,11 +110,14 @@ export function ProfileForm({
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">프로필</CardTitle>
-          <CardDescription>소속 부서를 선택해주세요.</CardDescription>
+          <CardDescription>프로필 정보를 입력해주세요.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-6">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="flex flex-col gap-6"
+            >
               {!profile.department_id && (
                 <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   부서를 선택해야 서비스 이용이 가능합니다.
@@ -91,31 +127,111 @@ export function ProfileForm({
                 <Label htmlFor="email">이메일</Label>
                 <Input id="email" type="email" value={profile.email ?? ""} disabled />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="department">부서</Label>
-                <Select value={departmentId} onValueChange={setDepartmentId}>
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="부서를 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((department) => (
-                      <SelectItem key={department.id} value={department.id}>
-                        {department.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <FormField
+                control={form.control}
+                name="department_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>부서</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="부서를 선택하세요" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departments.map((department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            {department.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>전화번호</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="010-1234-5678"
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(formatPhoneNumberInput(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="avatar_key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>아바타</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-wrap gap-3">
+                        {AVATAR_PRESETS.map((preset) => {
+                          const isSelected = field.value === preset.key;
+                          return (
+                            <button
+                              key={preset.key}
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() => field.onChange(preset.key)}
+                              className={cn(
+                                "rounded-full p-1 outline-none transition-shadow",
+                                isSelected
+                                  ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                                  : "hover:ring-2 hover:ring-muted-foreground/30 hover:ring-offset-2 hover:ring-offset-background",
+                              )}
+                            >
+                              <Avatar size="lg" className={preset.bgClass}>
+                                <AvatarFallback className="bg-transparent text-xl">
+                                  {preset.emoji}
+                                </AvatarFallback>
+                              </Avatar>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>자기소개</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="간단한 자기소개를 입력해주세요."
+                        maxLength={500}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || !departmentId}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "저장 중..." : "저장"}
               </Button>
-            </div>
-          </form>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
