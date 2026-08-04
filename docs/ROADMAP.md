@@ -363,6 +363,16 @@
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정(`qa-badge-check@example.com`)으로 목록 페이지를 라이트/다크 테마 양쪽에서 스크린샷 대조 — 예정(주황)·진행중(초록)·완료(회색) 배지가 요청한 배색대로 렌더링되고 다크모드에서도 대비가 충분함을 확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리
   - **범위 밖 유지**: 완료 항목의 취소선(`italic line-through`) 등 배지 외 스타일은 변경하지 않음 — 요청이 배지 색상에 한정됨
 
+- **Task 021: 주간업무일지 상세 내용 리치 텍스트(WYSIWYG) 에디터 도입 (F003, F004)** ✅ (2026-08-04)
+  - [x] **1차 구현(Textarea 기반 HTML 편집기)** — `ui/textarea` 위에 굵게/기울임/밑줄/제목/목록/링크/새 문단 툴바를 얹어 선택 영역을 HTML 태그 문자열로 감싸는 방식으로 구현, 상세 페이지는 결과 HTML을 렌더링. 커밋 전 사용자가 "HTML 문법이 안 보이고 즉시 반영되는 위지위그로 바꿀 수 있냐"고 요청해 아래 2차 구현으로 완전히 대체(1차 코드는 커밋되지 않음)
+  - [x] **2차 구현(Tiptap WYSIWYG)** — 자체 구현(추가 의존성 없음) vs 검증된 라이브러리 도입 두 가지 방안을 제시해 사용자가 후자를 선택. `@tiptap/react`+`@tiptap/pm`+`@tiptap/starter-kit` 설치(v3는 `Underline`/`Link`가 StarterKit에 기본 포함되어 있어 별도 패키지 설치 후 중복 확인되어 제거) — `components/html-editor.tsx`를 contentEditable 기반으로 완전히 재작성, `StarterKit.configure({ heading: {levels:[3]}, strike/code/codeBlock/horizontalRule: false, link: {...} })`로 ALLOWED_TAGS와 1:1 대응하는 스키마만 노출
+  - [x] `components/html-content.tsx` 신규 — sanitize된 HTML을 공통 prose 스타일(`PROSE_CONTENT_CLASS`, export)로 렌더링하는 공유 컴포넌트. 에디터의 실시간 편집 화면과 상세 페이지 읽기 전용 렌더링이 동일 클래스를 사용해 완전히 동일하게 보이도록 함(1차 구현의 "미리보기 토글"은 편집 화면 자체가 곧 결과이므로 불필요해져 제거)
+  - [x] `lib/sanitize-html.ts` 신규 — `isomorphic-dompurify`로 `ALLOWED_TAGS`(`p,br,strong,em,u,h1~h3,ul,ol,li,a,blockquote`)만 허용, `afterSanitizeAttributes` 훅으로 `<a>`에 `target="_blank" rel="noopener noreferrer"` 강제 부여. `lib/actions/weekly-log.ts`의 `toWeeklyLogPayload()`(저장 시점)와 `html-content.tsx`(렌더링 시점) 양쪽에서 호출해 이중 방어
+  - [x] `components/weekly-log-form.tsx`/`weekly-log-detail-view.tsx` — 기존 `Textarea`/평문 `<p>` 렌더링을 각각 `HtmlEditor`/`HtmlContent`로 교체
+  - **버그 수정(구현 중 발견)**: `useEditorState`로 툴바 active 상태(굵게/목록 등 버튼 눌림 표시)를 구독하자 에디터 인스턴스는 정상 생성되는데도 컴포넌트가 로딩 placeholder에서 영구히 멈추는 문제를 Playwright 콘솔 디버그 로그로 실측(`editor`는 non-null이 되지만 `useEditorState`의 selector 결과가 계속 `null`). 원인 규명 대신 `editor.on("transaction", ...)`을 `useEffect`로 직접 구독해 `useState`로 active 상태를 계산하는 방식(Tiptap v2 시절 표준 패턴)으로 교체해 해소 — CLAUDE.md에 이 워크어라운드를 되돌리지 말라고 명시
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정으로 실제 작성 화면에서 굵게·글머리 기호 목록·링크(브라우저 `prompt()` 기반)를 적용해 HTML 태그 노출 없이 즉시 서식이 반영됨을 확인 → 저장 → 상세 페이지 렌더링이 편집 화면과 완전히 동일함을 스크린샷으로 대조 → 수정 진입 시 저장된 HTML이 다시 WYSIWYG로 정확히 복원(굵게/목록/링크 버튼이 눌림 상태로 표시)됨을 확인. **XSS 방어 검증**: `<script>`, `<img onerror>`, `<p onclick>`, `<iframe src="javascript:...">`를 포함한 합성 `paste` 이벤트를 에디터에 직접 dispatch — ProseMirror 스키마 파싱 단계에서 이미 전부 제거되어(`<p>클릭 테스트</p>`만 남음) 전역 XSS 플래그가 하나도 설정되지 않음을 확인, SQL로 저장된 content도 순수하게 정제된 상태임을 재확인. 전 구간 콘솔 에러 0건. 테스트 계정·데이터는 정리
+  - **범위 밖 유지**: 표/이미지 삽입, 글자수 실시간 카운터, placeholder 힌트 문구는 요청 범위 밖이라 추가하지 않음(글자수 제한은 기존과 동일하게 저장 시 zod `max(5000)` 검증으로만 처리)
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -371,8 +381,8 @@
 |---------|--------|-----------|
 | F001 | 주간업무일지 목록 조회 | Task 007(UI), Task 011 |
 | F002 | 주간업무일지 상세 조회 | Task 007(UI), Task 011 |
-| F003 | 주간업무일지 신규 작성 | Task 007(UI), Task 012 |
-| F004 | 주간업무일지 수정 | Task 007(UI), Task 012 |
+| F003 | 주간업무일지 신규 작성 | Task 007(UI), Task 012, Task 021(리치 텍스트 에디터) |
+| F004 | 주간업무일지 수정 | Task 007(UI), Task 012, Task 021(리치 텍스트 에디터) |
 | F005 | 주간업무일지 삭제 | Task 007(UI), Task 012 |
 | F006 | 진행상태 관리 | Task 007(UI), Task 012, Task 019(3단계 확장), Task 020(배지 색상) |
 | F007 | 전체 부서 조회 | Task 008(RLS), Task 011, Task 018(전체 사용자로 SELECT 개방) |

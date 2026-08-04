@@ -79,6 +79,15 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 
 `lib/pdf/weekly-log-pdf.ts`가 jsPDF + jspdf-autotable로 **클라이언트 사이드**에서 PDF를 생성합니다. jsPDF 기본 폰트가 한글을 지원하지 않아 `/public/fonts/NotoSansKR-Regular.ttf`를 런타임에 fetch해 base64로 임베딩하며, 폰트 용량(~2.5MB) 때문에 `String.fromCharCode`를 청크 단위로 호출해 콜스택 초과를 피합니다. 이 변환 로직은 그대로 유지할 것.
 
+### 리치 텍스트 에디터 (주간업무일지 상세 내용)
+
+- `weekly_logs.content`는 plain text가 아니라 **Tiptap(`@tiptap/react` + `@tiptap/starter-kit`) 에디터가 생성한 sanitize된 HTML 문자열**입니다. `components/html-editor.tsx`(작성/수정 폼에서 사용)가 실제 편집을, `components/html-content.tsx`(상세 페이지에서 사용)가 읽기 전용 렌더링을 담당하며, 두 컴포넌트는 `PROSE_CONTENT_CLASS`(`html-content.tsx`에서 export)를 공유해 편집 화면과 상세 화면의 스타일이 항상 일치하도록 합니다.
+- **`immediatelyRender: false` 필수** — Next.js SSR 하이드레이션 불일치를 막기 위해 `useEditor()` 옵션에 반드시 포함해야 합니다(공식 가이드 패턴).
+- **툴바 활성 상태는 `useEditorState`를 쓰지 않고 직접 구독**합니다. 이 프로젝트의 Tiptap 버전(v3.29)에서 `useEditorState`가 에디터 생성 직후 초기 스냅샷을 갱신하지 못해 에디터가 로딩 placeholder에서 멈추는 문제가 실측되었습니다(원인 미상, 재현됨). 대신 `editor.on("transaction", ...)`을 `useEffect`로 직접 구독해 `useState`로 툴바 active 상태를 계산하는 방식(`html-editor.tsx`의 `computeActiveStates`)을 사용 — 이 워크어라운드를 걷어내고 `useEditorState`로 되돌리지 말 것.
+- **허용 태그는 두 곳에서 반드시 동기화**해야 합니다: (1) `components/html-editor.tsx`의 `StarterKit.configure(...)`(에디터가 실제로 만들어낼 수 있는 노드/마크), (2) `lib/sanitize-html.ts`의 `ALLOWED_TAGS`/`ALLOWED_ATTR`(저장·렌더링 시 필터). 툴바에 새 서식(예: 표, 이미지)을 추가하면 두 파일을 함께 수정해야 합니다.
+- **sanitize는 저장 시점과 렌더링 시점 양쪽에서 수행**합니다 — `lib/actions/weekly-log.ts`의 `toWeeklyLogPayload()`가 저장 전에, `components/html-content.tsx`가 렌더링 직전에 각각 `lib/sanitize-html.ts`의 `sanitizeWeeklyLogContent()`를 호출합니다. `sanitize-html.ts`는 `isomorphic-dompurify`를 쓰며 `<a>` 태그에는 `afterSanitizeAttributes` 훅으로 `target="_blank" rel="noopener noreferrer"`를 항상 강제합니다.
+- ProseMirror는 스키마 기반 구조 편집기라 사용자가 에디터에 `<script>` 등을 "타이핑"해서 넣을 방법이 없고, 붙여넣기로 들어오는 외부 HTML도 스키마에 없는 태그/속성은 자동으로 걸러집니다. 위 sanitize는 그 위에 추가되는 이중 방어입니다.
+
 ## Claude Code 커스텀 설정
 
 - `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다(Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다):
