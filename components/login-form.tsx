@@ -78,13 +78,15 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} autoComplete="on">
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">이메일</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
+                  autoComplete="username"
                   placeholder="m@example.com"
                   required
                   value={email}
@@ -95,7 +97,9 @@ export function LoginForm({
                 <Label htmlFor="password">비밀번호</Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
