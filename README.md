@@ -1,109 +1,85 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+<h1 align="center">부서별 주간업무일지 관리</h1>
 
 <p align="center">
- The fastest way to build apps with Next.js and Supabase
+  부서원은 주간 업무를 기록·추적하고, 관리자는 전체 부서의 업무 현황을 한 곳에서 파악하는 웹 애플리케이션
 </p>
 
 <p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
+  <a href="#주요-기능"><strong>주요 기능</strong></a> ·
+  <a href="#기술-스택"><strong>기술 스택</strong></a> ·
+  <a href="#프로덕션"><strong>프로덕션</strong></a> ·
+  <a href="#로컬-개발-환경-설정"><strong>로컬 개발 환경 설정</strong></a> ·
+  <a href="#문서"><strong>문서</strong></a>
 </p>
 <br/>
 
-## Features
+## 주요 기능
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- **주간업무일지 CRUD** — 시작일/목표종료일/업무명/업무 상세 내용(+예상 M/M·예상 금액·협력사, 모두 선택 입력)으로 업무를 기록·수정·삭제
+- **완료 상태 추적** — 완료/미완료 상태 전환
+- **부서 기반 접근 제어** — 조회는 로그인한 모든 사용자에게 부서 무관하게 공개, 쓰기(작성/수정/삭제/완료처리)는 작성자의 소속 부서 또는 관리자로 제한
+- **검색·필터·페이지네이션** — 제목/내용 키워드 검색, 부서 필터(기본값은 일반 사용자는 자기 부서·관리자는 전체), 20건 단위 페이지네이션
+- **PDF 리포팅** — 현재 조회 중인 목록을 표 형태 PDF로 다운로드(한글 폰트 임베딩)
+- **인증** — 이메일/비밀번호 회원가입·로그인(가입 즉시 로그인) + 구글 OAuth 소셜 로그인
+- **부서 선택 온보딩** — 로그인 직후 부서 미설정 시 다른 모든 보호 페이지 접근을 프로필 페이지로 유도
+- **다크모드 토글 · 반응형 레이아웃**(데스크탑/태블릿/모바일)
 
-## Demo
+기능별 상세 명세는 [`docs/PRD.md`](docs/PRD.md)를 참고하세요.
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+## 기술 스택
 
-## Deploy to Vercel
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**
+- **Supabase** — Auth(이메일/비밀번호 + 구글 OAuth), PostgreSQL(Row Level Security), `@supabase/ssr` 쿠키 기반 세션
+- **Tailwind CSS v4** + **shadcn/ui**(`new-york` 스타일), **next-themes** 다크모드
+- **React Hook Form** + **Zod** 폼 검증
+- **jsPDF** + **jspdf-autotable** — 클라이언트 사이드 PDF 생성
 
-Vercel deployment will guide you through creating a Supabase account and project.
+아키텍처와 관례에 대한 상세 가이드는 [`CLAUDE.md`](CLAUDE.md)와 [`docs/guides/`](docs/guides/)를 참고하세요.
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+## 프로덕션
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+<https://weekly-plan-02.vercel.app/>
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+## 로컬 개발 환경 설정
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
-
-## Clone and run locally
-
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
-
-2. Create a Next.js app using the Supabase Starter template npx command
+1. 이 저장소를 클론합니다.
 
    ```bash
-   npx create-next-app --example with-supabase with-supabase-app
+   git clone <repository-url>
+   cd weekly-plan-02
+   npm install
    ```
+
+2. [Supabase 프로젝트](https://database.new)를 생성하고 프로젝트 루트에 `.env.local`을 만들어 아래 두 값을 채웁니다.
+
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=[프로젝트 URL]
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[프로젝트 API publishable/anon 키]
+   ```
+
+   두 값은 [Supabase 프로젝트의 API 설정](https://supabase.com/dashboard/project/_?showConnect=true)에서 확인할 수 있습니다. 값이 없으면 `hasEnvVars`가 `false`가 되어 UI가 경고 모드로 폴백합니다.
+
+3. 개발 서버를 실행합니다.
 
    ```bash
-   yarn create next-app --example with-supabase with-supabase-app
+   npm run dev     # http://localhost:3000
    ```
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+### 자주 쓰는 명령어
 
-3. Use `cd` to change into the app's directory
+```bash
+npm run dev     # 개발 서버
+npm run build   # 프로덕션 빌드
+npm run start   # 프로덕션 서버 실행
+npm run lint    # ESLint 검사
+npx tsc --noEmit  # 타입 체크(별도 스크립트 없음)
+```
 
-   ```bash
-   cd with-supabase-app
-   ```
+DB 스키마 마이그레이션, RLS 정책, 관리자 계정 지정, 부서 seed 데이터 등 운영 관련 절차는 [`docs/guides/deployment-ops.md`](docs/guides/deployment-ops.md)에 정리되어 있습니다.
 
-4. Rename `.env.example` to `.env.local` and update the following:
+## 문서
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
-
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
-
-5. You can now run the Next.js local development server:
-
-   ```bash
-   npm run dev
-   ```
-
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
-
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
-
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
-
-## Feedback and issues
-
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
-
-## More Supabase examples
-
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+- [`docs/PRD.md`](docs/PRD.md) — 기능 명세, 사용자 여정, 데이터 모델
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — 개발 이력과 진행 상황
+- [`docs/guides/`](docs/guides/) — 아키텍처·스타일·폼 처리·배포 운영 상세 가이드
+- [`CLAUDE.md`](CLAUDE.md) — Claude Code로 이 저장소를 다룰 때의 아키텍처 관례
