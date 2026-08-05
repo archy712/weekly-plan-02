@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getLogsByDepartment,
   getLogsByStatus,
+  getLogsByWorkType,
   getMonthlyTrend,
   getWorkloadSummary,
 } from "@/lib/queries/stats";
@@ -13,6 +14,7 @@ import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
 import { DashboardDepartmentChart } from "@/components/dashboard-department-chart";
 import { DashboardStatusChart } from "@/components/dashboard-status-chart";
+import { DashboardWorkTypeChart } from "@/components/dashboard-worktype-chart";
 import { DashboardTrendChart } from "@/components/dashboard-trend-chart";
 import {
   DashboardWorkloadChart,
@@ -66,9 +68,10 @@ async function DashboardContent({
     .order("name");
   const departments: Department[] = departmentRows ?? [];
 
-  const [departmentStats, statusStats, monthlyTrend] = await Promise.all([
+  const [departmentStats, statusStats, workTypeStats, monthlyTrend] = await Promise.all([
     getLogsByDepartment(range),
     getLogsByStatus(range, departmentId),
+    getLogsByWorkType(range, departmentId),
     getMonthlyTrend(TREND_MONTHS, departmentId),
   ]);
 
@@ -102,6 +105,7 @@ async function DashboardContent({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DashboardDepartmentChart data={departmentStats} />
         <DashboardStatusChart data={statusStats} />
+        <DashboardWorkTypeChart data={workTypeStats} />
         <DashboardTrendChart data={monthlyTrend} />
         <DashboardWorkloadChart data={workloadRows} />
       </div>

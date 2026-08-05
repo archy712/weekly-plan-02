@@ -30,3 +30,14 @@ export const WORKLOAD_CHART_COLORS = {
   mm: "hsl(var(--chart-1))",
   cost: "hsl(var(--chart-2))",
 } as const;
+
+// 업무 타입별 건수 차트 색상. 진행상태 도넛과 달리 업무 타입은 10종으로 --chart-1~5
+// 팔레트(5색)보다 많아 1:1로 매핑할 수 없으므로, 5색을 순서대로 반복(cycle)해 인접한
+// 막대끼리만 겹치지 않게 한다(Cell로 막대별 색을 개별 지정, dashboard-worktype-chart.tsx 참고).
+export const WORK_TYPE_CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+] as const;

@@ -5,6 +5,7 @@ import type {
   StatsDateRange,
   StatusLogStats,
   WorkloadSummary,
+  WorkTypeLogStats,
 } from "@/lib/types/stats";
 
 // Task 030: 통계 집계 RPC 조회 래퍼 (Server Component 전용).
@@ -57,6 +58,26 @@ export async function getLogsByStatus(
   }
 
   return (data ?? []) as StatusLogStats[];
+}
+
+// 타입(네트워크/클라우드/보안 등 8종)별 건수. departmentId를 생략하면 전 부서 대상.
+export async function getLogsByWorkType(
+  range: StatsDateRange = {},
+  departmentId?: string,
+): Promise<WorkTypeLogStats[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stats_logs_by_work_type", {
+    from_date: range.from,
+    to_date: range.to,
+    dept_id: departmentId,
+  });
+
+  if (error) {
+    console.error("[lib/queries/stats] stats_logs_by_work_type 조회 실패:", error);
+    return [];
+  }
+
+  return (data ?? []) as WorkTypeLogStats[];
 }
 
 // 최근 N개월(현재월 포함) 월별 신규 작성·완료 추이. departmentId를 생략하면 전 부서 대상.
