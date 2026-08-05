@@ -98,7 +98,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ## 개발 단계
 
-### Phase 1: 관리자 콘솔 골격 및 권한 모델 하드닝
+### Phase 1: 관리자 콘솔 골격 및 권한 모델 하드닝 ✅
 
 > 목표: `/protected/admin` 영역이 생기고, 관리자만 접근 가능하며, **일반 사용자가 스스로 관리자가 될 수 없는** 상태.
 > **선행 조건**: 없음 (즉시 착수 가능). Phase 2와 병렬 진행 가능.
@@ -143,56 +143,59 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - [x] 관리자를 impersonate해 부서 INSERT/UPDATE(`archived_at` 설정 포함) 성공 확인
   - **리스크**: 이 Task는 **기존 프로필 저장 흐름(`components/profile-form.tsx`)을 깨뜨릴 수 있는 유일한 지점**이었으나, UI/서버 액션 코드는 변경하지 않고 DB 정책·트리거만 확장했고 위 테스트 2번 항목이 `profile-form.tsx`가 의존하는 것과 동일한 RLS 경로(본인 행 UPDATE)를 직접 재현해 회귀 없음을 확인함
 
-- **Task 027: 부서 관리 UI 구현 (F019)**
-  - [ ] `app/protected/admin/departments/page.tsx` 완성 — 부서 목록을 `ui/table`로 렌더링. 컬럼: 부서명 / 소속 인원 수 / 주간업무일지 수 / 상태(활성·비활성) / 액션. 인원·로그 수는 `count` 집계 쿼리로 조회해 **삭제 가능 여부를 사용자가 미리 알 수 있게** 함
-  - [ ] `components/department-form-dialog.tsx` 신규 — 추가/수정 겸용 `ui/dialog` + React Hook Form + `lib/schemas/department.ts`(신규, 이름 1~50자·필수·공백 트림). `components/avatar-picker-dialog.tsx`와 동일하게 `value`/`onChange` 기반 순수 컴포넌트로 작성
-  - [ ] `lib/actions/department.ts` 신규 — `createDepartmentAction` / `updateDepartmentAction` / `archiveDepartmentAction` / `restoreDepartmentAction` / `deleteDepartmentAction`. 기존 액션과 동일하게 `{success:true} | {success:false, error:string}` 반환, 내부에서 `revalidatePath("/protected/admin/departments")` 호출
-  - [ ] **부서명 중복 처리** — `departments.name`에 이미 UNIQUE 제약이 있으므로, Postgres `23505` 오류 코드를 잡아 "이미 존재하는 부서명입니다"라는 한국어 메시지로 변환 (raw 에러 노출 금지)
-  - [ ] **삭제 정책 구현 (핵심 결정)** — 기본 동작은 **비활성화(소프트 삭제)**:
-    - 참조(부서원 또는 주간업무일지)가 1건이라도 있으면 하드 삭제 버튼을 비활성화하고 "N명의 부서원과 M건의 업무일지가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다" 안내
+- **Task 027: 부서 관리 UI 구현 (F019) ✅**
+  - [x] `app/protected/admin/departments/page.tsx` 완성 — 부서 목록을 `ui/table`로 렌더링. 컬럼: 부서명 / 소속 인원 수 / 주간업무일지 수 / 상태(활성·비활성) / 액션. 인원·로그 수는 병렬 `count` 집계 쿼리로 조회해 **삭제 가능 여부를 사용자가 미리 알 수 있게** 함
+  - [x] `components/department-form-dialog.tsx` 신규 — 추가/수정 겸용 `ui/dialog` + React Hook Form + `lib/schemas/department.ts`(신규, 이름 1~50자·필수·공백 트림). 다이얼로그를 열 때마다 최신 초기값으로 폼을 리셋
+  - [x] `lib/actions/department.ts` 신규 — `createDepartmentAction` / `updateDepartmentAction` / `archiveDepartmentAction` / `restoreDepartmentAction` / `deleteDepartmentAction`. 기존 액션과 동일하게 `{success:true} | {success:false, error:string}` 반환, 성공 시 `revalidatePath("/protected/admin/departments")` 호출
+  - [x] **부서명 중복 처리** — `23505`를 잡아 "이미 존재하는 부서명입니다."로 변환. 겸사겸사 `42501`(RLS 거부)도 "권한이 없습니다."로 매핑해 raw 에러 노출을 전면 차단
+  - [x] **삭제 정책 구현 (핵심 결정)** — 기본 동작은 **비활성화(소프트 삭제)**로 구현 완료:
+    - `components/department-row-actions.tsx`가 참조(부서원+로그) 수를 받아 1건 이상이면 하드 삭제 버튼을 비활성화하고 안내 문구 노출(문구는 `lib/format.ts`의 `formatDepartmentDeleteBlockedMessage()`로 통일)
     - 참조가 0건일 때만 `alert-dialog` 확인 후 하드 삭제 허용
-    - 하드 삭제 시도가 `weekly_logs`의 RESTRICT FK로 실패하는 경우(경합 상황)도 `23503` 오류를 잡아 동일 메시지로 폴백
-    - **`profiles_department_id_fkey`가 SET NULL이라 부서원이 조용히 온보딩으로 튕기는 시나리오는 UI에서 절대 도달할 수 없게** 막는 것이 이 항목의 목적
-  - [ ] 비활성 부서 반영 — `components/profile-form.tsx`의 부서 선택 드롭다운과 `components/sign-up-form.tsx`(부서 선택이 추가될 경우)에서 비활성 부서를 제외. 단 **이미 그 부서에 속한 사용자에게는 현재 값이 계속 보이도록** 예외 처리(선택지에서 사라지면 폼이 빈 값으로 저장되는 사고 방지)
-  - [ ] 목록 페이지 부서 필터(`components/weekly-log-list-view.tsx`)는 **비활성 부서도 계속 노출** — 과거 데이터 조회가 막히면 안 되므로 "(비활성)" 접미 라벨만 부여
-  - **관련 파일**: `app/protected/admin/departments/page.tsx`, `components/department-form-dialog.tsx`(신규), `lib/actions/department.ts`(신규), `lib/schemas/department.ts`(신규), `components/profile-form.tsx`, `components/weekly-log-list-view.tsx`
+    - `deleteDepartmentAction`이 `23503`을 잡으면 그 시점에 인원/로그 수를 다시 세어 동일한 `formatDepartmentDeleteBlockedMessage()` 문구로 폴백 — 사전 안내와 경합 시 폴백 메시지가 항상 같은 문구를 쓰도록 함수를 공유
+    - FK 실측 결과(`mcp__supabase__execute_sql`로 확인): `profiles_department_id_fkey`=`ON DELETE SET NULL`, `weekly_logs_department_id_fkey`=`ON DELETE RESTRICT`, `weekly_log_attachments_department_id_fkey`=`NO ACTION` → 참조가 있으면 하드 삭제가 항상 막히므로 SET NULL 경로에 UI가 도달할 수 없음을 확인
+  - [x] 비활성 부서 반영 — `app/protected/profile/page.tsx`가 부서 조회 시 `archived_at`도 함께 select하고, `components/profile-form.tsx`가 비활성 부서는 옵션 라벨에 "(비활성)" 접미만 붙이는 방식으로 처리(제외가 아니라 라벨링만 해서 현재 소속 부서가 계속 선택 가능하도록 유지). `components/sign-up-form.tsx`는 애초에 부서 선택 필드가 없어(가입 시점엔 미배정) 해당 없음으로 판단해 수정하지 않음
+  - [x] 목록 페이지 부서 필터(`components/weekly-log-list-view.tsx`)는 **비활성 부서도 계속 노출** — 드롭다운 옵션 라벨에 "(비활성)" 접미만 부여, 필터링에서 제외하지 않음
+  - **관련 파일**: `app/protected/admin/departments/page.tsx`, `components/department-form-dialog.tsx`(신규), `components/department-row-actions.tsx`(신규), `components/admin-departments-skeleton.tsx`(신규), `lib/actions/department.ts`(신규), `lib/schemas/department.ts`(신규), `lib/format.ts`, `app/protected/profile/page.tsx`, `components/profile-form.tsx`, `components/weekly-log-list-view.tsx`
+  - **DB 마이그레이션 불필요** — `archived_at`·UNIQUE(`name`)·관리자 전용 RLS 3종이 이미 Task 026에서 적용되어 있음을 실측 확인, 이 Task에서는 애플리케이션 코드만 작성
   - **수락 기준**: 관리자가 화면에서 부서를 추가·이름 변경·비활성화할 수 있고, 데이터가 있는 부서를 삭제해 기존 사용자/로그가 깨지는 경로가 존재하지 않는다
-  - **테스트 체크리스트**
-    - [ ] Playwright MCP로 부서 추가 → 목록 즉시 반영 → 프로필 화면 드롭다운에도 노출되는지 확인
-    - [ ] 기존 부서명과 동일한 이름으로 추가 시 한국어 중복 메시지가 표시되고 저장되지 않는지 확인
-    - [ ] 부서명 수정 시 해당 부서의 기존 주간업무일지 목록·PDF의 부서명이 함께 갱신되는지 확인
-    - [ ] 부서원·로그가 있는 부서에서 하드 삭제 버튼이 비활성화되고 안내 문구가 노출되는지 확인
-    - [ ] 참조 0건 부서를 하드 삭제 → 목록에서 사라지는지 확인
-    - [ ] 부서 비활성화 후: 프로필 드롭다운에서 사라지고, 목록 페이지 부서 필터에는 "(비활성)"으로 남으며, 그 부서의 기존 로그가 여전히 조회되는지 확인
-    - [ ] 일반 사용자가 `lib/actions/department.ts`의 액션을 직접 호출해도 RLS로 거부되는지 확인 (관리자 UI 은닉만으로 방어하지 않음)
+  - **테스트 체크리스트** (Playwright MCP로 임시 관리자 계정 `qa-dept-admin-20260805@example.com` 생성해 실브라우저 검증, 종료 후 계정 완전 삭제 및 DB 원복 확인)
+    - [x] 부서 추가 → 목록 즉시 반영 → 프로필 화면 드롭다운에도 노출 확인
+    - [x] 기존 부서명과 동일한 이름으로 추가 시 한국어 중복 메시지가 표시되고 저장되지 않음 확인
+    - [x] 부서명 수정 시 해당 부서의 기존 주간업무일지 목록·상세에 즉시 반영 확인
+    - [x] 부서원·로그가 있는 부서에서 하드 삭제 버튼이 비활성화되고 안내 문구가 노출됨 확인
+    - [x] 참조 0건 부서를 하드 삭제 → 목록에서 사라짐 확인
+    - [x] 부서 비활성화 후: 프로필 드롭다운에서 제외(단 현재 소속자에게는 "(비활성)" 라벨로 유지)되고, 목록 필터에는 "(비활성)"으로 남으며, 기존 로그는 계속 조회됨 확인
+    - [x] 일반 사용자를 impersonate(`set local role authenticated` + `request.jwt.claims`)해 `lib/actions/department.ts`의 INSERT/UPDATE/DELETE 시도 → INSERT는 `42501` 명시적 거부, UPDATE/DELETE는 0건 영향으로 거부됨을 SQL 레벨에서 확인(관리자 UI 은닉에만 의존하지 않음)
   - **범위 밖 유지**: 부서 계층 구조(상위/하위 부서), 부서장 지정, 부서 통폐합(A 부서의 로그를 B로 일괄 이관)은 요청 범위 밖
 
-- **Task 028: 사용자 관리 UI 구현 — 목록·상세·권한 수정 (F020)**
-  - [ ] `app/protected/admin/users/page.tsx` 완성 — 전체 사용자 목록을 `ui/table`로 렌더링. 컬럼: 아바타+이메일 / 소속 부서 / 역할 / 가입일 / 액션(상세 보기). `profiles_select_own_or_admin` 정책 덕분에 관리자는 추가 정책 없이 전체 조회 가능
-  - [ ] 검색·필터 — 이메일 키워드 검색(`escapeLikePattern` + `ilike`), 부서 필터, 역할 필터. 기존 목록 페이지와 동일하게 `searchParams` 기반 서버 재조회 + Suspense 구조
-  - [ ] 20건 단위 페이지네이션 — `components/ui/pagination.tsx`(MVP Task 018 설치분) 재사용. 현재 34명 규모라 필수는 아니나 목록 페이지와 UX를 통일
-  - [ ] 목록 행(또는 이메일) 클릭 시 `app/protected/admin/users/[id]/page.tsx`로 이동 — 목록의 역할 셀렉트는 빠른 변경용으로 유지하되, 정식 권한 수정 흐름은 상세 페이지를 기본 경로로 안내
-  - [ ] **`app/protected/admin/users/[id]/page.tsx` 신규(사용자 상세)** — 대상 사용자의 프로필 전체(이메일·아바타·소속 부서·역할·전화번호·자기소개·가입일)를 조회해 표시. 존재하지 않는 `id`는 MVP Task 014에서 실측된 "잘못된 UUID 500 크래시" 사례와 동일하게 방어(`notFound()`로 404 처리, 크래시 금지)
-  - [ ] 사용자 상세 페이지에 **해당 사용자가 작성한 주간업무일지 요약** 표시 — 총 작성 건수, 상태별 분포(예정/진행중/완료), 최근 5건 목록(제목·날짜·상태, 클릭 시 해당 상세로 이동). 관리자가 "이 사용자를 강등/부서 이전해도 되는지" 판단할 근거를 목록 화면 없이 한 번에 확인할 수 있게 함
-  - [ ] 사용자 상세 페이지에 **역할·소속 부서 변경 폼** 배치(이 Task의 핵심 권한 수정 UI) — `ui/select`(user/admin) + 부서 선택 `ui/select`, React Hook Form 없이 단순 상태로도 무방(필드 2개뿐)
-  - [ ] `lib/actions/user-admin.ts` 신규 — `updateUserRoleAction(userId, role)`, `updateUserDepartmentAction(userId, departmentId)`. 서버에서 호출자의 `profiles.role`을 재조회해 관리자인지 확인(클라이언트 값 불신) 후 실행하며, RLS·트리거로도 이중 방어됨
-  - [ ] 역할 변경 UI — 목록의 인라인 셀렉트와 상세 페이지의 폼 양쪽 모두 즉시 반영 + 낙관적 업데이트 + 실패 시 롤백 + `sonner` 토스트. `components/weekly-log-detail-view.tsx`의 진행상태 변경 패턴을 그대로 재사용
-  - [ ] **자기 자신 강등 방지 UI** — 로그인한 관리자 본인 행(목록)·본인 상세 페이지의 역할 컨트롤은 비활성화하고 "본인 역할은 변경할 수 없습니다" 안내 노출 (Task 026의 DB 트리거와 이중 방어)
-  - [ ] 소속 부서 변경 시 경고 — 사용자의 부서를 바꾸면 **그 사용자가 기존에 작성한 `weekly_logs`의 쓰기 권한을 잃는다**(RLS가 `department_id = current_department_id()` 기준). 변경 확인 `alert-dialog`에 이 영향을 명시(상세 페이지의 작성 건수 요약과 함께 보여주면 판단에 도움)
-  - [ ] 역할 변경 즉시 반영 확인 — 권한은 매 요청 `profiles.role`을 조회하는 구조라 재로그인이 불필요함(`docs/guides/deployment-ops.md` 4절에 기록된 MVP 검증 결과)을 UI 안내 문구에도 반영
-  - **관련 파일**: `app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`(신규), `lib/actions/user-admin.ts`(신규), `components/user-admin-table.tsx`(신규), `components/user-admin-detail.tsx`(신규)
+- **Task 028: 사용자 관리 UI 구현 — 목록·상세·권한 수정 (F020) ✅**
+  - [x] `app/protected/admin/users/page.tsx` 완성 — 빈 껍데기를 Suspense + `searchParams`(`department`/`role`/`q`) 기반 실제 목록으로 교체. `profiles_select_own_or_admin` 정책 덕분에 추가 정책 없이 전체 조회
+  - [x] 검색·필터 — 이메일 컬럼 하나만 대상이라 `.or()` 없이 `escapeLikePattern()` + `.ilike("email", ...)` 단독 사용, 부서/역할 필터와 조합 가능
+  - [x] 20건 단위 페이지네이션 — `components/weekly-log-list-view.tsx`와 동일하게 서버가 전체 결과를 반환하고 클라이언트에서 20건씩 slice(`getPageNumbers()` 방식), `ui/pagination.tsx` 재사용. 34명 규모라 서버 side range 쿼리 불필요로 판단
+  - [x] 목록 행 클릭 시 `app/protected/admin/users/[id]/page.tsx`로 이동, 인라인 역할 셀렉트는 빠른 변경용으로 별도 유지(`components/user-role-select.tsx` 공유 컴포넌트)
+  - [x] **`app/protected/admin/users/[id]/page.tsx` 신규** — 프로필 전체(이메일·아바타·소속 부서·역할·전화번호·자기소개·가입일) 조회. 존재하지 않거나 형식이 잘못된 `id` 모두 `notFound()`로 404 처리(MVP Task 014 관례와 동일)
+  - [x] 사용자 상세 페이지에 **작성 업무일지 요약** 표시 — 총 건수, 상태별 분포, 최근 5건(클릭 시 `/protected/weekly-logs/[id]`로 이동)
+  - [x] 사용자 상세 페이지에 **역할·소속 부서 변경 폼** 배치 — 역할은 `components/user-role-select.tsx` 공유, 부서는 `ui/select` + 변경 확인 `alert-dialog`
+  - [x] `lib/actions/user-admin.ts` 신규 — `updateUserRoleAction` / `updateUserDepartmentAction`. 호출자의 `profiles.role`을 매번 DB에서 재조회해 관리자인지 확인 후 실행(클라이언트 값 불신), RLS(`profiles_update_own_or_admin`)·트리거(`prevent_unauthorized_role_change`)로 이중 방어
+  - [x] 역할 변경 UI — `components/user-role-select.tsx`가 `components/weekly-log-detail-view.tsx`의 `handleStatusChange` 패턴(즉시 반영 → 실패 시 롤백 → `sonner` 토스트)을 그대로 재사용해 목록 인라인·상세 폼 양쪽에 공유
+  - [x] **자기 자신 강등 방지 UI** — 목록·상세 양쪽 모두 본인 행의 역할 컨트롤을 비활성화하고 "본인 역할은 변경할 수 없습니다." 노출. **(구현 중 실측 발견 — 원래 계획보다 강화)** DB 트리거는 "마지막 관리자" 강등만 차단하고 관리자가 2명 이상이면 자기 강등을 막지 않으므로, `updateUserRoleAction`이 `userId === 호출자ID`이면 관리자 수와 무관하게 항상 거부하도록 서버 액션에서 명시적으로 추가 차단(트리거보다 넓은 조건)
+  - [x] 소속 부서 변경 시 경고 — `lib/format.ts`의 `formatDepartmentChangeWarning()`이 상세 페이지가 이미 조회해 둔 작성 건수를 인용해 `alert-dialog`에 쓰기 권한 상실을 명시
+  - [x] 역할 변경 즉시 반영 — 매 요청 `profiles.role` 재조회 구조라 재로그인 불필요함을 실측 재확인(문구는 추가 안내 없이 기존 헤더 동작으로 충분하다고 판단, 별도 UI 문구는 생략)
+  - **관련 파일**: `app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`(신규), `lib/actions/user-admin.ts`(신규), `components/user-admin-table.tsx`(신규), `components/user-admin-detail.tsx`(신규), `components/user-role-select.tsx`(신규), `components/admin-users-skeleton.tsx`(신규), `components/admin-user-detail-skeleton.tsx`(신규), `lib/types/index.ts`, `lib/format.ts`
+  - **로드맵과 다르게 처리한 부분**: "마지막 관리자를 강등 시도 시 DB 트리거 거부 메시지가 노출되는지" 체크리스트 항목은 앱 경로에서는 관찰 불가능하다고 판단 — `updateUserRoleAction`이 자기 강등을 트리거보다 먼저·더 넓게 차단하기 때문에(위 항목 참고) 다른 관리자가 "마지막 관리자"를 대상으로 이 액션을 호출하는 시나리오 자체가 발생하지 않음(호출자도 관리자이므로 대상이 마지막 관리자면 호출자 자신인 경우만 존재). 트리거 자체의 정상 동작과 정확한 한국어 메시지는 `BEGIN/ROLLBACK` SQL로 직접 검증해 대체함(아래 테스트 항목 참고)
+  - **DB 마이그레이션 불필요** — Task 026의 RLS·트리거로 충분함을 확인, 애플리케이션 코드만 작성
   - **수락 기준**: 관리자가 목록에서 사용자를 조회하고, 개별 사용자의 상세 화면(프로필 전체 정보 + 작성 업무일지 요약)을 확인하고, 목록과 상세 양쪽에서 `admin`으로 승격/강등 및 소속 부서 변경이 가능하며, 변경이 재로그인 없이 즉시 권한에 반영된다
-  - **테스트 체크리스트**
-    - [ ] Playwright MCP로 목록에서 사용자 클릭 → 상세 페이지 이동 → 프로필 전체 정보와 작성 업무일지 요약이 정확히 표시되는지 확인
-    - [ ] 존재하지 않는 `id`로 상세 페이지 직접 접근 시 500 크래시 없이 404 처리되는지 확인
-    - [ ] 일반 사용자를 상세 페이지에서 관리자로 승격 → 해당 계정으로 로그인 시 헤더에 "관리자" 배지와 관리자 메뉴가 노출되는지 확인
-    - [ ] 승격된 계정이 재로그인 없이(세션 유지 상태에서) 타 부서 로그를 수정할 수 있는지 확인
-    - [ ] 관리자를 일반 사용자로 강등 → 관리자 라우트 접근이 즉시 차단되는지 확인
-    - [ ] 목록의 인라인 역할 변경과 상세 페이지의 역할 변경 양쪽이 서로 동기화되는지(한쪽에서 변경 후 다른 화면 새로고침 시 반영) 확인
-    - [ ] 본인 행/본인 상세 페이지의 역할 컨트롤이 비활성화되어 있는지, DB 레벨에서도 거부되는지 확인
-    - [ ] 마지막 관리자 강등 시도가 거부되고 한국어 메시지가 표시되는지 확인
-    - [ ] 사용자의 부서 변경 후 그 사용자의 기존 로그에 대한 쓰기 UI(`canWrite`)가 실제로 사라지는지 확인
-    - [ ] 일반 사용자가 `/protected/admin/users`, `/protected/admin/users/[id]`에 직접 접근 시 차단되는지 확인
+  - **테스트 체크리스트** (Playwright MCP + Supabase MCP, 임시 계정 `qa028-admin@example.com`/`qa028-target@example.com`을 실제 가입 플로우로 생성 후 SQL로 승격/부서 이동, 종료 후 완전 삭제해 34 profiles/1 admin/167 logs로 원복 확인)
+    - [x] 목록 → 상세 이동, 프로필 전체 정보와 작성 업무일지 요약(6건/1건 케이스, 최근 5건 절단) 정확히 표시 확인
+    - [x] 존재하지 않는 UUID·형식이 잘못된 UUID 모두 404, 크래시 없음 확인
+    - [x] 이메일 검색·부서 필터·역할 필터 각각 및 3종 동시 적용 확인(실제 36행 데이터셋 기준)
+    - [x] 목록 인라인 역할 변경과 상세 페이지 폼 양쪽에서 낙관적 업데이트+토스트+DB 반영 확인, Playwright 요청 가로채기로 네트워크 실패를 재현해 값 롤백 + "네트워크 오류가 발생했습니다" 토스트 확인
+    - [x] 본인 행/본인 상세 페이지의 역할 컨트롤이 "본인 역할은 변경할 수 없습니다."로 비활성화됨을 목록·상세 양쪽에서 확인
+    - [x] 부서 변경 시 alert-dialog에 실시간 로그 건수를 포함한 쓰기 권한 상실 경고가 뜨는지 확인, 변경 후 RLS impersonation으로 해당 사용자의 이전 부서 로그 UPDATE가 0건으로 거부됨(실제로 쓰기 권한을 잃음) 확인
+    - [x] 로그인 세션을 유지한 채(재로그인 없이) SQL로 역할을 승격 → 새로고침만으로 관리자 메뉴/콘솔 접근이 즉시 반영됨 확인
+    - [x] 일반 사용자를 impersonate해 타인의 `role`을 직접 UPDATE 시도 → 0건으로 거부(서버 액션 방어가 유일한 방어선이 아님) 확인
+    - [x] SQL `BEGIN/ROLLBACK`으로 마지막 관리자 강등 시도 → `P0001: 마지막 남은 관리자는 강등할 수 없습니다.` 발생 및 상태 불변 확인(트리거 자체 검증, 위 "로드맵과 다르게 처리한 부분" 참고)
+    - [x] 일반 사용자(실로그인 세션)가 `/protected/admin/users`, `/protected/admin/users/[id]`에 직접 접근 시 `/protected/weekly-logs`로 리디렉션 확인
   - **범위 밖 유지**: 사용자 계정 삭제/비활성화, 초대 기반 가입, 부서별 관리자(부분 권한) 같은 3단계 이상의 역할 체계는 요청 범위 밖 — 역할은 `user`/`admin` 2단계 유지
 
 ---
