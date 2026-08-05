@@ -123,25 +123,25 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - [x] 일반 사용자 계정으로 주간업무일지 목록 페이지 진입 시 해당 링크가 보이지 않는지 확인 (데스크톱 헤더·모바일 시트 메뉴 양쪽)
   - **범위 밖 유지**: 실제 부서/사용자 CRUD 기능(Task 027·028), 기존 4개 페이지의 중복 부서 체크 리팩터링(헬퍼만 준비하고 교체는 선택)
 
-- **Task 026: 권한 모델 하드닝 및 관리자 쓰기 정책 마이그레이션**
-  - [ ] **🚨 자기 역할 상승 차단 (최우선)** — `profiles`에 `BEFORE UPDATE` 트리거(`prevent_self_role_escalation()`, `SECURITY DEFINER`) 추가: `NEW.role IS DISTINCT FROM OLD.role`인데 호출자가 관리자가 아니면 예외 발생. 트리거로 막는 이유는 컬럼 GRANT 회수(`REVOKE UPDATE (role) ON profiles FROM authenticated`)만으로는 PostgREST가 role을 제외한 UPDATE를 계속 허용해야 해서 관리자 경로까지 함께 막히기 때문 — **두 방식을 비교 검토 후 결정하고 결정 근거를 이 항목에 기록할 것**
-  - [ ] `profiles` UPDATE 정책 확장 — 기존 `profiles_update_own`을 `profiles_update_own_or_admin`으로 통합(`(id = (select auth.uid())) OR is_admin()`). 정책을 늘리지 않고 하나로 합치는 것은 MVP Task 008의 `multiple_permissive_policies` 어드바이저 대응 관례를 그대로 따르는 것
-  - [ ] **관리자 자기 강등 방지** — 마지막 남은 관리자가 스스로를 `user`로 내리면 아무도 관리자 콘솔에 들어갈 수 없어지므로, 트리거에서 `role='admin'`인 프로필 수가 1일 때의 강등을 거부
-  - [ ] `departments` 쓰기 정책 3종 신규 작성 — `departments_insert_admin` / `departments_update_admin` / `departments_delete_admin`, 모두 `is_admin()` 조건. **정책이 없으면 조용히 0건 처리되는 현재 상태를 반드시 해소**
-  - [ ] `departments`에 소프트 삭제용 컬럼 추가 — `archived_at timestamptz null` (또는 `is_active boolean not null default true`). 기존 3개 부서는 활성 상태로 백필
-  - [ ] `departments_select_authenticated` 정책은 **변경하지 않음** — 비활성 부서도 조회는 가능해야 기존 `weekly_logs`의 부서명 조인과 목록 필터가 깨지지 않음. 비활성 부서를 숨기는 것은 **UI/쿼리 레벨**(신규 선택지에서만 제외)에서 처리
-  - [ ] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성, `lib/types/index.ts`의 `Department` 타입에 신규 컬럼 반영
-  - [ ] `mcp__supabase__get_advisors`(security/performance)로 신규 정책·함수의 경고 확인 및 해소 — 신규 함수의 `anon` EXECUTE 권한 회수, `auth.uid()`는 `(select auth.uid())`로 감싸기 등 MVP Task 008의 하드닝 관례 동일 적용
-  - **관련 파일**: DB 마이그레이션, `lib/supabase/database.types.ts`, `lib/types/index.ts`
+- **Task 026: 권한 모델 하드닝 및 관리자 쓰기 정책 마이그레이션 ✅**
+  - [x] **🚨 자기 역할 상승 차단 (최우선)** — 이 항목은 Task 026 착수 이전에 `prevent_unauthorized_role_change()`(`SECURITY DEFINER`, `BEFORE UPDATE` 트리거)로 이미 별도 적용되어 있었음(마이그레이션 `prevent_profile_role_self_escalation` 외 2건, `mcp__supabase__apply_migration`으로 직접 적용되어 로컬 `supabase/migrations/`에는 없음 — CLAUDE.md에 이미 문서화됨). **결정 근거**: 컬럼 GRANT 회수(`REVOKE UPDATE (role) ...`) 대신 트리거를 선택 — REVOKE는 PostgREST가 SET절에 `role`이 포함되지 않은 정상 UPDATE(예: `bio`만 변경)까지 함께 차단하는 반면, 트리거는 `NEW.role IS DISTINCT FROM OLD.role`일 때만 개입해 정상 흐름을 건드리지 않음. 이 Task에서는 여기에 **마지막 관리자 강등 방지 조건만 추가**(아래 항목)
+  - [x] `profiles` UPDATE 정책 확장 — 기존 `profiles_update_own`을 `profiles_update_own_or_admin`으로 통합(`(id = (select auth.uid())) OR is_admin()`, USING/WITH CHECK 동일). 정책을 늘리지 않고 하나로 합쳐 MVP Task 008의 `multiple_permissive_policies` 어드바이저 대응 관례를 따름
+  - [x] **관리자 자기 강등 방지** — `prevent_unauthorized_role_change()`에 `OLD.role='admin' AND NEW.role IS DISTINCT FROM OLD.role AND NEW.role <> 'admin'`이면서 `role='admin'` 프로필 수가 1 이하일 때 예외를 던지는 분기 추가(마이그레이션 `prevent_last_admin_demotion`). 자기 상승 차단과 달리 `auth.uid() IS NOT NULL` 예외 조건을 넣지 않고 **direct DB 접속을 포함해 항상 적용** — 마지막 관리자 잠금(lockout) 방지는 호출 경로와 무관한 데이터 정합성 문제이기 때문
+  - [x] `departments` 쓰기 정책 3종 신규 작성 — `departments_insert_admin` / `departments_update_admin` / `departments_delete_admin`, 모두 `is_admin()` 조건(마이그레이션 `add_departments_admin_write_policies`). **정책이 없으면 조용히 0건 처리되는 현재 상태를 해소**
+  - [x] `departments`에 소프트 삭제용 컬럼 추가 — `archived_at timestamptz null`(마이그레이션 `add_departments_archived_at`). 기존 3개 부서는 `NULL`(=활성) 상태 그대로 유지되어 별도 백필 불필요
+  - [x] `departments_select_authenticated` 정책은 **변경하지 않음** — 비활성 부서도 조회는 가능해야 기존 `weekly_logs`의 부서명 조인과 목록 필터가 깨지지 않음. 비활성 부서를 숨기는 것은 **UI/쿼리 레벨**(Task 027의 신규 선택지에서만 제외)에서 처리
+  - [x] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성. `lib/types/index.ts`의 `Department`는 `Tables<"departments">`를 그대로 재노출하는 타입이라 `archived_at`이 자동 반영되어 별도 수정 불필요
+  - [x] `mcp__supabase__get_advisors`(security/performance) 확인 — 신규 정책·트리거 변경분으로 인한 새 경고는 없음(남아 있는 경고는 `current_department_id`/`is_admin` EXECUTE 권한, leaked password protection, `weekly_log_attachments` 미인덱스 FK 2건으로 전부 이 Task 범위 밖의 기존 경고)
+  - **관련 파일**: DB 마이그레이션(`prevent_last_admin_demotion`, `merge_profiles_update_policy_own_or_admin`, `add_departments_admin_write_policies`, `add_departments_archived_at`), `lib/supabase/database.types.ts`
   - **수락 기준**: 일반 사용자가 어떤 경로로도 자신의 `role`을 변경할 수 없고, 관리자는 `departments`에 INSERT/UPDATE/DELETE가 가능하다
-  - **테스트 체크리스트** (UI가 없는 단계이므로 `execute_sql` + `set local role authenticated` impersonation으로 검증, 전부 `ROLLBACK`)
-    - [ ] 일반 사용자를 impersonate해 `update profiles set role='admin' where id=본인` 시도 → 거부 확인
-    - [ ] 일반 사용자가 자신의 `department_id`/`bio` 등 다른 컬럼을 수정하는 기존 흐름은 **회귀 없이 성공**하는지 확인 (하드닝이 정상 기능을 막지 않는지)
-    - [ ] 관리자를 impersonate해 타인의 `role`을 `admin`으로 변경 → 성공 확인
-    - [ ] 마지막 관리자가 자신을 `user`로 강등 시도 → 거부 확인
-    - [ ] 일반 사용자를 impersonate해 `insert into departments` 시도 → 거부 확인 (0건이 아니라 명시적 거부인지)
-    - [ ] 관리자를 impersonate해 부서 INSERT/UPDATE 성공 확인
-  - **리스크**: 이 Task는 **기존 프로필 저장 흐름(`components/profile-form.tsx`)을 깨뜨릴 수 있는 유일한 지점**입니다. 트리거 조건이 과하면 부서 선택 온보딩 자체가 막히므로, 마이그레이션 직후 실제 계정으로 프로필 저장 회귀 테스트를 반드시 수행할 것
+  - **테스트 체크리스트** (UI가 없는 단계이므로 `execute_sql` + `set local role authenticated` + `request.jwt.claims` impersonation으로 검증, 전부 `ROLLBACK`. 실제 계정 2건(관리자 1·일반 사용자 1)으로 검증 완료)
+    - [x] 일반 사용자를 impersonate해 `update profiles set role='admin' where id=본인` 시도 → 거부 확인(`P0001 권한이 없습니다`)
+    - [x] 일반 사용자가 자신의 `bio` 등 다른 컬럼을 수정하는 기존 흐름은 **회귀 없이 성공**하는지 확인 (하드닝이 정상 기능을 막지 않는지) — `profile-form.tsx`가 타는 것과 동일한 RLS 경로를 SQL로 직접 재현해 확인
+    - [x] 관리자를 impersonate해 타인의 `role`을 `admin`으로 변경 → 성공 확인
+    - [x] 마지막 관리자가 자신을 `user`로 강등 시도 → 거부 확인(`P0001 마지막 남은 관리자는 강등할 수 없습니다`, 실제로 관리자 계정이 1명뿐이라 조작 없이 실측)
+    - [x] 일반 사용자를 impersonate해 `insert into departments` 시도 → 거부 확인 (0건이 아니라 `42501 new row violates row-level security policy` 명시적 거부)
+    - [x] 관리자를 impersonate해 부서 INSERT/UPDATE(`archived_at` 설정 포함) 성공 확인
+  - **리스크**: 이 Task는 **기존 프로필 저장 흐름(`components/profile-form.tsx`)을 깨뜨릴 수 있는 유일한 지점**이었으나, UI/서버 액션 코드는 변경하지 않고 DB 정책·트리거만 확장했고 위 테스트 2번 항목이 `profile-form.tsx`가 의존하는 것과 동일한 RLS 경로(본인 행 UPDATE)를 직접 재현해 회귀 없음을 확인함
 
 - **Task 027: 부서 관리 UI 구현 (F019)**
   - [ ] `app/protected/admin/departments/page.tsx` 완성 — 부서 목록을 `ui/table`로 렌더링. 컬럼: 부서명 / 소속 인원 수 / 주간업무일지 수 / 상태(활성·비활성) / 액션. 인원·로그 수는 `count` 집계 쿼리로 조회해 **삭제 가능 여부를 사용자가 미리 알 수 있게** 함
