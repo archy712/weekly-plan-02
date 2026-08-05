@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
@@ -41,23 +40,9 @@ async function DashboardContent({
   searchParams: Promise<DashboardSearchParams>;
 }) {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
 
-  if (error || !data?.claims) {
-    redirect("/auth/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("department_id")
-    .eq("id", data.claims.sub)
-    .maybeSingle();
-
-  // 부서 미설정 사용자는 다른 보호 페이지들과 동일하게 프로필로 유도한다(CLAUDE.md 관례).
-  if (!profile?.department_id) {
-    redirect("/protected/profile");
-  }
-
+  // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
+  // 처리하므로 여기서는 다시 조회하지 않는다.
   const {
     department: departmentParam,
     from: fromParam,
@@ -107,12 +92,6 @@ async function DashboardContent({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">통계 대시보드</h1>
-        <p className="text-sm text-muted-foreground">
-          부서별·기간별 주간업무일지 현황을 한눈에 확인합니다.
-        </p>
-      </div>
       <DashboardFilters
         departments={departments}
         currentDepartmentId={selectedDepartment}
@@ -130,16 +109,14 @@ async function DashboardContent({
   );
 }
 
-export default function DashboardPage({
+export default function AdminDashboardPage({
   searchParams,
 }: {
   searchParams: Promise<DashboardSearchParams>;
 }) {
   return (
-    <div className="flex-1 w-full flex flex-col gap-6">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent searchParams={searchParams} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent searchParams={searchParams} />
+    </Suspense>
   );
 }

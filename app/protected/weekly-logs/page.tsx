@@ -187,7 +187,6 @@ async function WeeklyLogsContent({
       currentStatus={selectedStatus}
       currentFrom={fromDate}
       currentTo={toDate}
-      isAdmin={isAdmin}
     />
   );
 }

@@ -72,7 +72,6 @@ export function WeeklyLogListView({
   currentStatus,
   currentFrom,
   currentTo,
-  isAdmin = false,
 }: {
   items: WeeklyLogListItem[];
   departments: Department[];
@@ -82,7 +81,6 @@ export function WeeklyLogListView({
   currentStatus: StatusFilter;
   currentFrom?: string;
   currentTo?: string;
-  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const [isDownloading, setIsDownloading] = useState(false);
@@ -267,11 +265,6 @@ export function WeeklyLogListView({
           </Select>
         </div>
         <div className="flex gap-2">
-          {isAdmin && (
-            <Button asChild variant="outline">
-              <Link href="/protected/admin">관리자 콘솔</Link>
-            </Button>
-          )}
           <Button
             type="button"
             variant="outline"

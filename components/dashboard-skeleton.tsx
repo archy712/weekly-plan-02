@@ -2,8 +2,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // 대시보드 콘텐츠(요약 카드 4종 + 차트 4종)가 서버에서 통계 RPC를 조회하는 동안 보여줄
 // 스트리밍 폴백. cacheComponents: true 하에서 searchParams를 읽는 비동기 컴포넌트는
-// 반드시 Suspense로 감싸야 하므로(CLAUDE.md), app/protected/dashboard/page.tsx가 이
-// 스켈레톤을 fallback으로 사용한다.
+// 반드시 Suspense로 감싸야 하므로(CLAUDE.md), app/protected/admin/dashboard/page.tsx가
+// 이 스켈레톤을 fallback으로 사용한다.
 export function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6">

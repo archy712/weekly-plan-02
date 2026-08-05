@@ -41,7 +41,7 @@ export function DashboardFilters({
     const to = overrides.to === null ? "" : (overrides.to ?? currentTo ?? "");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    router.push(`/protected/dashboard?${params.toString()}`);
+    router.push(`/protected/admin/dashboard?${params.toString()}`);
   };
 
   return (

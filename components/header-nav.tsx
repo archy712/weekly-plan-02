@@ -19,9 +19,9 @@ function getNavLinks(user: NavUser): { href: string; label: string }[] {
   if (!user) {
     return [];
   }
-  const links = [{ href: "/protected/dashboard", label: "대시보드" }];
+  const links: { href: string; label: string }[] = [];
   if (user.role === "admin") {
-    links.push({ href: "/protected/admin", label: "관리자 설정" });
+    links.push({ href: "/protected/admin", label: "관리자 콘솔" });
   }
   return links;
 }
