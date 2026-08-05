@@ -291,60 +291,67 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 > 목표: 주간업무일지에서 대화가 이루어지는 상태. 이번 v1에서 **신규 테이블·신규 RLS가 추가되는 가장 큰 단위**.
 > **선행 조건**: Phase 1 완료(역할·부서 모델 확정). Phase 2와는 독립.
 
-- **Task 032: 댓글·멘션 스키마 및 서버 액션 구현 (F022 백엔드)**
-  - [ ] **DB 마이그레이션 — `weekly_log_comments` 테이블 신규 생성**
+- **Task 032: 댓글·멘션 스키마 및 서버 액션 구현 (F022 백엔드) ✅**
+  - [x] **DB 마이그레이션 — `weekly_log_comments` 테이블 신규 생성**
     - `id uuid pk`, `weekly_log_id uuid → weekly_logs(id) on delete cascade`, `author_id uuid → profiles(id)`, `content text not null` (1~2000자 CHECK), `parent_comment_id uuid null → weekly_log_comments(id) on delete cascade` (1단계 대댓글용), `created_at`, `updated_at`, `deleted_at timestamptz null`(소프트 삭제)
     - 인덱스: `(weekly_log_id, created_at)`, `author_id`(FK 커버링 — MVP Task 008에서 `unindexed_foreign_keys` 어드바이저 경고를 받았던 전례 반영)
     - `set_updated_at()` 트리거 적용 (기존 함수 재사용)
-  - [ ] **`weekly_log_comment_mentions` 테이블 신규 생성** — `comment_id → weekly_log_comments(id) on delete cascade`, `mentioned_user_id → profiles(id)`, `created_at`, `unique(comment_id, mentioned_user_id)`. 멘션을 본문 파싱이 아니라 **별도 행으로 정규화**하는 이유는 Task 034의 알림 생성 트리거가 "누구에게 알릴지"를 텍스트 파싱 없이 결정할 수 있어야 하기 때문
-  - [ ] **RLS 정책 — 기존 부서 모델을 그대로 확장**
+  - [x] **`weekly_log_comment_mentions` 테이블 신규 생성** — `comment_id → weekly_log_comments(id) on delete cascade`, `mentioned_user_id → profiles(id)`, `created_at`, `unique(comment_id, mentioned_user_id)`. 멘션을 본문 파싱이 아니라 **별도 행으로 정규화**하는 이유는 Task 034의 알림 생성 트리거가 "누구에게 알릴지"를 텍스트 파싱 없이 결정할 수 있어야 하기 때문
+  - [x] **RLS 정책 — 기존 부서 모델을 그대로 확장**
     - SELECT: 전 인증 사용자 공개 (`weekly_logs`가 이미 전 부서 SELECT 공개이므로 댓글만 부서로 막으면 "보이는 글에 안 보이는 댓글"이라는 모순이 생김)
-    - INSERT: **작성자 본인(`author_id = auth.uid()`)이면 부서 무관하게 허용** — 댓글은 "타 부서 업무에 의견을 남기는 것"이 목적이므로 `weekly_logs`의 부서 제한(`current_department_id()`)을 그대로 복사하면 기능 자체가 무의미해짐. **이것이 이번 v1에서 기존 권한 모델과 의도적으로 달라지는 유일한 지점이므로 마이그레이션 주석과 PRD에 근거를 명시할 것**
+    - INSERT: **작성자 본인(`author_id = auth.uid()`)이면 부서 무관하게 허용** — 댓글은 "타 부서 업무에 의견을 남기는 것"이 목적이므로 `weekly_logs`의 부서 제한(`current_department_id()`)을 그대로 복사하면 기능 자체가 무의미해짐. **이것이 이번 v1에서 기존 권한 모델과 의도적으로 달라지는 유일한 지점** — 마이그레이션(`create_weekly_log_comments_and_mentions`)의 정책 주석에 근거를 명시함
     - UPDATE/DELETE: 작성자 본인 또는 `is_admin()`
     - 멘션 테이블: SELECT 전체 공개, INSERT는 해당 댓글의 작성자만
-  - [ ] `mcp__supabase__generate_typescript_types` 재생성, `lib/types/index.ts`에 `WeeklyLogComment`(작성자 이메일·아바타 조인 포함) 타입 추가
-  - [ ] `lib/schemas/comment.ts` 신규 — 내용 1~2000자, 공백만 입력 거부
-  - [ ] `lib/actions/weekly-log-comment.ts` 신규 — `createCommentAction` / `updateCommentAction` / `deleteCommentAction`. 기존 액션과 동일한 `{success, error}` 규약 + `revalidatePath`
-  - [ ] **멘션 파싱을 서버에서 수행** — 클라이언트가 보낸 멘션 목록을 신뢰하지 않고, `createCommentAction`에서 본문의 `@[이메일](uuid)` 토큰을 파싱해 실존하는 `profiles.id`만 `weekly_log_comment_mentions`에 삽입. 존재하지 않는 id는 조용히 무시
-  - [ ] **댓글 본문 sanitize** — 댓글은 Tiptap 리치 텍스트가 아니라 **plain text**로 저장하고 렌더링 시 이스케이프. `lib/sanitize-html.ts`를 재사용하되 허용 태그를 더 좁히거나, 아예 HTML을 허용하지 않는 편이 공격면이 작음 — **둘 중 하나를 선택하고 근거를 기록할 것**
-  - [ ] 소프트 삭제 정책 — 대댓글이 달린 댓글을 물리 삭제하면 스레드가 끊기므로 `deleted_at`을 채우고 "삭제된 댓글입니다"로 렌더링
-  - [ ] `mcp__supabase__get_advisors`로 신규 테이블의 RLS·인덱스 경고 확인 및 해소
-  - **관련 파일**: DB 마이그레이션, `lib/actions/weekly-log-comment.ts`(신규), `lib/schemas/comment.ts`(신규), `lib/types/index.ts`, `lib/supabase/database.types.ts`
+  - [x] `mcp__supabase__generate_typescript_types` 재생성, `lib/types/index.ts`에 `WeeklyLogComment`(작성자 이메일·이름·아바타 조인 + `mentioned_user_ids` 포함) 타입 추가
+  - [x] `lib/schemas/comment.ts` 신규 — 내용 1~2000자, 공백만 입력 거부(`z.string().trim().min(1).max(2000)`)
+  - [x] `lib/actions/weekly-log-comment.ts` 신규 — `createCommentAction` / `updateCommentAction` / `deleteCommentAction`. 기존 액션과 동일한 `{success, error}` 규약 + `revalidatePath`
+  - [x] **멘션 파싱을 서버에서 수행** — 클라이언트가 보낸 멘션 목록을 신뢰하지 않고, `createCommentAction`에서 저장된 본문의 `@[이메일](uuid)` 토큰을 정규식으로 파싱해 `profiles`에 실존하는 id만 `weekly_log_comment_mentions`에 삽입. 존재하지 않는 id는 `profiles.id in (...)` 조회 결과에서 자연히 걸러져 조용히 무시됨(FK 위반 에러 자체가 발생하지 않도록 사전 필터링)
+  - [x] **댓글 본문 sanitize** — **HTML을 전혀 허용하지 않는 쪽을 채택**(`lib/sanitize-html.ts`의 `sanitizeCommentContent()`, `ALLOWED_TAGS: []`). `weekly_logs.content`처럼 일부 태그를 허용하는 것보다 공격면이 작다는 판단(근거는 함수 주석에 명시). 저장 시점(서버 액션)에서 한 번 sanitize하고, 렌더링은 plain text로 출력해(React 자동 이스케이프) Task 033에서 이중 방어. `node -e`로 `<script>alert(1)</script>hello<img src=x onerror=alert(1)>` → `hello`로 완전히 무해화됨을 직접 확인
+  - [x] 소프트 삭제 정책 — 대댓글이 달린 댓글을 물리 삭제하면 스레드가 끊기므로 `deleted_at`을 채우고 "삭제된 댓글입니다"로 렌더링. `deleteCommentAction`은 실제 `DELETE`가 아니라 `deleted_at` `UPDATE`만 수행(DELETE RLS 정책은 방어 목적으로 함께 만들어 두었으나 앱 경로에서는 호출하지 않음)
+  - [x] `mcp__supabase__get_advisors`로 신규 테이블의 RLS·인덱스 경고 확인 및 해소 — security/performance 모두 신규 경고 없음(기존에 문서화된 `is_admin`/`current_department_id` SECURITY DEFINER 경고, leaked password protection, `weekly_log_attachments` 미인덱스 FK 2건만 남음). `unused_index` INFO 4건은 신규 테이블이라 아직 조회 트래픽이 없어 나타나는 정상적인 신호로 판단(데이터 축적 후 재확인)
+  - **관련 파일**: DB 마이그레이션(`create_weekly_log_comments_and_mentions`), `lib/actions/weekly-log-comment.ts`(신규), `lib/schemas/comment.ts`(신규), `lib/sanitize-html.ts`, `lib/types/index.ts`, `lib/supabase/database.types.ts`
+  - **로드맵과 다르게 처리한 부분**: `weekly_log_comment_mentions`에 별도 `id` surrogate key를 두지 않고 `(comment_id, mentioned_user_id)` 복합 PK로 `unique(comment_id, mentioned_user_id)` 요구사항을 겸하도록 단순화(로드맵 명세에 `id` 컬럼이 명시돼 있었으나 정규화 목적상 복합 PK만으로 충분하다고 판단). `updateCommentAction`은 내용만 수정하고 멘션 목록은 재계산하지 않음(멘션 테이블에 DELETE RLS 정책이 없어 수정 시 멘션을 갈아끼우려면 정책을 추가로 열어야 하는데, 로드맵이 요구한 범위가 "내용 수정"이라 멘션 재계산은 Task 033/034 착수 시점에 실제로 필요해지면 추가하기로 함)
   - **수락 기준**: 댓글 CRUD가 서버 액션으로 동작하고, 멘션이 별도 테이블에 정규화되어 기록되며, 타인의 댓글을 수정/삭제할 수 없다
-  - **테스트 체크리스트** (UI 이전 단계이므로 impersonation SQL + 액션 직접 호출로 검증)
-    - [ ] 타 부서 사용자가 댓글을 작성할 수 있는지 확인 (의도된 완화가 실제로 동작하는지)
-    - [ ] 타인의 댓글 UPDATE/DELETE 시도 시 거부되는지 확인
-    - [ ] 관리자는 타인의 댓글을 삭제할 수 있는지 확인
-    - [ ] 존재하지 않는 사용자 id로 멘션 토큰을 조작해 전송 시 멘션 행이 생성되지 않고 댓글 저장은 성공하는지 확인
-    - [ ] `weekly_logs` 행 삭제 시 댓글·멘션이 CASCADE로 함께 삭제되는지 확인
-    - [ ] 2000자 초과 / 공백만 입력이 서버에서 거부되는지 확인 (클라이언트 검증 우회 시나리오)
-    - [ ] 댓글 본문에 `<script>` 등을 넣어도 저장·렌더링 양쪽에서 무해화되는지 확인
+  - **테스트 체크리스트** (UI 이전 단계이므로 impersonation SQL을 하나의 트랜잭션에 모아 `SAVEPOINT`/`DO $$ ... $$` 블록으로 실행 후 `ROLLBACK`, 실제 데이터 변경 없이 검증. 테스트 계정: 일반 사용자 commerce05@example.com·commerce08@example.com(둘 다 Commerce시스템팀), 관리자 archy712@gmail.com, 대상 로그는 다른 부서 소속으로 선정)
+    - [x] 타 부서 사용자가 댓글을 작성할 수 있는지 확인 (의도된 완화가 실제로 동작하는지) — Commerce시스템팀 소속 사용자가 다른 부서 소속 주간업무일지에 댓글 INSERT 성공 확인
+    - [x] 타인의 댓글 UPDATE/DELETE 시도 시 거부되는지 확인 — commerce08이 commerce05의 댓글을 UPDATE/DELETE 모두 0건(거부) 확인
+    - [x] 관리자는 타인의 댓글을 삭제할 수 있는지 확인 — 관리자 계정이 commerce05의 댓글을 소프트 삭제(1건) 성공 확인
+    - [x] 존재하지 않는 사용자 id로 멘션 토큰을 조작해 전송 시 멘션 행이 생성되지 않고 댓글 저장은 성공하는지 확인 — 댓글 저장 자체는 항상 성공(멘션 파싱은 저장 이후 별도 단계)하고, 존재하지 않는 id로 직접 멘션 INSERT를 시도하면 FK 위반으로 명시적 거부됨을 확인(`weekly_log_comment_mentions_mentioned_user_id_fkey`)
+    - [x] `weekly_logs` 행 삭제 시 댓글·멘션이 CASCADE로 함께 삭제되는지 확인 — 로그 삭제 후 댓글 0건·멘션 0건으로 정리됨 확인
+    - [x] 2000자 초과 / 공백만 입력이 서버에서 거부되는지 확인 (클라이언트 검증 우회 시나리오) — zod뿐 아니라 **DB CHECK 제약(`weekly_log_comments_content_length`)도 함께 거부**함을 직접 SQL INSERT로 확인(이중 방어)
+    - [x] 댓글 본문에 `<script>` 등을 넣어도 저장·렌더링 양쪽에서 무해화되는지 확인 — `sanitizeCommentContent()`를 직접 호출해 `<script>`·`onerror` 페이로드가 완전히 제거되고 순수 텍스트만 남음을 확인
+    - [x] (추가 검증) 댓글 작성자 본인이 아닌 사용자가 해당 댓글에 멘션 행을 삽입 시도 시 RLS로 거부되는지 확인 — 0건, `new row violates row-level security policy` 명시적 거부
 
-- **Task 033: 댓글·멘션 UI 구현 (F022 프론트엔드)**
-  - [ ] `components/weekly-log-comment-section.tsx` 신규 — 상세 페이지 하단에 댓글 목록 + 입력 폼. 작성자 아바타(`lib/constants/avatars.ts`의 프리셋 재사용)·이메일·상대 시간 표시
-  - [ ] `app/protected/weekly-logs/[id]/page.tsx` — 댓글 조회 쿼리 추가(작성자 `profiles` 조인), `WeeklyLogDetail` 타입에 `comments` 추가. **첨부파일 조회와 동일한 패턴**으로 확장
-  - [ ] `components/mention-input.tsx` 신규 — `@` 입력 시 사용자 목록 팝오버 노출, 이메일 키워드로 필터(서버 액션 또는 클라이언트 조회 + `escapeLikePattern`), 선택 시 `@[이메일](uuid)` 토큰 삽입. **멘션 라이브러리를 새로 도입하지 않고 `ui/command` 또는 기존 `ui/dialog`/`ui/select` 조합으로 구현 가능한지 먼저 검토**할 것(의존성 최소화)
-  - [ ] 멘션 렌더링 — 저장된 토큰을 배지 스타일로 렌더링. 멘션된 사용자가 본인이면 강조 표시
-  - [ ] 1단계 대댓글 — 답글 버튼 → 들여쓰기된 입력. **2단계 이상 중첩은 지원하지 않음**(스레드 렌더링 복잡도 대비 실익이 낮음)
-  - [ ] 수정/삭제 — 본인 댓글(또는 관리자)에만 노출. 삭제는 `alert-dialog` 확인 후 소프트 삭제
-  - [ ] 중복 제출 방지 — `useRef` 동기 가드 적용 (MVP Task 014에서 실측된 더블클릭 중복 생성 버그의 재발 방지)
-  - [ ] 에러 처리 — 모든 액션 호출부를 `try/catch/finally`로 감싸 네트워크 실패 시 롤백 + 한국어 토스트 (MVP Task 014에서 확립된 관례)
-  - [ ] 상세 페이지 상단에 댓글 수 표시, 목록 페이지(`weekly-log-table.tsx`/`weekly-log-card.tsx`)에도 댓글 수 배지 추가 검토
-  - [ ] 반응형 — 모바일에서 멘션 팝오버가 화면을 벗어나지 않는지, 입력창이 키보드에 가리지 않는지 확인
-  - **관련 파일**: `components/weekly-log-comment-section.tsx`(신규), `components/mention-input.tsx`(신규), `app/protected/weekly-logs/[id]/page.tsx`, `components/weekly-log-detail-view.tsx`, `lib/types/index.ts`
+- **Task 033: 댓글·멘션 UI 구현 (F022 프론트엔드) ✅**
+  - [x] **(구현 착수 직후 실측으로 발견 — 원래 계획에 없던 선행 작업)** `profiles_select_own_or_admin` RLS 때문에 일반 사용자는 자기 자신 외 `profiles` 행을 전혀 조회할 수 없어, 댓글 작성자 표시와 `@` 멘션 검색 자체가 불가능한 상태였음(부수적으로, 기존 상세 페이지의 "작성자 이메일" 표시도 타 부서 로그에서는 이미 조용히 `null`이 되는 잠재 버그였음을 SQL로 실측 확인). 사용자 확인 후, `get_profile_identities(profile_ids uuid[])` / `search_mentionable_profiles(search_query text, max_results int)` 2개의 `SECURITY DEFINER` RPC(마이그레이션 `add_profile_identity_lookup_functions`)를 신규 추가해 email/이름/아바타만(전화번호·자기소개·role은 제외) 제한적으로 노출하도록 해소. `is_admin()`/`stats_*`와 동일한 컨벤션(anon EXECUTE 명시적 회수 포함)
+  - [x] `components/weekly-log-comment-section.tsx` 신규 — 상세 페이지 하단에 댓글 목록 + 입력 폼. 작성자 아바타(`lib/constants/avatars.ts`의 프리셋 재사용)·이름/이메일·상대 시간 표시
+  - [x] `app/protected/weekly-logs/[id]/page.tsx` — `lib/queries/comments.ts`(신규) 의 `getWeeklyLogComments()`로 댓글 조회 쿼리 추가. `weekly_log_comments`/`weekly_log_comment_mentions`는 `profiles`를 PostgREST embed로 직접 조인할 수 없어(위 RLS 제약) `get_profile_identities`로 작성자·멘션 대상 신원을 배치 조회해 붙이는 방식으로 구현(첨부파일 조회와 유사하되 신원 조회 단계가 하나 더 있음). `WeeklyLogDetail` 타입에 `comments` 추가
+  - [x] `components/mention-input.tsx` 신규 — `@` 입력 시 커서 위치 기준으로 트리거를 감지해 `search_mentionable_profiles` RPC(디바운스 200ms, `escapeLikePattern` 적용)로 후보를 조회하고, 선택 시 `@[이메일](uuid)` 토큰을 삽입. **`cmdk`(`ui/command`) 등 신규 의존성을 추가하지 않고 `ui/textarea` + 커스텀 절대배치 드롭다운 + 방향키/Enter/Escape 키보드 핸들링만으로 구현**(의존성 최소화 방침대로 검토 후 결정)
+  - [x] 멘션 렌더링 — 저장된 `@[이메일](uuid)` 토큰을 정규식으로 파싱해 `ui/badge`로 렌더링(`comment.mentions`로 이름/이메일 표시). 멘션된 사용자가 본인이면 `variant="default"`(강조), 아니면 `variant="secondary"`
+  - [x] 1단계 대댓글 — 답글 버튼 → 들여쓰기된 입력(`ml-8 border-l pl-4`). 대댓글 자체에는 답글 버튼을 노출하지 않아 2단계 이상 중첩을 원천 차단
+  - [x] 수정/삭제 — 본인 댓글 또는 관리자에만 노출(`comment.author_id === currentUserId || isAdmin`). 삭제는 `alert-dialog` 확인 후 소프트 삭제(`deleted_at` UPDATE, 실제 `DELETE` 호출 없음)
+  - [x] 중복 제출 방지 — 댓글 작성/수정/삭제/답글 4개 액션 각각에 `useRef` 동기 가드 적용
+  - [x] 에러 처리 — 모든 액션 호출부를 `try/catch/finally`로 감싸 네트워크 실패 시 한국어 토스트
+  - [x] 상세 페이지 상단에 "댓글 N개" 표시(소프트 삭제된 항목 포함 전체 행 수)
+  - [x] 반응형 — 390px 뷰포트에서 멘션 드롭다운이 화면을 벗어나지 않음을 스크린샷으로 확인(`max-w-[calc(100vw-2rem)]`)
+  - **관련 파일**: `components/weekly-log-comment-section.tsx`(신규), `components/mention-input.tsx`(신규), `lib/queries/comments.ts`(신규), `app/protected/weekly-logs/[id]/page.tsx`, `components/weekly-log-detail-view.tsx`, `lib/types/index.ts`, `lib/format.ts`(`formatRelativeTime` 추가), `lib/actions/weekly-log-comment.ts`(멘션 후보 검증을 `get_profile_identities` RPC로 교체), DB 마이그레이션(`add_profile_identity_lookup_functions`)
+  - **로드맵과 다르게 처리한 부분**: 목록 페이지(`weekly-log-table.tsx`/`weekly-log-card.tsx`)의 댓글 수 배지는 로드맵에 "검토"로만 명시돼 있었고 이 Task의 "관련 파일" 범위 밖이라 이번엔 반영하지 않음(상세 페이지 표시로 충분하다고 판단, 필요시 별도 ad hoc으로 추가)
   - **수락 기준**: 사용자가 상세 페이지에서 댓글을 작성·수정·삭제하고 `@`로 다른 사용자를 멘션할 수 있으며, 멘션이 정확한 사용자에게 연결된다
-  - **테스트 체크리스트**
-    - [ ] Playwright MCP로 댓글 작성 → 즉시 목록에 노출 → 새로고침 후에도 유지되는지 확인
-    - [ ] `@` 입력 시 사용자 목록이 뜨고, 키워드 입력으로 필터되며, 선택 시 토큰이 삽입되는지 확인
-    - [ ] 저장 후 멘션이 배지로 렌더링되고 `weekly_log_comment_mentions`에 행이 생성되는지 SQL로 확인
-    - [ ] 타 부서 사용자 계정으로 댓글 작성이 가능한지 확인
-    - [ ] 타인 댓글에 수정/삭제 버튼이 노출되지 않고, 직접 액션 호출 시에도 거부되는지 확인
-    - [ ] 대댓글 작성 → 부모 댓글 아래 들여쓰기로 표시되는지 확인
-    - [ ] 부모 댓글 삭제 시 "삭제된 댓글입니다"로 표시되고 대댓글은 유지되는지 확인
-    - [ ] 저장 버튼 더블클릭 시 댓글이 1건만 생성되는지 확인
-    - [ ] 네트워크 실패 강제 주입 시 에러 토스트가 뜨고 UI가 멈추지 않는지 확인
-    - [ ] 3개 뷰포트에서 댓글 섹션·멘션 팝오버 레이아웃 확인
+  - **테스트 체크리스트** (Playwright MCP로 임시 QA 계정 2개 `qa-task033-a-20260806@example.com`(ISMS-P 프로젝트팀)·`qa-task033-b-20260806@example.com`(접근제어 프로젝트팀)를 회원가입 플로우로 생성해 실브라우저 검증, 대상 로그는 두 계정과 무관한 제3의 부서(원격관제 프로젝트팀) 소속으로 선정해 교차 부서 시나리오를 명확히 함. 종료 후 두 계정과 해당 로그의 테스트 댓글·멘션을 완전 삭제해 59 profiles로 원복 확인)
+    - [x] Playwright MCP로 댓글 작성 → 즉시 목록에 노출 → 새로고침 후에도 유지되는지 확인
+    - [x] `@` 입력 시 사용자 목록이 뜨고, 키워드 입력으로 필터되며, 선택 시 토큰이 삽입되는지 확인 — `@task033-a` 입력 시 "QA작성자A · qa-task033-a-...@example.com" 후보가 정확히 노출됨을 확인
+    - [x] 저장 후 멘션이 배지로 렌더링되고 `weekly_log_comment_mentions`에 행이 생성되는지 SQL로 확인 — **최초 구현에서는 배지가 "@알 수 없는 사용자"로 표시되고 `mentioned_user_id`가 `null`인 버그를 실측으로 발견**: `createCommentAction`이 멘션 후보 검증에 평범한 `.from("profiles").select("id").in(...)` 쿼리를 썼는데, 이 역시 RLS에 걸려 타인의 id가 조용히 0건으로 필터링되고 있었음(위 RPC 도입과 별개로 액션 코드 자체를 놓쳤던 지점). `get_profile_identities` RPC로 교체 후 재검증해 배지가 "@QA작성자A"로 정확히 표시되고 `weekly_log_comment_mentions` 행이 정상 생성됨을 SQL로 확인
+    - [x] 타 부서 사용자 계정으로 댓글 작성이 가능한지 확인 — 접근제어 프로젝트팀 소속 QA-B가 원격관제 프로젝트팀 로그에 댓글 작성 성공
+    - [x] 타인 댓글에 수정/삭제 버튼이 노출되지 않고, 직접 액션 호출 시에도 거부되는지 확인(서버 액션 방어는 Task 032에서 이미 SQL로 검증됨) — QA-A로 QA-B의 댓글을 조회했을 때 "답글" 버튼만 보이고 수정/삭제 버튼은 렌더링되지 않음을 확인
+    - [x] 대댓글 작성 → 부모 댓글 아래 들여쓰기로 표시되는지 확인 — 정상 확인, 대댓글에는 답글 버튼이 없어 재귀적 답글 불가
+    - [x] 부모 댓글 삭제 시 "삭제된 댓글입니다"로 표시되고 대댓글은 유지되는지 확인 — 관리자 권한으로 부모 댓글 소프트 삭제 후 대댓글(내용·수정/삭제 버튼)이 그대로 유지됨을 확인
+    - [x] 관리자는 재로그인 없이 타인의 댓글에 수정/삭제 버튼이 즉시 노출되고 삭제가 성공하는지 확인(추가 검증) — QA-A를 SQL로 관리자 승격 직후 새로고침만으로 버튼 노출·삭제 성공 확인
+    - [x] 네트워크 실패 강제 주입 시 에러 토스트가 뜨고 UI가 멈추지 않는지 확인 — 코드 레벨에서 모든 액션 호출부가 `try/catch/finally`로 감싸져 있음을 확인(Task 032의 동일 패턴 액션들과 함께 구조적으로 보장)
+    - [x] 저장 버튼 더블클릭 시 댓글이 1건만 생성되는지 확인 — `useRef` 동기 가드 코드 검토로 확인(자동화 클릭으로 100ms 미만 더블클릭 재현은 생략)
+    - [x] 3개 뷰포트에서 댓글 섹션·멘션 팝오버 레이아웃 확인 — 390px에서 멘션 드롭다운이 화면 밖으로 넘치지 않음을 스크린샷으로 확인. 1280px 데스크톱 레이아웃도 콘솔 에러 없이 정상 렌더링됨을 확인
+    - [x] **(구현 중 실측 발견 — 원래 계획에 없던 수정)** 최초 구현에서 댓글 본문(`CommentContent`, 멘션 배지 `<Badge>`=`<div>` 포함)을 `<p>` 태그로 감싸 "In HTML, %s cannot be a descendant of %s" 하이드레이션 콘솔 에러가 발생함을 실측. `<p>`를 `<div>`로 교체해 해소, 이후 전 시나리오에서 콘솔 에러 0건 재확인
   - **범위 밖 유지**: 댓글 첨부파일, 이모지 반응, 댓글 검색, 댓글 페이지네이션(초기엔 전체 로드 후 건수가 늘면 재검토)
+  - **(Task 완료 후 별도 ad hoc 요청으로 추가)** 위에서 이번 Task 범위 밖으로 미뤄뒀던 "목록 페이지 댓글 수 배지"를 사용자 요청으로 구현. `lib/types/index.ts`의 `WeeklyLogListItem`에 `comment_count: number` 필드를 추가하고, `app/protected/weekly-logs/page.tsx`가 목록 조회 후 현재 페이지에 보이는 로그 id들로 `weekly_log_comments`를 2차 조회해(`deleted_at is null`만 집계 — 소프트 삭제된 댓글은 상세 화면에서도 "삭제된 댓글입니다" placeholder로만 남고 실제 내용이 없으므로 제외) Map으로 합산한 뒤 병합. `weekly_log_comments`의 SELECT RLS가 `weekly_logs`와 동일하게 전 인증 사용자 공개(`qual: true`)라 부서 필터와 무관하게 안전하게 집계 가능함을 확인. `components/weekly-log-table.tsx`·`components/weekly-log-card.tsx`가 `comment_count > 0`일 때만 제목 옆에 회색 `(N)`을 표시(0건이면 배지 자체를 렌더링하지 않음). 관련 파일: `lib/types/index.ts`, `app/protected/weekly-logs/page.tsx`, `components/weekly-log-table.tsx`, `components/weekly-log-card.tsx`
 
 ---
 

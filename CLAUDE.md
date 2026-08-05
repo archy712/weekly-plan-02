@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
-MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1)과 기간 범위 검색·통계 대시보드(Phase 2)까지 구현이 완료되었고, 댓글·멘션·실시간 알림(Phase 3·4)은 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3)까지 구현이 완료되었고, 실시간 알림(Phase 4)은 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
 
 ## 명령어
 
@@ -118,6 +118,15 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **대시보드**(`app/protected/admin/dashboard/page.tsx`, `lib/queries/stats.ts`) — 원래 `/protected/dashboard`에서 전 사용자 공개로 구현됐다가, 진입점이 헤더와 목록 페이지에 흩어져 있다는 피드백에 따라 **관리자 전용으로 전환**되어 이 경로로 이전했습니다. `AdminLayout`의 `requireAdmin()` 가드가 이미 이 라우트를 관리자 전용으로 막고 있어 페이지 자체에는 별도 가드나 부서 게이트 코드가 없습니다(있었다면 중복). 부서별·기간별·상태별 집계는 `stats_*` RPC 함수(`SECURITY INVOKER`, `weekly_logs`의 전 부서 공개 SELECT RLS를 그대로 적용받음)를 통해 서버에서 조회합니다.
 - **부서 관리**(`app/protected/admin/departments/page.tsx`, `lib/actions/department.ts`) — 기본 동작은 **비활성화(소프트 삭제)**이며, `departments.archived_at`(nullable)로 표현합니다. 하드 삭제는 부서원(`profiles`) 또는 `weekly_logs` 참조가 0건일 때만 UI에서 허용되고(참조가 있으면 삭제 버튼만 비활성화, 별도 안내 문구는 사용자 요청으로 제거됨), `deleteDepartmentAction`이 경합으로 `23503`(FK 위반)을 받으면 그 시점에 다시 참조 수를 세어 `lib/format.ts`의 `formatDepartmentDeleteBlockedMessage()`로 에러 토스트를 띄웁니다(이 함수는 더 이상 사전 안내 UI에는 쓰이지 않고, 경합 상황의 에러 메시지 생성에만 남아 있음). `23505`(이름 중복)는 "이미 존재하는 부서명입니다."로 변환. 비활성 부서는 신규 선택 목록(프로필/회원가입)에서는 제외하되 이미 그 부서인 사용자에게는 "(비활성)" 라벨로 계속 노출하고, 목록 필터에서는 과거 데이터 조회를 위해 항상 노출합니다.
 - **사용자 관리**(`app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`, `lib/actions/user-admin.ts`) — `updateUserRoleAction`/`updateUserDepartmentAction` 모두 클라이언트가 보낸 값을 신뢰하지 않고 **호출자의 `profiles.role`을 서버에서 재조회**해 관리자인지 확인합니다. 자기 자신의 역할 변경은 관리자 수와 무관하게 **항상** 서버 액션에서 차단합니다 — `prevent_unauthorized_role_change()` 트리거는 "마지막 관리자"의 강등만 막고 관리자가 2명 이상이면 자기 강등을 허용하므로, 로드맵이 요구하는 "자기 강등은 항상 금지"를 만족하려면 트리거보다 넓은 조건을 서버 액션에 추가해야 합니다. 소속 부서 변경 시에는 대상 사용자가 이전 부서 로그의 쓰기 권한(RLS)을 잃는다는 경고(`formatDepartmentChangeWarning()`)를 확인 다이얼로그에 표시합니다. 역할 변경 UI(목록 인라인 + 상세 폼, `components/user-role-select.tsx`로 공유)는 `weekly-log-detail-view.tsx`의 진행상태 변경과 동일한 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴을 재사용합니다.
+
+### 댓글·멘션 (주간업무일지 상세 페이지)
+
+- `weekly_log_comments`(1단계 대댓글 지원, `deleted_at`로 소프트 삭제)·`weekly_log_comment_mentions`(정규화된 멘션 테이블) 2개 테이블로 구성됩니다. **댓글 작성(INSERT)만 부서 제한이 없고 부서 무관하게 작성자 본인이면 허용**됩니다 — 이 프로젝트의 다른 모든 쓰기 정책이 따르는 부서 기반 모델(`current_department_id()`)과 의도적으로 다른 유일한 지점이며, `weekly_logs`가 이미 전 부서 SELECT 공개인 상태에서 댓글까지 부서로 막으면 "타 부서 업무에 의견을 남긴다"는 기능 자체가 무의미해지기 때문입니다. UPDATE/DELETE는 작성자 본인 또는 `is_admin()`으로 제한됩니다.
+- **`profiles_select_own_or_admin` RLS 때문에 일반 사용자는 자기 자신 외의 `profiles` 행을 조회할 수 없어**, 댓글 작성자 표시와 `@` 멘션 검색이 PostgREST embed로는 동작하지 않습니다. `get_profile_identities(profile_ids uuid[])`(작성자·멘션 대상의 email/이름/아바타만 배치 조회)와 `search_mentionable_profiles(search_query text, max_results int)`(멘션 후보 검색) 2개의 `SECURITY DEFINER` RPC로 우회합니다(`is_admin()`/`current_department_id()`/`stats_*`와 동일한 컨벤션 — `anon` EXECUTE 명시적 회수 포함). `lib/actions/weekly-log-comment.ts`의 멘션 후보 검증도 처음엔 일반 `.from("profiles").select(...)` 쿼리를 썼다가 같은 RLS에 걸려 타인의 id가 조용히 0건으로 필터링되는 버그가 실측되어 `get_profile_identities`로 교체된 이력이 있습니다 — 이 패턴을 다시 일반 쿼리로 되돌리지 말 것.
+- **멘션은 본문 텍스트 파싱이 아니라 별도 테이블로 정규화**됩니다. 클라이언트가 보낸 멘션 목록은 신뢰하지 않고, `createCommentAction`(`lib/actions/weekly-log-comment.ts`)이 저장된 본문에서 `@[이메일](uuid)` 토큰을 정규식으로 파싱해 `profiles`에 실존하는 id만 `weekly_log_comment_mentions`에 삽입합니다. `components/mention-input.tsx`가 `@` 입력을 감지해 이 토큰을 삽입하고, `components/weekly-log-comment-section.tsx`의 `CommentContent`가 저장된 토큰을 다시 파싱해 `ui/badge`로 렌더링합니다(멘션 대상이 본인이면 강조 스타일).
+- **댓글 본문은 HTML을 전혀 허용하지 않습니다** — 업무일지 본문(`weekly_logs.content`)과 달리 `lib/sanitize-html.ts`의 `sanitizeCommentContent()`는 `ALLOWED_TAGS: []`로 모든 태그를 제거하고 plain text만 남깁니다(리치 텍스트 대비 공격면이 작다는 판단). 저장 시점(서버 액션)에서 한 번 sanitize하고 렌더링은 React의 자동 이스케이프로 이중 방어합니다.
+- 대댓글이 달린 댓글을 삭제하면 스레드가 끊기므로 **물리 삭제 대신 `deleted_at`을 채우는 소프트 삭제**를 씁니다. `deleteCommentAction`은 `deleted_at` UPDATE만 수행하며, 삭제된 댓글은 "삭제된 댓글입니다" placeholder로 자리만 유지한 채 렌더링됩니다(`components/weekly-log-comment-section.tsx`).
+- **목록 페이지의 댓글수 표시**(`app/protected/weekly-logs/page.tsx`)는 `weekly_logs` select에 join할 수 없어(별개 테이블) 조회된 로그 id들로 `weekly_log_comments`를 2차 조회해 Map으로 집계한 뒤 병합합니다. `deleted_at is null`인 행만 세므로(삭제된 댓글은 실제 내용이 없어 집계에서 제외), `components/weekly-log-table.tsx`/`components/weekly-log-card.tsx`는 `comment_count > 0`일 때만 제목 옆에 `(N)`을 표시합니다.
 
 ## Claude Code 커스텀 설정
 
