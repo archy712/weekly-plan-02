@@ -201,76 +201,84 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ---
 
-### Phase 2: 조회·분석 기능 확장
+### Phase 2: 조회·분석 기능 확장 ✅
 
 > 목표: 기존 `weekly_logs` 데이터를 더 잘 찾고(F021), 한눈에 읽을 수 있는(F024) 상태. **읽기 전용 확장이라 기존 권한 모델을 전혀 건드리지 않음.**
 > **선행 조건**: 없음 — Phase 1과 병렬 진행 가능 (충돌 지점은 `components/header-nav.tsx`의 `navLinks`뿐).
 
-- **Task 029: 주간업무일지 기간 범위 검색/필터 구현 (F021)**
-  - [ ] `app/protected/weekly-logs/page.tsx` — `searchParams`에 `from`/`to` 추가. 기존 `department`/`q`/`status` 파라미터와 **AND 조합**으로 동작하며, 키워드 검색 분기(title/content 각각 `ilike` 후 병합)의 **양쪽 쿼리에 모두 동일한 날짜 조건을 적용**해야 함(한쪽만 적용하면 병합 결과가 필터를 우회)
-  - [ ] 필터 의미 확정 — "기간이 겹치는 항목"(`start_date <= to AND target_end_date >= from`) 방식을 기본으로 채택. 단순히 `start_date`만 비교하면 장기 과제가 조회 기간에서 누락되므로 부적절. **이 결정을 코드 주석에도 남길 것**
-  - [ ] 날짜 파라미터 검증 — `z.string().date()`로 형식 검증 후 실패 시 필터 미적용(에러 화면 대신 무시). `from > to`인 경우 값을 교환하거나 무시하고 안내 표시. MVP Task 014에서 잘못된 UUID가 500 크래시를 유발했던 사례와 동일한 방어
-  - [ ] `components/weekly-log-list-view.tsx` — 시작일/종료일 `<Input type="date">` 2개와 [초기화] 버튼 추가. 값 변경 시 기존 필터와 동일하게 `router.push`로 URL 갱신
-  - [ ] 프리셋 빠른 선택 — "이번 주 / 이번 달 / 최근 3개월" 버튼으로 날짜 두 개를 한 번에 채움 (실사용 빈도가 가장 높은 조작을 2클릭 → 1클릭으로)
-  - [ ] 활성 필터 요약 표시 — 현재 적용된 부서·상태·키워드·기간을 배지로 노출하고 개별 해제 가능하게 (필터가 4종으로 늘어나 "왜 결과가 0건인지" 알기 어려워짐)
-  - [ ] PDF 다운로드(`lib/pdf/weekly-log-pdf.ts`) 연동 확인 — PDF는 **화면에 보이는 필터 결과와 항상 일치**해야 하므로(MVP Task 013의 설계 원칙), 기간 필터가 적용된 목록이 그대로 전달되는지 확인하고 PDF 헤더에 기간 범위 표기 추가
-  - [ ] 페이지네이션 상호작용 — 기간 필터 변경 시 1페이지로 리셋 (기존 부서·검색 필터와 동일 동작)
-  - **관련 파일**: `app/protected/weekly-logs/page.tsx`, `components/weekly-log-list-view.tsx`, `lib/pdf/weekly-log-pdf.ts`, `lib/types/index.ts`
+- **Task 029: 주간업무일지 기간 범위 검색/필터 구현 (F021) ✅**
+  - [x] `app/protected/weekly-logs/page.tsx` — `searchParams`에 `from`/`to` 추가. 기존 `department`/`q`/`status` 파라미터와 **AND 조합**으로 동작하며, 키워드 검색 분기(title/content 각각 `ilike` 후 병합)의 **양쪽 쿼리에 모두 동일한 날짜 조건을 적용**해야 함(한쪽만 적용하면 병합 결과가 필터를 우회)
+  - [x] 필터 의미 확정 — "기간이 겹치는 항목"(`start_date <= to AND target_end_date >= from`) 방식을 기본으로 채택. 단순히 `start_date`만 비교하면 장기 과제가 조회 기간에서 누락되므로 부적절. **이 결정을 코드 주석에도 남길 것**
+  - [x] 날짜 파라미터 검증 — `z.string().date()`로 형식 검증 후 실패 시 필터 미적용(에러 화면 대신 무시). `from > to`인 경우 값을 교환하거나 무시하고 안내 표시. MVP Task 014에서 잘못된 UUID가 500 크래시를 유발했던 사례와 동일한 방어
+  - [x] `components/weekly-log-list-view.tsx` — 시작일/종료일 `<Input type="date">` 2개와 [초기화] 버튼 추가. 값 변경 시 기존 필터와 동일하게 `router.push`로 URL 갱신
+  - [x] 프리셋 빠른 선택 — "이번 주 / 이번 달 / 최근 3개월" 버튼으로 날짜 두 개를 한 번에 채움 (실사용 빈도가 가장 높은 조작을 2클릭 → 1클릭으로)
+  - [x] 활성 필터 요약 표시 — 현재 적용된 부서·상태·키워드·기간을 배지로 노출하고 개별 해제 가능하게 (필터가 4종으로 늘어나 "왜 결과가 0건인지" 알기 어려워짐)
+  - [x] PDF 다운로드(`lib/pdf/weekly-log-pdf.ts`) 연동 확인 — PDF는 **화면에 보이는 필터 결과와 항상 일치**해야 하므로(MVP Task 013의 설계 원칙), 기간 필터가 적용된 목록이 그대로 전달되는지 확인하고 PDF 헤더에 기간 범위 표기 추가
+  - [x] 페이지네이션 상호작용 — 기간 필터 변경 시 1페이지로 리셋 (기존 부서·검색 필터와 동일 동작)
+  - **관련 파일**: `app/protected/weekly-logs/page.tsx`, `components/weekly-log-list-view.tsx`, `lib/pdf/weekly-log-pdf.ts`, `lib/utils.ts`(기간 프리셋 계산 함수 3종 신규)
+  - **로드맵과 다르게 처리한 부분**: `from > to` 처리는 "교환 또는 무시 후 안내" 중 **교환**을 선택 — 별도 안내 UI 상태 없이도 사용자가 입력 순서를 헷갈려도 빈 목록으로 튕기지 않는 단순한 정규화만으로 충분하다고 판단(서버 컴포넌트에서 조용히 swap 후 그 결과를 그대로 date input에 반영해 사용자가 실제 적용된 범위를 바로 확인 가능). 프리셋 계산에 날짜 라이브러리를 새로 추가하지 않고 `lib/utils.ts`에 순수 `Date` 연산 헬퍼 3개(`getThisWeekRange`/`getThisMonthRange`/`getRecentMonthsRange`)를 추가(로드맵 명세에는 구현 위치가 명시되어 있지 않았음, `lib/types/index.ts`는 기존 타입 재사용만으로 충분해 변경 불필요).
   - **수락 기준**: 사용자가 기간을 지정해 목록을 좁힐 수 있고, 기간·부서·상태·키워드 4종 필터가 서로 간섭 없이 조합되며, PDF 결과가 화면과 일치한다
-  - **테스트 체크리스트**
-    - [ ] Playwright MCP로 기간만 지정 → 해당 기간과 겹치는 항목만 남는지 확인 (기간 양끝 경계값 포함 여부 검증)
-    - [ ] 기간 + 키워드 조합 시 두 조건이 모두 적용되는지 확인 (키워드 검색 분기의 병합 경로 우회 여부 집중 검증)
-    - [ ] 기간 + 부서 + 상태 3종 동시 적용 결과 확인
-    - [ ] `from > to`인 잘못된 입력과 `?from=abc` 같은 비정상 파라미터에서 500 없이 안전하게 처리되는지 확인
-    - [ ] 결과 0건일 때 EmptyState와 활성 필터 배지가 함께 노출되는지 확인
-    - [ ] 기간 필터 적용 후 PDF 다운로드 시 화면과 동일한 항목만 포함되는지 확인
+  - **테스트 체크리스트** (Playwright MCP + Supabase MCP, 임시 회원가입 QA 계정 `qa-task029-20260805@example.com`을 ERP시스템팀 소속으로 생성해 실브라우저 검증, 종료 후 `auth.users` DELETE로 완전 삭제해 34 profiles/1 admin/167 logs로 원복 확인)
+    - [x] Playwright MCP로 기간만 지정 → 해당 기간과 겹치는 항목만 남는지 확인 (기간 양끝 경계값 포함 여부 검증) — `start_date`가 조회 범위보다 훨씬 이전이지만 `target_end_date`가 범위 안에 걸치는 장기 과제("MBN 프로젝트" 2026-08-03~08-31)가 `from=2026-08-20&to=2026-08-25` 조회에서 정상 포함됨을 확인, `start_date` 단독 비교였다면 누락됐을 사례
+    - [x] 기간 + 키워드 조합 시 두 조건이 모두 적용되는지 확인 (키워드 검색 분기의 병합 경로 우회 여부 집중 검증) — 동일 제목("코드 리뷰 진행")이 3건 존재하는 상태에서 `q=코드 리뷰&from=2026-08-04&to=2026-08-10`로 조회해 기간과 겹치는 1건만 남고 나머지 2건이 병합 과정에서 새지 않음을 확인
+    - [x] 기간 + 부서 + 상태 3종 동시 적용 결과 확인 — `department=ERP시스템팀&status=completed&from=2026-08-06&to=2026-08-10`로 사전 계산한 예상 1건("구매발주 프로세스 개선")과 정확히 일치
+    - [x] `from > to`인 잘못된 입력과 `?from=abc` 같은 비정상 파라미터에서 500 없이 안전하게 처리되는지 확인 — `from=2026-08-25&to=2026-08-20`은 자동 swap되어 정상 결과 반환, `from=abc&to=2026-13-40`은 필터가 조용히 무시되고 200 응답·콘솔 에러 0건
+    - [x] 결과 0건일 때 EmptyState와 활성 필터 배지가 함께 노출되는지 확인 — 데이터 없는 미래 기간(`from=2027-01-01&to=2027-01-31`)에서 "검색 결과가 없습니다" EmptyState와 부서·기간 배지가 함께 렌더링됨을 확인
+    - [x] 기간 필터 적용 후 PDF 다운로드 시 화면과 동일한 항목만 포함되는지 확인 — "이번 주" 프리셋(2026-08-03~08-09) 적용 후 다운로드한 PDF를 직접 열람해 헤더의 "조회 기간: 2026-08-03 ~ 2026-08-09" 표기와 17개 행이 화면 테이블과 순서·내용 모두 일치함을 확인
+    - [x] (추가 검증) 페이지네이션 리셋 — ERP시스템팀 무필터 목록(3페이지)에서 2페이지로 이동 후 "이번 주" 프리셋 클릭 시 1페이지로 자동 복귀함을 확인
   - **범위 밖 유지**: 저장된 필터 프리셋(사용자별 즐겨찾기), 상대 기간 표현(`지난 분기` 등의 동적 계산)은 요청 범위 밖
 
-- **Task 030: 통계 집계 데이터 계층 구축 (F024 백엔드)**
-  - [ ] 집계 방식 결정 — **DB 집계(`SECURITY INVOKER` RPC 함수)를 기본**으로 채택. 클라이언트 집계는 현재 167건 규모에선 동작하지만 전체 행을 매번 내려받아야 하고, RLS를 우회하지 않으려면 `INVOKER`가 필수(`is_admin()`/`current_department_id()`와 달리 이 함수들은 데이터를 반환하므로 `DEFINER`로 만들면 안 됨)
-  - [ ] 집계 RPC 함수 신규 작성 (마이그레이션):
-    - `stats_logs_by_department(from_date, to_date)` — 부서별 건수(상태별 분해 포함)
-    - `stats_logs_by_status(from_date, to_date, dept_id)` — 상태 분포(예정/진행중/완료)
-    - `stats_logs_monthly_trend(months, dept_id)` — 월별 생성·완료 추이
-    - `stats_workload_summary(from_date, to_date, dept_id)` — `estimated_mm` 합계, `estimated_cost` 합계, 평균 소요 기간
-  - [ ] 함수 권한 정리 — 신규 함수의 `anon` EXECUTE 권한 회수, `authenticated`만 유지 (MVP Task 008의 하드닝 관례)
-  - [ ] `weekly_logs`에 집계용 인덱스 검토 — `(department_id, start_date)` 복합 인덱스가 필요한지 `EXPLAIN ANALYZE`로 실측 후 결정. **현재 167건 규모에서는 불필요할 가능성이 높으므로 과도한 사전 최적화를 하지 말 것**(MVP Task 016에서 동일한 판단 기록 있음)
-  - [ ] `mcp__supabase__generate_typescript_types` 재생성 후 `lib/types/stats.ts` 신규 — 각 집계 결과의 도메인 타입 정의
-  - [ ] `lib/queries/stats.ts` 신규 — 서버 컴포넌트에서 호출할 조회 함수 래퍼(`await createClient()` → `.rpc(...)`), 실패 시 빈 배열 폴백
-  - [ ] **NULL 처리 정책 확정** — `estimated_mm`/`estimated_cost`는 nullable 선택 입력이라 대다수 행이 NULL일 수 있음. 합계에서 NULL을 0으로 볼지 제외할지 결정하고, 화면에도 "입력된 N건 기준"을 명시
-  - **관련 파일**: DB 마이그레이션, `lib/queries/stats.ts`(신규), `lib/types/stats.ts`(신규), `lib/supabase/database.types.ts`
+- **Task 030: 통계 집계 데이터 계층 구축 (F024 백엔드) ✅**
+  - [x] 집계 방식 결정 — **DB 집계(`SECURITY INVOKER` RPC 함수)를 기본**으로 채택. 클라이언트 집계는 현재 167건 규모에선 동작하지만 전체 행을 매번 내려받아야 하고, RLS를 우회하지 않으려면 `INVOKER`가 필수(`is_admin()`/`current_department_id()`와 달리 이 함수들은 데이터를 반환하므로 `DEFINER`로 만들면 안 됨)
+  - [x] 집계 RPC 함수 신규 작성(마이그레이션 `add_stats_aggregation_functions`), 전부 `language sql stable security invoker set search_path = ''`로 기존 `is_admin()`/`current_department_id()`와 동일한 컨벤션 사용:
+    - `stats_logs_by_department(from_date, to_date)` — 부서별 건수(상태별 분해 포함). `weekly_logs`를 기준으로 `departments`를 조인해 이름만 가져오므로 `archived_at` 조건과 무관하게 비활성 부서의 과거 로그도 그대로 집계됨
+    - `stats_logs_by_status(from_date, to_date, dept_id)` — 상태 분포(예정/진행중/완료). `planned`/`in_progress`/`completed` 3개 행을 `VALUES`로 고정해두고 `LEFT JOIN`해, 특정 기간에 0건인 상태도 항상 결과에 포함되도록 함(프론트엔드 도넛 차트 범례가 흔들리지 않게 하기 위함, 로드맵에 없던 결정)
+    - `stats_logs_monthly_trend(months, dept_id)` — 월별 생성·완료 추이. `created_count`는 `created_at` 기준, `completed_count`는 `status='completed'`인 건 중 `target_end_date` 기준으로 집계(아래 "로드맵과 다르게 처리한 부분" 참고 — `weekly_logs`에 별도의 "완료 처리 시각" 컬럼이 없어 이 Task에서 내린 결정)
+    - `stats_workload_summary(from_date, to_date, dept_id)` — `estimated_mm`/`estimated_cost` 합계와 평균 소요 기간(`avg(target_end_date - start_date)`), 그룹화 없이 주어진 조건에 대한 단일 행 요약
+    - 4개 함수 모두 기간 필터는 Task 029(`app/protected/weekly-logs/page.tsx`)와 동일한 "기간이 겹치는 항목"(`start_date <= to_date AND target_end_date >= from_date`) 기준을 재사용
+  - [x] 함수 권한 정리 — `anon` EXECUTE 권한 회수, `authenticated`만 유지. **(구현 중 실측 발견)** `revoke ... from public`만으로는 부족함을 확인 — Supabase 프로젝트는 스키마 `public`에 대해 기본 권한(`ALTER DEFAULT PRIVILEGES`)으로 신규 함수 생성 시 `anon`/`authenticated`/`service_role`에게 개별적으로 자동 `EXECUTE`를 부여하므로, `PUBLIC` 의사 역할에 대한 `REVOKE`와 별개로 `anon`을 명시적으로 `REVOKE`해야 함(별도 마이그레이션 `revoke_stats_functions_anon_execute`로 정정, `is_admin()`/`current_department_id()`가 이미 이 패턴을 쓰고 있었음을 뒤늦게 확인). 최종 권한을 `information_schema.routine_privileges`로 실측해 `is_admin()`/`current_department_id()`와 동일하게 `authenticated`/`postgres`/`service_role`만 남았음을 확인
+  - [x] `weekly_logs` 집계용 인덱스 검토 — `EXPLAIN ANALYZE`로 부서별 건수 집계(전체 스캔)와 부서+기간 필터(부서 단일값) 두 패턴을 실측한 결과 각각 0.35ms/0.40ms의 `Seq Scan`/`Bitmap Heap Scan`(기존 `weekly_logs_department_id_idx` 활용)으로 처리되어 **신규 인덱스 불필요**로 판단(MVP Task 016과 동일한 원칙, 과도한 사전 최적화 지양)
+  - [x] `mcp__supabase__generate_typescript_types` 재생성 후 `lib/types/stats.ts` 신규 — `Database["public"]["Functions"]`의 RPC 반환 타입을 그대로 재노출하는 방식으로 도메인 타입 4종(`DepartmentLogStats`/`StatusLogStats`/`MonthlyLogTrend`/`WorkloadSummary`) 정의(`lib/types/index.ts`가 `Tables<>`를 재노출하는 기존 패턴과 동일 원칙 — RPC 시그니처가 바뀌면 타입 재생성만으로 에러가 즉시 드러남). `StatusLogStats`는 `status` 컬럼을 `WeeklyLogStatus`로 좁힘(`WeeklyLog`가 `status`를 좁히는 기존 패턴과 동일)
+  - [x] `lib/queries/stats.ts` 신규 — `getLogsByDepartment`/`getLogsByStatus`/`getMonthlyTrend`/`getWorkloadSummary` 4종, 모두 `await createClient()`(전역 저장 금지) → `.rpc(...)` → 실패 시 콘솔 로그 후 빈 배열 폴백. `getWorkloadSummary`는 그룹화 없는 단일 행 요약이지만 다른 3개 함수와 반환 타입 일관성을 위해 배열로 감싸 반환(성공 시 항상 정확히 1건)
+  - [x] **NULL 처리 정책 확정** — `sum()`이 NULL을 자동으로 제외하고 합산하는 기본 동작을 그대로 쓰되, 전 행이 NULL이라 `sum`이 NULL이 되는 경우만 `coalesce(..., 0)`으로 안전하게 변환. 동시에 `mm_count`/`cost_count`(실제 값이 입력된 건수)를 반환값에 포함해 Task 031 UI가 "입력된 N건 기준"을 표시할 수 있게 함. `avg_duration_days`는 대상 로그가 0건이면 0으로 위장하지 않고 NULL 그대로 반환("기간 데이터 없음"과 "기간이 0일"은 다른 의미이므로)
+  - **관련 파일**: DB 마이그레이션(`add_stats_aggregation_functions`, `revoke_stats_functions_anon_execute`), `lib/queries/stats.ts`(신규), `lib/types/stats.ts`(신규), `lib/supabase/database.types.ts`
+  - **로드맵과 다르게 처리한 부분**: `stats_logs_monthly_trend`의 `completed_count` 산정 기준이 로드맵에 명시되어 있지 않아 이 Task에서 결정 — `weekly_logs`에는 "완료 처리 시각"을 기록하는 별도 컬럼이 없고 `updated_at`은 상태 변경이 아닌 다른 필드 수정에도 갱신되므로 신뢰할 수 없어, 업무의 실제 의미를 담고 있는 `target_end_date`(완료 예정/완료일)를 완료 시점의 근사치로 채택함(정확한 완료 처리 시각이 필요하면 컬럼 추가가 필요하며 이는 범위 밖)
   - **수락 기준**: 각 RPC가 정확한 집계를 반환하고, **일반 사용자가 호출해도 RLS 범위를 벗어난 데이터가 나오지 않는다**(단, `weekly_logs` SELECT는 전 부서 공개이므로 통계도 전 부서가 정상 — 이 점을 명시적으로 확인)
-  - **테스트 체크리스트**
-    - [ ] 각 RPC를 `execute_sql`로 직접 호출해 반환값이 동일 조건의 수동 `count`/`sum` 쿼리와 일치하는지 대조
-    - [ ] 일반 사용자를 impersonate해 호출 시 `SECURITY INVOKER`가 RLS를 정상 적용하는지 확인
-    - [ ] 기간 파라미터 경계값(시작=종료, 데이터 없는 기간)에서 빈 결과가 오류 없이 반환되는지 확인
-    - [ ] `estimated_mm`/`estimated_cost`가 전부 NULL인 부서에서 합계가 0 또는 null로 안전하게 처리되는지 확인
-    - [ ] 비활성(Task 027) 부서의 과거 로그가 통계에서 누락되지 않는지 확인
+  - **테스트 체크리스트** (UI가 없는 단계이므로 `execute_sql`로 검증)
+    - [x] 각 RPC를 `execute_sql`로 직접 호출해 반환값이 동일 조건의 수동 `count`/`sum` 쿼리와 일치하는지 대조 — 4개 함수 전부(부서별 55/57/55건, 상태별 71/79/17건, 업무량 요약 mm_sum 44.00·cost_sum 716,000,000·avg_duration 4.419일, 월별 추이 2026-07 완료 46건·2026-08 생성 167건) 수동 쿼리와 정확히 일치 확인
+    - [x] 일반 사용자를 impersonate(`set local role authenticated` + `request.jwt.claims`)해 `stats_logs_by_department` 호출 → `postgres`로 직접 호출한 결과와 완전히 동일(전 부서 55/57/55건)함을 확인해 `SECURITY INVOKER`가 RLS(전 부서 공개 SELECT 정책)를 정상 적용함을 확인. `anon` 역할로 호출 시 `42501 permission denied`로 명시적 거부되는 것도 함께 확인(EXECUTE 권한 회수 검증)
+    - [x] 기간 파라미터 경계값 — 시작=종료(단일일 `2026-08-04`)에서 부서별 합계 10+11+15=36건으로 수동 카운트와 일치, 데이터 없는 미래 기간(`2030-01`)에서 4개 함수 모두 오류 없이 빈 배열 또는 0/NULL 값의 단일 행을 반환함을 확인. `months=0` 같은 비정상 입력도 `greatest(months,1)`로 방어해 에러 없이 최소 1개월 반환되는 것도 추가 확인
+    - [x] `estimated_mm`/`estimated_cost`가 전부 NULL인 부서(로그 0건인 부서로 실측 — 8개 부서 중 5개가 이번 실측 시점 기준 로그 0건)에서 `stats_workload_summary`가 합계 0(`mm_sum`/`cost_sum`), `mm_count`/`cost_count` 0, `avg_duration_days` NULL로 안전하게 반환되는지 확인
+    - [x] 비활성 부서의 과거 로그 누락 여부 — `BEGIN`/`ROLLBACK` 트랜잭션 내에서 로그 57건을 보유한 ERP시스템팀을 임시로 `archived_at`을 채워 비활성화한 뒤 `stats_logs_by_department` 재호출 → 57건 그대로 유지됨을 확인(트랜잭션은 롤백해 실제 데이터는 변경하지 않음)
 
-- **Task 031: 통계 대시보드 UI 및 차트 구현 (F024 프론트엔드)**
-  - [ ] **차트 라이브러리 도입** — `npx shadcn@latest add chart`로 `components/ui/chart.tsx` + `recharts` 설치. 이 프로젝트는 이미 shadcn/ui(`new-york`) 기반이라 별도 차트 라이브러리를 직접 도입하는 것보다 shadcn `chart` 래퍼가 **다크모드·CSS 변수 테마와 자동으로 맞물린다**는 점이 결정 근거. 설치 후 번들 크기 영향을 `npm run build`로 확인하고, 필요하면 PDF 라이브러리처럼 `await import()` 동적 로딩 검토
-  - [ ] 차트 색상 토큰 추가 — `--chart-1` ~ `--chart-5`를 `app/globals.css`의 `:root`/`.dark`와 `tailwind.config.ts`에 **함께** 추가(CLAUDE.md 규칙). 진행상태 색상은 기존 배지 배색(예정=warning 주황 / 진행중=success 초록 / 완료=secondary 회색, MVP Task 020)과 **일관되게** 매핑
-  - [ ] `app/protected/dashboard/page.tsx` 신규 — 부서 게이트 체크 포함(CLAUDE.md 관례), Suspense + 신규 `components/dashboard-skeleton.tsx`로 스트리밍
-  - [ ] 요약 카드 4종 — 전체 로그 수 / 진행중 / 완료율 / 이번 달 신규 (`ui/card` 재사용)
-  - [ ] 차트 4종:
+- **Task 031: 통계 대시보드 UI 및 차트 구현 (F024 프론트엔드) ✅**
+  - [x] **차트 라이브러리 도입** — `npx shadcn@latest add chart`로 `components/ui/chart.tsx` + `recharts` 설치. 이 프로젝트는 이미 shadcn/ui(`new-york`) 기반이라 별도 차트 라이브러리를 직접 도입하는 것보다 shadcn `chart` 래퍼가 **다크모드·CSS 변수 테마와 자동으로 맞물린다**는 점이 결정 근거. 설치 후 번들 크기 영향을 `npm run build`로 확인하고, 필요하면 PDF 라이브러리처럼 `await import()` 동적 로딩 검토
+  - [x] 차트 색상 토큰 추가 — `--chart-1` ~ `--chart-5`를 `app/globals.css`의 `:root`/`.dark`와 `tailwind.config.ts`에 **함께** 추가(CLAUDE.md 규칙). 진행상태 색상은 기존 배지 배색(예정=warning 주황 / 진행중=success 초록 / 완료=secondary 회색, MVP Task 020)과 **일관되게** 매핑
+  - [x] `app/protected/dashboard/page.tsx` 신규 — 부서 게이트 체크 포함(CLAUDE.md 관례), Suspense + 신규 `components/dashboard-skeleton.tsx`로 스트리밍
+  - [x] 요약 카드 4종 — 전체 로그 수 / 진행중 / 완료율 / 이번 달 신규 (`ui/card` 재사용)
+  - [x] 차트 4종:
     - 부서별 건수 — 가로 막대(상태별 스택)
     - 진행상태 분포 — 도넛
     - 월별 추이 — 선형(생성 vs 완료)
     - 부서별 예상 M/M·금액 — 막대 (입력된 건수 기준임을 명시)
-  - [ ] 대시보드 자체 필터 — 기간·부서 필터를 `searchParams` 기반으로 구현해 목록 페이지와 동일한 조작감 유지. Task 029의 기간 프리셋 컴포넌트를 재사용할 수 있도록 `components/date-range-filter.tsx`로 추출
-  - [ ] 반응형 — 데스크탑 2열 그리드 → 태블릿/모바일 1열. 차트는 `ResponsiveContainer`로 폭에 맞춰 축소되며, 모바일에서 축 라벨이 겹치지 않는지 확인
-  - [ ] 접근성 — 차트만으로는 스크린리더가 데이터를 읽을 수 없으므로 각 차트에 **동일 데이터의 요약 텍스트 또는 표 대체 콘텐츠** 제공 (MVP Task 015에서 `aria-label` 누락 이슈가 실제로 발견된 전례 반영)
-  - [ ] `components/header-nav.tsx`의 `navLinks`에 "대시보드" 링크 추가 (Task 025와 같은 파일을 수정하므로 병렬 진행 시 충돌 주의)
-  - **관련 파일**: `app/protected/dashboard/**`(신규), `components/ui/chart.tsx`(신규), `components/dashboard-*.tsx`(신규), `components/date-range-filter.tsx`(신규), `app/globals.css`, `tailwind.config.ts`, `components/header-nav.tsx`
+  - [x] 대시보드 자체 필터 — 기간·부서 필터를 `searchParams` 기반으로 구현해 목록 페이지와 동일한 조작감 유지. Task 029의 기간 프리셋 컴포넌트를 재사용할 수 있도록 `components/date-range-filter.tsx`로 추출
+  - [x] 반응형 — 데스크탑 2열 그리드 → 태블릿/모바일 1열. 차트는 `ResponsiveContainer`로 폭에 맞춰 축소되며, 모바일에서 축 라벨이 겹치지 않는지 확인
+  - [x] 접근성 — 차트만으로는 스크린리더가 데이터를 읽을 수 없으므로 각 차트에 **동일 데이터의 요약 텍스트 또는 표 대체 콘텐츠** 제공 (MVP Task 015에서 `aria-label` 누락 이슈가 실제로 발견된 전례 반영)
+  - [x] `components/header-nav.tsx`의 `navLinks`에 "대시보드" 링크 추가 (Task 025와 같은 파일을 수정하므로 병렬 진행 시 충돌 주의)
+  - **관련 파일**: `app/protected/dashboard/page.tsx`(신규), `components/ui/chart.tsx`(신규, shadcn 생성), `components/dashboard-skeleton.tsx`·`dashboard-filters.tsx`·`dashboard-summary-cards.tsx`·`dashboard-department-chart.tsx`·`dashboard-status-chart.tsx`·`dashboard-trend-chart.tsx`·`dashboard-workload-chart.tsx`(신규), `components/date-range-filter.tsx`(신규, `weekly-log-list-view.tsx`에서 추출해 양쪽이 공유), `lib/constants/chart-colors.ts`(신규), `components/weekly-log-list-view.tsx`, `components/header-nav.tsx`
   - **수락 기준**: 모든 로그인 사용자가 `/protected/dashboard`에서 부서별·기간별 현황을 차트로 확인할 수 있고, 라이트/다크 양쪽에서 판독 가능하며, 3개 뷰포트에서 레이아웃이 깨지지 않는다
-  - **테스트 체크리스트**
-    - [ ] Playwright MCP로 대시보드 진입 → 4개 차트가 모두 렌더링되고 콘솔 에러 0건인지 확인
-    - [ ] 차트 숫자가 Task 030의 RPC 결과 및 목록 페이지 실제 건수와 일치하는지 대조
-    - [ ] 기간/부서 필터 변경 시 모든 차트가 함께 갱신되는지 확인
-    - [ ] 데이터 0건 조건(신규 부서 또는 데이터 없는 기간)에서 빈 차트가 오류 없이 안내 문구로 대체되는지 확인
-    - [ ] 라이트/다크 테마 각각에서 차트 색상 대비 확인 (스크린샷 대조)
-    - [ ] 1280/768/390 3개 뷰포트에서 레이아웃·축 라벨 확인
-    - [ ] `npm run build` 후 번들 크기 및 대시보드 진입 전 recharts 청크가 로드되지 않는지 네트워크 실측 (PDF 청크와 동일한 방식)
+  - **테스트 체크리스트** (Playwright MCP + Supabase MCP, 임시 회원가입 QA 계정 `qa-task031-20260805@example.com`을 ERP시스템팀 소속으로 생성해 실브라우저 검증, 종료 후 `auth.users` DELETE로 완전 삭제해 34 profiles로 원복 확인)
+    - [x] Playwright MCP로 대시보드 진입 → 4개 차트가 모두 렌더링되고 콘솔 에러 0건인지 확인 — 전체 세션 동안 콘솔 에러 0건 유지
+    - [x] 차트 숫자가 Task 030의 RPC 결과 및 목록 페이지 실제 건수와 일치하는지 대조 — `stats_logs_by_department`/`stats_logs_by_status`/`stats_workload_summary`를 `execute_sql`로 직접 호출한 값(부서별 55/57/55건, 상태별 완료71/진행중79/예정17, ERP `mm_sum` 24·`cost_sum` 6.08억)이 화면 수치·sr-only 표와 정확히 일치. "이번 주" 프리셋(2026-08-03~08-09) 적용 시 전체 47건(10+17+20)도 RPC 재호출 결과 및 동일 조건의 `/protected/weekly-logs` 목록 페이지 페이지네이션(3페이지, 20+20+7=47)과 모두 일치 확인
+    - [x] 기간/부서 필터 변경 시 모든 차트가 함께 갱신되는지 확인 — 부서 필터는 `getLogsByStatus`/`getMonthlyTrend`(요약 카드·도넛·월별 추이)에는 반영되지만, `stats_logs_by_department`/부서별 워크로드 루프 호출은 애초에 dept_id 파라미터가 없어(Task 030 설계, "부서 비교"가 목적) 부서별 건수·M/M·금액 차트는 부서 필터와 무관하게 항상 전체 부서를 비교하도록 의도적으로 구현 — 각 카드 캡션에 이 차이를 명시. 기간 필터는 요약 카드·부서별 건수·도넛에는 반영되고, 월별 추이·워크로드 차트는 `months`/부서 조건만 쓰는 별도 RPC라 기간 필터의 영향을 받지 않음(역시 캡션에 명시). 로그 0건 부서(접근제어 프로젝트팀) 선택 시 요약 카드 전부 0, 도넛·월별 추이만 EmptyState로 전환되고 부서별 건수·워크로드 차트는 설계대로 전체 부서 데이터 유지됨을 확인
+    - [x] 데이터 0건 조건(신규 부서 또는 데이터 없는 기간)에서 빈 차트가 오류 없이 안내 문구로 대체되는지 확인 — 로그 0건 부서 선택 시 도넛·월별 추이가 "집계할 업무일지가 없습니다" EmptyState로 대체, 콘솔 에러 0건
+    - [x] 라이트/다크 테마 각각에서 차트 색상 대비 확인 (스크린샷 대조) — `next-themes` 테마 전환 버튼으로 라이트→다크 전환 후 전체 페이지 스크린샷 대조, 상태 색상(주황/초록/회색)과 `--chart-1`/`--chart-2` 계열 색상 모두 두 테마에서 배경 대비 충분히 판독 가능함을 확인
+    - [x] 1280/768/390 3개 뷰포트에서 레이아웃·축 라벨 확인 — 1280은 2열 그리드, 768/390은 1열로 정상 전환. 390에서 부서별 건수·워크로드 차트의 Y축 부서명("Commerce시스템팀")이 잘리는 문제를 실측으로 발견해 `YAxis width`를 96→108로 수정 후 재검증(전체 뷰포트에서 잘림 없음 확인)
+    - [x] `npm run build` 후 번들 크기 및 대시보드 진입 전 recharts 청크가 로드되지 않는지 네트워크 실측 (PDF 청크와 동일한 방식) — recharts 청크(약 413KB)가 `.next/server/app/protected/dashboard/page_client-reference-manifest.js`에서만 참조되고 `weekly-logs`/`admin`/`profile` 등 다른 라우트의 client-reference-manifest에는 전혀 등장하지 않음을 확인. Next.js App Router의 라우트별 코드 스플리팅이 이미 이 격리를 자동으로 보장하므로 PDF(jsPDF)처럼 클릭 시점에 `await import()`하는 추가 동적 로딩은 불필요하다고 판단(대시보드는 진입 즉시 4개 차트를 모두 그리는 것이 목적이라 지연 로딩할 상호작용 시점 자체가 없음)
+  - **로드맵과 다르게 처리한 부분**:
+    - `--chart-1`~`--chart-5`는 실측 결과 스타터킷 최초 스캐폴딩 때부터 `app/globals.css`/`tailwind.config.ts` 양쪽에 이미 정의되어 있었음(미사용 상태로 방치). 신규 추가 대신 기존 값을 그대로 재사용하고, 상태 색상은 별도로 `lib/constants/chart-colors.ts`에 `STATUS_CHART_COLORS`(planned=`--warning`/in_progress=`--success`/completed=`--muted-foreground`)로 정의. `completed`에 배지와 동일한 `--secondary`를 그대로 쓰지 않은 이유는 `--secondary`가 라이트 테마에서 카드 배경과 거의 구분되지 않는 밝은 회색이라 막대/파이 채우기 색으로는 보이지 않기 때문 — 같은 "회색" 계열이면서 실제로 대비가 나오는 `--muted-foreground`로 대체(코드 주석에 근거 명시)
+    - `stats_workload_summary`가 부서별 그룹화 없이 단일 행만 반환하므로(Task 030 설계), "부서별 예상 M/M·금액" 차트를 만들기 위해 페이지에서 `stats_logs_by_department` 결과에 등장한 부서(해당 기간에 로그가 1건이라도 있는 부서)만 대상으로 부서마다 `getWorkloadSummary`를 병렬 호출해 조합. M/M과 금액은 스케일이 전혀 달라(개월 수 vs 억 단위 원화) 한 차트에 두 축으로 겹치면 dataviz 원칙("dual-axis 금지")에 위배되므로 두 개의 독립된 가로 막대 차트(예상 M/M 합계 / 예상 금액 합계)로 분리
+    - 접근성 표 대체 콘텐츠는 별도 토글 UI 없이 `className="sr-only"` `<table>`로 각 차트 바로 아래 배치 — 스크린리더에는 전체 데이터가 읽히고 시각 사용자에게는 노출되지 않아 로드맵이 요구한 "표 대체 콘텐츠"를 UI 복잡도 추가 없이 충족
   - **범위 밖 유지**: 차트 이미지 내보내기(PNG), 대시보드 PDF 리포트, 사용자별 대시보드 커스터마이징(위젯 배치)은 요청 범위 밖
 
 ---
