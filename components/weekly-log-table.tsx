@@ -57,6 +57,11 @@ export function WeeklyLogTable({
                   )}
                 >
                   {item.title}
+                  {item.comment_count > 0 && (
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      ({item.comment_count})
+                    </span>
+                  )}
                 </Link>
               </TableCell>
               {showDepartment && (

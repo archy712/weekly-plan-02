@@ -19,6 +19,7 @@ export type WeeklyLogListItem = Pick<
   "id" | "title" | "start_date" | "target_end_date" | "status" | "department_id"
 > & {
   department_name: string;
+  comment_count: number;
 };
 
 export type WeeklyLogAttachment = Pick<

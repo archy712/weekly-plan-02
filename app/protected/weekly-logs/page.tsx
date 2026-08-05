@@ -157,6 +157,23 @@ async function WeeklyLogsContent({
     logs = data;
   }
 
+  // 댓글수는 weekly_logs와 별개 테이블(weekly_log_comments)이라 목록 조회 select에 포함할
+  // 수 없다 — 현재 페이지에 보이는 로그 id들로 별도 조회한 뒤 병합한다. 삭제된 댓글
+  // (deleted_at)은 상세 화면에서도 "삭제된 댓글입니다" placeholder로만 남고 실제 내용이
+  // 없으므로 집계에서 제외한다.
+  const logIds = logs.map((log) => log.id);
+  const commentCounts = new Map<string, number>();
+  if (logIds.length > 0) {
+    const { data: commentRows } = await supabase
+      .from("weekly_log_comments")
+      .select("weekly_log_id")
+      .in("weekly_log_id", logIds)
+      .is("deleted_at", null);
+    for (const row of commentRows ?? []) {
+      commentCounts.set(row.weekly_log_id, (commentCounts.get(row.weekly_log_id) ?? 0) + 1);
+    }
+  }
+
   const items: WeeklyLogListItem[] = logs.map((log) => ({
     id: log.id,
     title: log.title,
@@ -165,6 +182,7 @@ async function WeeklyLogsContent({
     status: log.status as WeeklyLogStatus,
     department_id: log.department_id,
     department_name: log.departments?.name ?? "",
+    comment_count: commentCounts.get(log.id) ?? 0,
   }));
 
   const { data: departmentRows } = await supabase
