@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -36,9 +36,18 @@ const costChartConfig: ChartConfig = {
   cost_sum: { label: "예상 금액", color: WORKLOAD_CHART_COLORS.cost },
 };
 
-// 큰 금액을 축에 그대로 찍으면 자리를 너무 많이 차지하므로 축약 표기(예: 7.2억)로 줄인다.
+// 큰 금액을 축·막대 라벨에 그대로 찍으면 자리를 너무 많이 차지하므로 백만/억 2개 단위로
+// 축약한다. Intl.NumberFormat의 compact notation은 1억 미만을 "만" 단위로 표기해(예:
+// 1500만원) 요청받은 "백만/억 2단위"와 맞지 않아 직접 구현. 1억 미만은 백만원 단위
+// 정수로, 1억 이상은 억원 단위로 소수 1자리까지 표기하며, 두 경우 모두 세 자리 이상이면
+// toLocaleString이 자동으로 콤마를 넣는다(예: 1,234.5억원).
 function formatCompactCurrency(value: number): string {
-  return `${Intl.NumberFormat("ko-KR", { notation: "compact" }).format(value)}원`;
+  if (Math.abs(value) >= 100_000_000) {
+    const eok = value / 100_000_000;
+    return `${eok.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억원`;
+  }
+  const million = Math.round(value / 1_000_000);
+  return `${million.toLocaleString("ko-KR")}백만원`;
 }
 
 // 부서별 예상 M/M·금액(막대, 2종). stats_workload_summary는 부서별 그룹화 없이 단일
@@ -76,7 +85,7 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                   role="img"
                   aria-label="부서별 예상 M/M 합계 가로 막대 그래프"
                 >
-                  <BarChart data={data} layout="vertical" margin={{ left: 8 }}>
+                  <BarChart data={data} layout="vertical" margin={{ left: 8, right: 32 }}>
                     <CartesianGrid horizontal={false} />
                     <XAxis type="number" allowDecimals={false} />
                     <YAxis
@@ -101,7 +110,17 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                       dataKey="mm_sum"
                       fill="var(--color-mm_sum)"
                       radius={[0, 4, 4, 0]}
-                    />
+                    >
+                      <LabelList
+                        dataKey="mm_sum"
+                        position="right"
+                        className="fill-foreground text-xs"
+                        formatter={(value) => {
+                          const numericValue = Number(value);
+                          return numericValue > 0 ? numericValue.toFixed(1) : "";
+                        }}
+                      />
+                    </Bar>
                   </BarChart>
                 </ChartContainer>
               </div>
@@ -114,7 +133,7 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                   role="img"
                   aria-label="부서별 예상 금액 합계 가로 막대 그래프"
                 >
-                  <BarChart data={data} layout="vertical" margin={{ left: 8 }}>
+                  <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56 }}>
                     <CartesianGrid horizontal={false} />
                     <XAxis
                       type="number"
@@ -143,7 +162,17 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                       dataKey="cost_sum"
                       fill="var(--color-cost_sum)"
                       radius={[0, 4, 4, 0]}
-                    />
+                    >
+                      <LabelList
+                        dataKey="cost_sum"
+                        position="right"
+                        className="fill-foreground text-xs"
+                        formatter={(value) => {
+                          const numericValue = Number(value);
+                          return numericValue > 0 ? formatCompactCurrency(numericValue) : "";
+                        }}
+                      />
+                    </Bar>
                   </BarChart>
                 </ChartContainer>
               </div>

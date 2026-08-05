@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/card";
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -20,6 +18,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { STATUS_CHART_COLORS } from "@/lib/constants/chart-colors";
 import { getStatusLabel } from "@/lib/format";
+import type { WeeklyLogStatus } from "@/lib/types";
 import type { StatusLogStats } from "@/lib/types/stats";
 
 const chartConfig: ChartConfig = {
@@ -59,7 +58,33 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
               }건, 완료 ${data.find((row) => row.status === "completed")?.log_count ?? 0}건`}
             >
               <PieChart>
-                <ChartTooltip content={<ChartTooltipContent hideLabel nameKey="status" />} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      nameKey="status"
+                      formatter={(value, name) => {
+                        const status = name as WeeklyLogStatus;
+                        const numericValue = typeof value === "number" ? value : Number(value);
+                        const percent = total > 0 ? Math.round((numericValue / total) * 100) : 0;
+                        return (
+                          <div className="flex w-full items-center gap-2">
+                            <div
+                              className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                              style={{ backgroundColor: STATUS_CHART_COLORS[status] }}
+                            />
+                            <div className="flex flex-1 items-center justify-between gap-4">
+                              <span className="text-muted-foreground">{getStatusLabel(status)}</span>
+                              <span className="font-mono font-medium text-foreground tabular-nums">
+                                {numericValue.toLocaleString()}건 ({percent}%)
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                  }
+                />
                 <Pie
                   data={data}
                   dataKey="log_count"
@@ -68,6 +93,25 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
                   outerRadius={90}
                   paddingAngle={2}
                   strokeWidth={2}
+                  label={({ cx, cy, midAngle, innerRadius: inner, outerRadius: outer, percent }) => {
+                    if (!percent || percent < 0.05 || midAngle == null) return null;
+                    const RADIAN = Math.PI / 180;
+                    const radius = inner + (outer - inner) / 2;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text
+                        x={x}
+                        y={y}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className="fill-white text-xs font-semibold"
+                      >
+                        {Math.round(percent * 100)}%
+                      </text>
+                    );
+                  }}
+                  labelLine={false}
                 >
                   {data.map((row) => (
                     <Cell key={row.status} fill={STATUS_CHART_COLORS[row.status]} />
@@ -103,15 +147,32 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
                     }}
                   />
                 </Pie>
-                <ChartLegend content={<ChartLegendContent nameKey="status" />} />
               </PieChart>
             </ChartContainer>
+            {/* 범례에도 퍼센트를 함께 표시하기 위해 shadcn ChartLegendContent 대신 직접 렌더링 */}
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-3 text-xs">
+              {data.map((row) => {
+                const percent = total > 0 ? Math.round((row.log_count / total) * 100) : 0;
+                return (
+                  <div key={row.status} className="flex items-center gap-1.5">
+                    <div
+                      className="h-2 w-2 shrink-0 rounded-[2px]"
+                      style={{ backgroundColor: STATUS_CHART_COLORS[row.status] }}
+                    />
+                    <span>
+                      {getStatusLabel(row.status)} {percent}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
             <table className="sr-only">
               <caption>진행상태별 업무일지 건수</caption>
               <thead>
                 <tr>
                   <th scope="col">진행상태</th>
                   <th scope="col">건수</th>
+                  <th scope="col">비율</th>
                 </tr>
               </thead>
               <tbody>
@@ -119,6 +180,7 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
                   <tr key={row.status}>
                     <th scope="row">{getStatusLabel(row.status)}</th>
                     <td>{row.log_count}</td>
+                    <td>{total > 0 ? Math.round((row.log_count / total) * 100) : 0}%</td>
                   </tr>
                 ))}
               </tbody>
