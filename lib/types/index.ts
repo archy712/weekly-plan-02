@@ -51,3 +51,34 @@ export type DepartmentFilter = typeof ALL_DEPARTMENTS_FILTER | string;
 export const ALL_STATUSES_FILTER = "all" as const;
 
 export type StatusFilter = typeof ALL_STATUSES_FILTER | WeeklyLogStatus;
+
+export const ALL_ROLES_FILTER = "all" as const;
+
+export type RoleFilter = typeof ALL_ROLES_FILTER | UserRole;
+
+// 사용자 관리 목록(관리자 화면) 한 행에 필요한 정보. profiles_department_id_fkey가
+// SET NULL이라 department_id/department_name은 항상 null일 가능성을 열어둔다.
+export type UserAdminListItem = {
+  id: string;
+  email: string;
+  department_id: string | null;
+  department_name: string | null;
+  role: UserRole;
+  avatar_key: string;
+  created_at: string;
+};
+
+// 사용자 상세(관리자 화면)에서 보여주는 프로필 전체 정보.
+export type UserAdminDetailData = Omit<UserAdminListItem, "department_name"> & {
+  department_name: string | null;
+  phone_number: string | null;
+  bio: string | null;
+};
+
+// 사용자 상세 화면의 "작성한 주간업무일지 요약" — 관리자가 강등/부서 이전 판단에
+// 쓰는 근거이므로 총 건수·상태별 분포·최근 5건을 함께 담는다.
+export type UserAdminLogSummary = {
+  totalCount: number;
+  statusCounts: Record<WeeklyLogStatus, number>;
+  recent: Pick<WeeklyLogListItem, "id" | "title" | "start_date" | "status">[];
+};
