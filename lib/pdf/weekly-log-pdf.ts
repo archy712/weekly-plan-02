@@ -34,9 +34,14 @@ function buildFileName(departmentLabel: string): string {
 export async function downloadWeeklyLogListPdf({
   items,
   departmentLabel,
+  dateRangeLabel,
 }: {
   items: WeeklyLogListItem[];
   departmentLabel: string;
+  // 화면에 적용된 기간 필터를 그대로 전달받아 PDF 헤더에 표기한다(화면과 PDF의 결과가
+  // 항상 일치해야 한다는 MVP Task 013 설계 원칙 — 필터가 걸려 있었는지 PDF만 보고도
+  // 알 수 있어야 한다).
+  dateRangeLabel?: string;
 }): Promise<void> {
   const [{ default: JsPDF }, { default: autoTable }, fontBase64] = await Promise.all([
     import("jspdf"),
@@ -61,6 +66,10 @@ export async function downloadWeeklyLogListPdf({
   doc.text(`주간업무일지 - ${departmentLabel}`, 14, 18);
   doc.setFontSize(10);
   doc.text(`출력일시: ${printedAt}`, 14, 25);
+  if (dateRangeLabel) {
+    doc.text(`조회 기간: ${dateRangeLabel}`, 14, 30);
+  }
+  const tableStartY = dateRangeLabel ? 35 : 30;
 
   const body =
     items.length === 0
@@ -83,7 +92,7 @@ export async function downloadWeeklyLogListPdf({
   // 한글 폰트는 normal 스타일만 등록했으므로, autoTable 기본값인 head bold를 그대로 두면
   // jsPDF가 폰트를 찾지 못해 기본 폰트(Helvetica)로 되돌아가 한글이 깨진다.
   autoTable(doc, {
-    startY: 30,
+    startY: tableStartY,
     head: [["제목", "시작일", "목표종료일", "진행상태"]],
     body,
     styles: { font: KOREAN_FONT_NAME, fontStyle: "normal" },

@@ -18,6 +18,43 @@ export function formatPhoneNumberInput(value: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
+// 로컬 날짜(YYYY-MM-DD) 문자열로 변환한다. toISOString()은 UTC 기준이라 자정 근처에서
+// 하루 밀리는 문제가 있어 getFullYear/getMonth/getDate로 직접 조합한다.
+function toDateOnlyString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// 기간 프리셋: 이번 주(월~일).
+export function getThisWeekRange(base: Date = new Date()): { from: string; to: string } {
+  const day = base.getDay(); // 0=일 ... 6=토
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(base);
+  monday.setDate(base.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { from: toDateOnlyString(monday), to: toDateOnlyString(sunday) };
+}
+
+// 기간 프리셋: 이번 달(1일~말일).
+export function getThisMonthRange(base: Date = new Date()): { from: string; to: string } {
+  const first = new Date(base.getFullYear(), base.getMonth(), 1);
+  const last = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  return { from: toDateOnlyString(first), to: toDateOnlyString(last) };
+}
+
+// 기간 프리셋: 최근 N개월(오늘 기준 N개월 전 같은 날짜 ~ 오늘).
+export function getRecentMonthsRange(
+  months: number,
+  base: Date = new Date(),
+): { from: string; to: string } {
+  const from = new Date(base);
+  from.setMonth(from.getMonth() - months);
+  return { from: toDateOnlyString(from), to: toDateOnlyString(base) };
+}
+
 // This check can be removed, it is just for tutorial purposes
 export const hasEnvVars =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&

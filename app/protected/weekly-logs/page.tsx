@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogListView } from "@/components/weekly-log-list-view";
@@ -17,10 +18,22 @@ import type {
 const LOGS_SELECT =
   "id, title, start_date, target_end_date, status, department_id, created_at, departments(name)";
 
+// 잘못된 형식의 from/to는 500 크래시 대신 조용히 무시한다(MVP Task 014에서 잘못된 UUID가
+// 500을 유발했던 사례와 동일한 방어 관례).
+const dateParamSchema = z.string().date();
+
+type WeeklyLogsSearchParams = {
+  department?: string;
+  q?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+};
+
 async function WeeklyLogsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; q?: string; status?: string }>;
+  searchParams: Promise<WeeklyLogsSearchParams>;
 }) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
@@ -40,7 +53,13 @@ async function WeeklyLogsContent({
   }
 
   const isAdmin = profile.role === "admin";
-  const { department: departmentParam, q: rawQuery, status: statusParam } = await searchParams;
+  const {
+    department: departmentParam,
+    q: rawQuery,
+    status: statusParam,
+    from: fromParam,
+    to: toParam,
+  } = await searchParams;
   // weekly_logs SELECT는 전 부서 공개이므로 department 파라미터는 누구나 사용할 수 있다.
   // 쓰기(등록/수정/삭제)는 RLS에서 여전히 소속 부서(또는 admin)로만 제한된다.
   // 파라미터가 없는 첫 진입 시 기본값은 admin은 전체, 일반 유저는 소속 부서로 좁힌다.
@@ -52,6 +71,15 @@ async function WeeklyLogsContent({
     statusParam && VALID_STATUSES.includes(statusParam as WeeklyLogStatus)
       ? (statusParam as WeeklyLogStatus)
       : ALL_STATUSES_FILTER;
+
+  // 형식이 올바르지 않은 값(예: ?from=abc)은 필터를 적용하지 않고 조용히 무시한다.
+  let fromDate = fromParam && dateParamSchema.safeParse(fromParam).success ? fromParam : undefined;
+  let toDate = toParam && dateParamSchema.safeParse(toParam).success ? toParam : undefined;
+  // from > to처럼 뒤집힌 범위는 에러로 취급하지 않고 두 값을 교환해 항상 유효한 범위로
+  // 정규화한다(사용자가 입력 순서를 헷갈려도 결과가 빈 목록으로 튕기지 않도록).
+  if (fromDate && toDate && fromDate > toDate) {
+    [fromDate, toDate] = [toDate, fromDate];
+  }
 
   let logs;
 
@@ -72,6 +100,20 @@ async function WeeklyLogsContent({
     if (selectedStatus !== ALL_STATUSES_FILTER) {
       titleQuery = titleQuery.eq("status", selectedStatus);
       contentQuery = contentQuery.eq("status", selectedStatus);
+    }
+
+    // 기간 필터는 "기간이 겹치는 항목"을 기준으로 삼는다: start_date <= to AND
+    // target_end_date >= from. start_date만 비교하면 조회 기간 이전에 시작해 아직 끝나지
+    // 않은 장기 과제가 결과에서 누락되므로 부적절하다고 판단했다.
+    // 키워드 검색은 title/content 두 쿼리로 나뉘어 병합되므로, 한쪽에만 조건을 걸면 병합된
+    // 결과가 필터를 우회하게 된다 — 반드시 양쪽 쿼리 모두에 동일하게 적용해야 한다.
+    if (toDate) {
+      titleQuery = titleQuery.lte("start_date", toDate);
+      contentQuery = contentQuery.lte("start_date", toDate);
+    }
+    if (fromDate) {
+      titleQuery = titleQuery.gte("target_end_date", fromDate);
+      contentQuery = contentQuery.gte("target_end_date", fromDate);
     }
 
     const [titleResult, contentResult] = await Promise.all([titleQuery, contentQuery]);
@@ -100,6 +142,14 @@ async function WeeklyLogsContent({
 
     if (selectedStatus !== ALL_STATUSES_FILTER) {
       logsQuery = logsQuery.eq("status", selectedStatus);
+    }
+
+    // 기간이 겹치는 항목만 남긴다(위 검색 분기와 동일한 판단 기준).
+    if (toDate) {
+      logsQuery = logsQuery.lte("start_date", toDate);
+    }
+    if (fromDate) {
+      logsQuery = logsQuery.gte("target_end_date", fromDate);
     }
 
     const { data, error: logsError } = await logsQuery;
@@ -135,6 +185,8 @@ async function WeeklyLogsContent({
       currentDepartmentName={currentDepartmentName}
       currentSearchQuery={searchQuery}
       currentStatus={selectedStatus}
+      currentFrom={fromDate}
+      currentTo={toDate}
       isAdmin={isAdmin}
     />
   );
@@ -143,7 +195,7 @@ async function WeeklyLogsContent({
 export default function WeeklyLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; q?: string; status?: string }>;
+  searchParams: Promise<WeeklyLogsSearchParams>;
 }) {
   return (
     <div className="flex-1 w-full flex flex-col gap-6">

@@ -16,10 +16,14 @@ type NavUser = {
 } | null;
 
 function getNavLinks(user: NavUser): { href: string; label: string }[] {
-  if (user?.role === "admin") {
-    return [{ href: "/protected/admin", label: "관리자 설정" }];
+  if (!user) {
+    return [];
   }
-  return [];
+  const links = [{ href: "/protected/dashboard", label: "대시보드" }];
+  if (user.role === "admin") {
+    links.push({ href: "/protected/admin", label: "관리자 설정" });
+  }
+  return links;
 }
 
 async function getNavUser(): Promise<NavUser> {
