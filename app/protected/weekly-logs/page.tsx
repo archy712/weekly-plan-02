@@ -135,6 +135,7 @@ async function WeeklyLogsContent({
       currentDepartmentName={currentDepartmentName}
       currentSearchQuery={searchQuery}
       currentStatus={selectedStatus}
+      isAdmin={isAdmin}
     />
   );
 }

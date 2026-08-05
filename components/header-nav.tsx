@@ -15,7 +15,12 @@ type NavUser = {
   avatarKey: string;
 } | null;
 
-const navLinks: { href: string; label: string }[] = [];
+function getNavLinks(user: NavUser): { href: string; label: string }[] {
+  if (user?.role === "admin") {
+    return [{ href: "/protected/admin", label: "관리자 설정" }];
+  }
+  return [];
+}
 
 async function getNavUser(): Promise<NavUser> {
   const supabase = await createClient();
@@ -41,6 +46,7 @@ async function getNavUser(): Promise<NavUser> {
 
 export async function HeaderNav() {
   const user = await getNavUser();
+  const navLinks = getNavLinks(user);
 
   return (
     <>
