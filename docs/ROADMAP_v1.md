@@ -7,7 +7,7 @@ MVP로 완성된 기록·조회 서비스를 **운영자가 직접 조직을 관
 v1 고도화는 MVP(`docs/roadmap/ROADMAP_mvp.md`, Task 001~024 완료)에서 "MVP 이후 기능"으로 명시적으로 제외했던 6가지(`docs/PRD.md` 3절)를 구현 범위로 삼습니다:
 
 - **[F019] 부서 관리 UI**: 관리자가 화면에서 부서를 추가/수정/비활성화 (현재는 seed 데이터 + SQL 수동 관리)
-- **[F020] 사용자 역할 관리 UI**: 관리자가 다른 사용자의 `role`(`user`/`admin`)과 소속 부서를 지정/변경 (현재는 Supabase 콘솔에서 SQL 수동 변경)
+- **[F020] 사용자 관리 UI**: 관리자가 사용자 목록을 조회하고, 개별 사용자의 상세 정보를 확인하며, `role`(`user`/`admin`)과 소속 부서를 지정/변경 (현재는 Supabase 콘솔에서 SQL 수동 변경)
 - **[F021] 기간 범위 검색/필터**: 시작일/목표종료일 범위로 목록을 좁히는 필터 (기존 키워드 검색 F016·진행상태 필터와 조합)
 - **[F022] 댓글·멘션 협업**: 주간업무일지에 댓글을 작성하고 `@`로 다른 사용자를 멘션
 - **[F023] 실시간 알림**: 멘션·댓글 발생 시 Supabase Realtime 기반으로 헤더에 즉시 알림 노출
@@ -109,14 +109,17 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - [ ] `lib/auth/require-admin.ts` 신규 — `requireAdmin()` / `getCurrentProfile()` 헬퍼로 "세션 확인 → `profiles` 조회 → 부서 게이트 → 관리자 확인" 반복 코드를 한 곳으로 통합. 기존 4개 보호 페이지의 중복 부서 체크도 이 헬퍼로 점진 교체 가능하도록 시그니처 설계
   - [ ] **가드 위치 결정**: `proxy.ts`가 아니라 **레이아웃/페이지 레벨**에서 처리 — proxy는 이미 요청당 `profiles` 조회를 1회 하고 있고, CLAUDE.md가 `lib/supabase/proxy.ts` 수정을 금지하고 있으며, 관리자 라우트는 전체 트래픽 중 극소수라 전역 미들웨어에 비용을 얹을 이유가 없음
   - [ ] `components/header-nav.tsx`의 `navLinks`(현재 빈 배열)에 관리자일 때만 "관리자 설정" 링크 노출, `components/mobile-nav.tsx`에도 동일 반영 (두 컴포넌트가 `navLinks`를 공유하므로 role 조건부 배열 생성 방식으로 처리)
+  - [ ] **주간업무일지 목록 페이지(메인)에 명시적 진입 링크 배치** — `components/weekly-log-list-view.tsx`의 "[신규 작성]" 버튼 옆(또는 페이지 상단 툴바)에 관리자일 때만 노출되는 "관리자 콘솔" 버튼/링크를 추가해 `/protected/admin`으로 이동. 헤더 내비게이션(위 항목)과는 **별도의 진입점**으로, 로그인 후 가장 먼저 보는 화면인 주간업무일지 목록에서 곧바로 관리자 화면에 들어갈 수 있어야 함(요구사항: "관리자로 로그인하기 위해서는 주간업무일지 메인에서 링크를 통해 이동"). `canWrite` 계산과 마찬가지로 서버 컴포넌트에서 `profiles.role`을 조회해 `isAdmin` prop으로 전달하고 클라이언트에서는 노출 여부만 판단(실제 접근 차단은 Task 025의 레이아웃 가드가 담당)
   - [ ] `app/protected/admin/{loading,error}.tsx` 배치 — 기존 라우트와 동일하게 `components/error-state.tsx` 재사용
-  - **관련 파일**: `app/protected/admin/**`, `lib/auth/require-admin.ts`(신규), `components/header-nav.tsx`, `components/mobile-nav.tsx`
-  - **수락 기준**: 관리자 계정으로 `/protected/admin/departments` 접근 시 빈 화면이 렌더링되고, 일반 사용자 계정으로 URL 직접 입력 시 목록 페이지로 리디렉션된다. 헤더 메뉴는 관리자에게만 보인다
+  - **관련 파일**: `app/protected/admin/**`, `lib/auth/require-admin.ts`(신규), `components/header-nav.tsx`, `components/mobile-nav.tsx`, `components/weekly-log-list-view.tsx`, `app/protected/weekly-logs/page.tsx`
+  - **수락 기준**: 관리자 계정으로 `/protected/admin/departments` 접근 시 빈 화면이 렌더링되고, 일반 사용자 계정으로 URL 직접 입력 시 목록 페이지로 리디렉션된다. 헤더 메뉴와 주간업무일지 목록 페이지 양쪽에서 관리자에게만 진입 링크가 보인다
   - **테스트 체크리스트**
     - [ ] 관리자 계정으로 `/protected/admin/*` 2개 라우트 접근 성공 확인
     - [ ] 일반 사용자 계정으로 URL 직접 접근 시 리디렉션 확인 (UI 은닉만으로 방어하지 않음)
     - [ ] 비로그인 상태 접근 시 기존 `proxy.ts` 게이트로 `/auth/login` 리디렉션되는지 확인
     - [ ] 부서 미설정 관리자 계정이 `/protected/admin`에 접근할 때 온보딩 게이트가 먼저 동작하는지 확인
+    - [ ] 관리자 계정으로 주간업무일지 목록 페이지 진입 시 "관리자 콘솔" 링크가 보이고 클릭하면 `/protected/admin`으로 이동하는지 확인
+    - [ ] 일반 사용자 계정으로 주간업무일지 목록 페이지 진입 시 해당 링크가 보이지 않는지 확인
   - **범위 밖 유지**: 실제 부서/사용자 CRUD 기능(Task 027·028), 기존 4개 페이지의 중복 부서 체크 리팩터링(헬퍼만 준비하고 교체는 선택)
 
 - **Task 026: 권한 모델 하드닝 및 관리자 쓰기 정책 마이그레이션**
@@ -163,25 +166,32 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - [ ] 일반 사용자가 `lib/actions/department.ts`의 액션을 직접 호출해도 RLS로 거부되는지 확인 (관리자 UI 은닉만으로 방어하지 않음)
   - **범위 밖 유지**: 부서 계층 구조(상위/하위 부서), 부서장 지정, 부서 통폐합(A 부서의 로그를 B로 일괄 이관)은 요청 범위 밖
 
-- **Task 028: 사용자 역할·소속 관리 UI 구현 (F020)**
-  - [ ] `app/protected/admin/users/page.tsx` 완성 — 전체 사용자 목록을 `ui/table`로 렌더링. 컬럼: 아바타+이메일 / 소속 부서 / 역할 / 가입일 / 액션. `profiles_select_own_or_admin` 정책 덕분에 관리자는 추가 정책 없이 전체 조회 가능
+- **Task 028: 사용자 관리 UI 구현 — 목록·상세·권한 수정 (F020)**
+  - [ ] `app/protected/admin/users/page.tsx` 완성 — 전체 사용자 목록을 `ui/table`로 렌더링. 컬럼: 아바타+이메일 / 소속 부서 / 역할 / 가입일 / 액션(상세 보기). `profiles_select_own_or_admin` 정책 덕분에 관리자는 추가 정책 없이 전체 조회 가능
   - [ ] 검색·필터 — 이메일 키워드 검색(`escapeLikePattern` + `ilike`), 부서 필터, 역할 필터. 기존 목록 페이지와 동일하게 `searchParams` 기반 서버 재조회 + Suspense 구조
   - [ ] 20건 단위 페이지네이션 — `components/ui/pagination.tsx`(MVP Task 018 설치분) 재사용. 현재 34명 규모라 필수는 아니나 목록 페이지와 UX를 통일
+  - [ ] 목록 행(또는 이메일) 클릭 시 `app/protected/admin/users/[id]/page.tsx`로 이동 — 목록의 역할 셀렉트는 빠른 변경용으로 유지하되, 정식 권한 수정 흐름은 상세 페이지를 기본 경로로 안내
+  - [ ] **`app/protected/admin/users/[id]/page.tsx` 신규(사용자 상세)** — 대상 사용자의 프로필 전체(이메일·아바타·소속 부서·역할·전화번호·자기소개·가입일)를 조회해 표시. 존재하지 않는 `id`는 MVP Task 014에서 실측된 "잘못된 UUID 500 크래시" 사례와 동일하게 방어(`notFound()`로 404 처리, 크래시 금지)
+  - [ ] 사용자 상세 페이지에 **해당 사용자가 작성한 주간업무일지 요약** 표시 — 총 작성 건수, 상태별 분포(예정/진행중/완료), 최근 5건 목록(제목·날짜·상태, 클릭 시 해당 상세로 이동). 관리자가 "이 사용자를 강등/부서 이전해도 되는지" 판단할 근거를 목록 화면 없이 한 번에 확인할 수 있게 함
+  - [ ] 사용자 상세 페이지에 **역할·소속 부서 변경 폼** 배치(이 Task의 핵심 권한 수정 UI) — `ui/select`(user/admin) + 부서 선택 `ui/select`, React Hook Form 없이 단순 상태로도 무방(필드 2개뿐)
   - [ ] `lib/actions/user-admin.ts` 신규 — `updateUserRoleAction(userId, role)`, `updateUserDepartmentAction(userId, departmentId)`. 서버에서 호출자의 `profiles.role`을 재조회해 관리자인지 확인(클라이언트 값 불신) 후 실행하며, RLS·트리거로도 이중 방어됨
-  - [ ] 역할 변경 UI — `ui/select`(user/admin) 즉시 반영 + 낙관적 업데이트 + 실패 시 롤백 + `sonner` 토스트. `components/weekly-log-detail-view.tsx`의 진행상태 변경 패턴을 그대로 재사용
-  - [ ] **자기 자신 강등 방지 UI** — 로그인한 관리자 본인 행의 역할 셀렉트는 비활성화하고 "본인 역할은 변경할 수 없습니다" 툴팁 노출 (Task 026의 DB 트리거와 이중 방어)
-  - [ ] 소속 부서 변경 시 경고 — 사용자의 부서를 바꾸면 **그 사용자가 기존에 작성한 `weekly_logs`의 쓰기 권한을 잃는다**(RLS가 `department_id = current_department_id()` 기준). 변경 확인 `alert-dialog`에 이 영향을 명시
+  - [ ] 역할 변경 UI — 목록의 인라인 셀렉트와 상세 페이지의 폼 양쪽 모두 즉시 반영 + 낙관적 업데이트 + 실패 시 롤백 + `sonner` 토스트. `components/weekly-log-detail-view.tsx`의 진행상태 변경 패턴을 그대로 재사용
+  - [ ] **자기 자신 강등 방지 UI** — 로그인한 관리자 본인 행(목록)·본인 상세 페이지의 역할 컨트롤은 비활성화하고 "본인 역할은 변경할 수 없습니다" 안내 노출 (Task 026의 DB 트리거와 이중 방어)
+  - [ ] 소속 부서 변경 시 경고 — 사용자의 부서를 바꾸면 **그 사용자가 기존에 작성한 `weekly_logs`의 쓰기 권한을 잃는다**(RLS가 `department_id = current_department_id()` 기준). 변경 확인 `alert-dialog`에 이 영향을 명시(상세 페이지의 작성 건수 요약과 함께 보여주면 판단에 도움)
   - [ ] 역할 변경 즉시 반영 확인 — 권한은 매 요청 `profiles.role`을 조회하는 구조라 재로그인이 불필요함(`docs/guides/deployment-ops.md` 4절에 기록된 MVP 검증 결과)을 UI 안내 문구에도 반영
-  - **관련 파일**: `app/protected/admin/users/page.tsx`, `lib/actions/user-admin.ts`(신규), `components/user-admin-table.tsx`(신규)
-  - **수락 기준**: 관리자가 화면에서 다른 사용자를 `admin`으로 승격/강등하고 소속 부서를 변경할 수 있으며, 변경이 재로그인 없이 즉시 권한에 반영된다
+  - **관련 파일**: `app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`(신규), `lib/actions/user-admin.ts`(신규), `components/user-admin-table.tsx`(신규), `components/user-admin-detail.tsx`(신규)
+  - **수락 기준**: 관리자가 목록에서 사용자를 조회하고, 개별 사용자의 상세 화면(프로필 전체 정보 + 작성 업무일지 요약)을 확인하고, 목록과 상세 양쪽에서 `admin`으로 승격/강등 및 소속 부서 변경이 가능하며, 변경이 재로그인 없이 즉시 권한에 반영된다
   - **테스트 체크리스트**
-    - [ ] Playwright MCP로 일반 사용자를 관리자로 승격 → 해당 계정으로 로그인 시 헤더에 "관리자" 배지와 관리자 메뉴가 노출되는지 확인
+    - [ ] Playwright MCP로 목록에서 사용자 클릭 → 상세 페이지 이동 → 프로필 전체 정보와 작성 업무일지 요약이 정확히 표시되는지 확인
+    - [ ] 존재하지 않는 `id`로 상세 페이지 직접 접근 시 500 크래시 없이 404 처리되는지 확인
+    - [ ] 일반 사용자를 상세 페이지에서 관리자로 승격 → 해당 계정으로 로그인 시 헤더에 "관리자" 배지와 관리자 메뉴가 노출되는지 확인
     - [ ] 승격된 계정이 재로그인 없이(세션 유지 상태에서) 타 부서 로그를 수정할 수 있는지 확인
     - [ ] 관리자를 일반 사용자로 강등 → 관리자 라우트 접근이 즉시 차단되는지 확인
-    - [ ] 본인 행의 역할 셀렉트가 비활성화되어 있는지, DB 레벨에서도 거부되는지 확인
+    - [ ] 목록의 인라인 역할 변경과 상세 페이지의 역할 변경 양쪽이 서로 동기화되는지(한쪽에서 변경 후 다른 화면 새로고침 시 반영) 확인
+    - [ ] 본인 행/본인 상세 페이지의 역할 컨트롤이 비활성화되어 있는지, DB 레벨에서도 거부되는지 확인
     - [ ] 마지막 관리자 강등 시도가 거부되고 한국어 메시지가 표시되는지 확인
     - [ ] 사용자의 부서 변경 후 그 사용자의 기존 로그에 대한 쓰기 UI(`canWrite`)가 실제로 사라지는지 확인
-    - [ ] 일반 사용자가 `/protected/admin/users`에 직접 접근 시 차단되는지 확인
+    - [ ] 일반 사용자가 `/protected/admin/users`, `/protected/admin/users/[id]`에 직접 접근 시 차단되는지 확인
   - **범위 밖 유지**: 사용자 계정 삭제/비활성화, 초대 기반 가입, 부서별 관리자(부분 권한) 같은 3단계 이상의 역할 체계는 요청 범위 밖 — 역할은 `user`/`admin` 2단계 유지
 
 ---
@@ -422,7 +432,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | 기능 ID | 기능명 | 담당 Task |
 |---------|--------|-----------|
 | F019 | 부서 관리 UI | Task 025(라우트 골격), Task 026(RLS), Task 027 |
-| F020 | 사용자 역할 관리 UI | Task 025(라우트 골격), Task 026(권한 하드닝), Task 028 |
+| F020 | 사용자 관리 UI(목록·상세·권한 수정) | Task 025(라우트 골격·메인 진입 링크), Task 026(권한 하드닝), Task 028 |
 | F021 | 기간 범위 검색/필터 | Task 029 |
 | F022 | 댓글·멘션 협업 | Task 032(스키마·액션), Task 033(UI) |
 | F023 | 실시간 알림 | Task 034(스키마·Realtime 인프라), Task 035(UI·구독) |
