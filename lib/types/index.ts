@@ -42,6 +42,7 @@ export type WeeklyLogDetail = Pick<
   department_name: string;
   author_email: string | null;
   attachments: WeeklyLogAttachment[];
+  comments: WeeklyLogComment[];
 };
 
 export const ALL_DEPARTMENTS_FILTER = "all" as const;
@@ -82,4 +83,31 @@ export type UserAdminLogSummary = {
   totalCount: number;
   statusCounts: Record<WeeklyLogStatus, number>;
   recent: Pick<WeeklyLogListItem, "id" | "title" | "start_date" | "status">[];
+};
+
+// 멘션 배지 렌더링에 필요한 최소 신원 정보. get_profile_identities RPC로 조회한다
+// (profiles RLS는 본인/관리자만 허용하므로 이 함수 없이는 타인의 email/이름을 알 수 없다).
+export type WeeklyLogCommentMention = {
+  id: string;
+  email: string | null;
+  name: string | null;
+};
+
+// 상세 페이지 댓글 목록에 필요한 정보. deleted_at이 있으면 "삭제된 댓글입니다"로
+// 렌더링하되 대댓글(parent_comment_id로 참조)은 유지한다(소프트 삭제, Task 032).
+export type WeeklyLogComment = Pick<
+  Tables<"weekly_log_comments">,
+  | "id"
+  | "weekly_log_id"
+  | "author_id"
+  | "content"
+  | "parent_comment_id"
+  | "created_at"
+  | "updated_at"
+  | "deleted_at"
+> & {
+  author_email: string | null;
+  author_name: string | null;
+  author_avatar_key: string;
+  mentions: WeeklyLogCommentMention[];
 };

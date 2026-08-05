@@ -43,6 +43,19 @@ export function formatDepartmentChangeWarning(logCount: number): string {
   return `이 사용자가 작성한 업무일지 ${logCount}건에 대한 쓰기 권한을 잃게 됩니다. 계속하시겠습니까?`;
 }
 
+// 댓글 작성 시각 표시용. 7일 이상 지나면 상대 시간 대신 절대 날짜(formatDate)로 전환한다.
+export function formatRelativeTime(value: string): string {
+  const diffSec = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
+  if (diffSec < 60) return "방금 전";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return formatDate(value);
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   const units = ["KB", "MB", "GB"];

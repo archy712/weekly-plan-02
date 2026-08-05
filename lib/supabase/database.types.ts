@@ -140,6 +140,94 @@ export type Database = {
           },
         ]
       }
+      weekly_log_comment_mentions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          mentioned_user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          mentioned_user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          mentioned_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_log_comment_mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_log_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_comment_mentions_mentioned_user_id_fkey"
+            columns: ["mentioned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_log_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          parent_comment_id: string | null
+          updated_at: string
+          weekly_log_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          parent_comment_id?: string | null
+          updated_at?: string
+          weekly_log_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          parent_comment_id?: string | null
+          updated_at?: string
+          weekly_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_log_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_log_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_comments_weekly_log_id_fkey"
+            columns: ["weekly_log_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_logs: {
         Row: {
           author_id: string
@@ -209,7 +297,25 @@ export type Database = {
     }
     Functions: {
       current_department_id: { Args: never; Returns: string }
+      get_profile_identities: {
+        Args: { profile_ids: string[] }
+        Returns: {
+          avatar_key: string
+          email: string
+          id: string
+          name: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
+      search_mentionable_profiles: {
+        Args: { max_results?: number; search_query: string }
+        Returns: {
+          avatar_key: string
+          email: string
+          id: string
+          name: string
+        }[]
+      }
       stats_logs_by_department: {
         Args: { from_date?: string; to_date?: string }
         Returns: {

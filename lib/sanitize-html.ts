@@ -28,3 +28,11 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
 export function sanitizeWeeklyLogContent(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR });
 }
+
+// 댓글은 Tiptap 리치 텍스트가 아니라 plain text로 저장한다 — weekly_logs.content처럼
+// 일부 태그를 허용하는 것보다 태그를 전혀 허용하지 않는 편이 공격면이 작다는 판단
+// (Task 032 결정). 렌더링 시에는 이 값을 그대로 텍스트로 출력해(React가 자동 이스케이프)
+// 이중으로 방어한다.
+export function sanitizeCommentContent(content: string): string {
+  return DOMPurify.sanitize(content, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+}

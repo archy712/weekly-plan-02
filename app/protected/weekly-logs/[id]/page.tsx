@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
 import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton";
+import { getWeeklyLogComments } from "@/lib/queries/comments";
 import type { WeeklyLogStatus } from "@/lib/types";
 
 async function WeeklyLogDetailContent({
@@ -68,6 +69,9 @@ async function WeeklyLogDetailContent({
     throw attachmentsError;
   }
 
+  // 댓글도 첨부파일과 동일하게 weekly_logs SELECT 공개 범위를 그대로 따른다(부서 무관 조회).
+  const comments = await getWeeklyLogComments(supabase, id);
+
   return (
     <WeeklyLogDetailView
       log={{
@@ -84,8 +88,11 @@ async function WeeklyLogDetailContent({
         department_name: log.departments?.name ?? "",
         author_email: log.profiles?.email ?? null,
         attachments: attachments ?? [],
+        comments,
       }}
       canWrite={canWrite}
+      currentUserId={data.claims.sub}
+      isAdmin={profile.role === "admin"}
     />
   );
 }

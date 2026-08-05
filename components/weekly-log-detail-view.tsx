@@ -32,6 +32,7 @@ import {
   WeeklyLogForm,
 } from "@/components/weekly-log-form";
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
+import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
 import type { WeeklyLogDetail, WeeklyLogStatus } from "@/lib/types";
@@ -47,9 +48,13 @@ const STATUS_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "completed"
 export function WeeklyLogDetailView({
   log,
   canWrite,
+  currentUserId,
+  isAdmin,
 }: {
   log: WeeklyLogDetail;
   canWrite: boolean;
+  currentUserId: string;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -255,6 +260,12 @@ export function WeeklyLogDetailView({
           </div>
         </>
       )}
+      <WeeklyLogCommentSection
+        weeklyLogId={log.id}
+        comments={log.comments}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
