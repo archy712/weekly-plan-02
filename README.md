@@ -26,7 +26,7 @@
 - **프로필 상세 정보** — 전화번호(숫자만 입력해도 `010-1234-5678` 형식으로 하이픈 자동 삽입)·프리셋 아바타(이모지 24종을 팝업 다이얼로그에서 택1)·자기소개(최대 500자) 입력을 프로필 화면과 회원가입 화면에서 지원, 선택한 아바타는 공통 헤더의 이메일 앞에도 표시
 - **다크모드 토글 · 반응형 레이아웃**(데스크탑/태블릿/모바일)
 
-기능별 상세 명세는 [`docs/PRD.md`](docs/PRD.md)를 참고하세요.
+기능별 상세 명세는 [`docs/PRD.md`](docs/PRD.md)를 참고하세요. 다음 단계로 계획 중인 고도화(v1) 기능 — 부서 관리·사용자 관리 UI, 주간업무일지 기간 범위 검색, 댓글·멘션, 실시간 알림, 통계 대시보드 — 는 아직 구현 전이며 [`docs/ROADMAP_v1.md`](docs/ROADMAP_v1.md)에서 계획을 확인할 수 있습니다.
 
 ## 기술 스택
 
@@ -82,7 +82,8 @@ DB 스키마 마이그레이션, RLS 정책, 관리자 계정 지정, 부서 see
 
 ## 문서
 
-- [`docs/PRD.md`](docs/PRD.md) — 기능 명세, 사용자 여정, 데이터 모델
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — 개발 이력과 진행 상황
+- [`docs/PRD.md`](docs/PRD.md) — 기능 명세, 사용자 여정, 데이터 모델(MVP + v1 고도화 계획 포함)
+- [`docs/roadmap/ROADMAP_mvp.md`](docs/roadmap/ROADMAP_mvp.md) — MVP 개발 이력과 진행 상황(완료)
+- [`docs/ROADMAP_v1.md`](docs/ROADMAP_v1.md) — v1 고도화 개발 계획(진행 예정)
 - [`docs/guides/`](docs/guides/) — 아키텍처·스타일·폼 처리·배포 운영 상세 가이드
 - [`CLAUDE.md`](CLAUDE.md) — Claude Code로 이 저장소를 다룰 때의 아키텍처 관례

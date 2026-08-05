@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태이며, 부서 관리 UI·사용자 관리 UI·기간 범위 검색·댓글·멘션·실시간 알림·통계 대시보드를 추가하는 v1 고도화는 `docs/ROADMAP_v1.md`에 계획되어 있고 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+
 ## 명령어
 
 ```bash
@@ -50,6 +52,7 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 - `weekly_logs`의 RLS는 **SELECT는 전 부서에 공개**되어 있고, **INSERT/UPDATE/DELETE만 작성자의 소속 부서 또는 `role='admin'`으로 제한**됩니다. 목록/상세 조회 쿼리에서 부서로 필터링하지 않아도 되며(관리자 여부와 무관하게 모든 로그인 사용자가 부서 필터를 쓸 수 있음), 쓰기 액션 UI만 서버에서 계산한 `canWrite` 같은 값으로 노출 여부를 제어해야 합니다(`app/protected/weekly-logs/[id]/page.tsx` 참고).
 - 목록 페이지의 부서 필터 **기본값**은 `department` 쿼리 파라미터가 없을 때만 role로 분기합니다(관리자는 전체, 일반 사용자는 소속 부서). 파라미터가 있으면 role과 무관하게 그대로 사용합니다.
+- **`profiles.role`에는 자기 상승을 막는 `BEFORE UPDATE` 트리거(`prevent_unauthorized_role_change()`, `SECURITY DEFINER`)가 이미 적용되어 있습니다.** `profiles_update_own` 정책이 행 단위 제한만 걸려 있어(컬럼 제한 없음) 원래는 로그인한 누구나 자신의 `role`을 `admin`으로 바꿀 수 있었던 결함을 막은 것입니다 — `NEW.role`이 `OLD.role`과 다른데 호출자가 `is_admin()`이 아니면 예외를 던집니다. 이 트리거는 마이그레이션 파일이 아니라 Supabase MCP(`apply_migration`)로 직접 적용되어 있어 로컬 `supabase/migrations/` 디렉터리에는 보이지 않으니, 스키마 확인 시 `mcp__supabase__list_migrations`나 `execute_sql`로 실측할 것. v1 고도화(`docs/ROADMAP_v1.md` Task 026~028)에서 `profiles`의 UPDATE 정책을 `own_or_admin`으로 넓히더라도 **이 트리거는 그대로 유지**해야 관리자 지정 UI가 생긴 뒤에도 자기 상승 경로가 막힌 채 유지됩니다.
 
 ### 검색 필터 작성 시 주의사항
 
@@ -115,6 +118,6 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
   - `nextjs-supabase-expert`(`dev/nextjs-supabase-developer.md`) — Next.js+Supabase 기능 구현
   - `ui-markup-specialist`(`dev/ui-markup-specialist.md`) — 정적 마크업/스타일링
   - `nextjs-app-developer`(`dev/nextjs-app-developer.md`) — 라우팅/레이아웃 구조
-  - `code-reviewer`(`dev/code-reviewer.md`), `development-planner`(`dev/development-planner.md`, ROADMAP.md 관리), `starter-cleaner`(`dev/starter-cleaner.md`), `notion-api-database-expert`(`dev/notion-api-database-expert.md`)
+  - `code-reviewer`(`dev/code-reviewer.md`), `development-planner`(`dev/development-planner.md`, `docs/roadmap/ROADMAP_mvp.md`·`docs/ROADMAP_v1.md` 관리), `starter-cleaner`(`dev/starter-cleaner.md`), `notion-api-database-expert`(`dev/notion-api-database-expert.md`)
   - `prd-generator`, `prd-validator`(`docs/`)
 - `.claude/commands/git/`에 `commit`, `pr`, `merge`, `branch`, `update-roadmap` 슬래시 커맨드가 정의되어 있습니다.
