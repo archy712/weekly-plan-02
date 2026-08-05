@@ -11,9 +11,6 @@ async function AdminGuard({ children }: { children: React.ReactNode }) {
     <>
       <div>
         <h1 className="text-2xl font-semibold">관리자 콘솔</h1>
-        <p className="text-sm text-muted-foreground">
-          부서와 사용자를 관리합니다.
-        </p>
       </div>
       <AdminTabNav />
       {children}
