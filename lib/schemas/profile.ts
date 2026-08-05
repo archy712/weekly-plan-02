@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AVATAR_KEYS } from "@/lib/constants/avatars";
 
 export const profileSchema = z.object({
+  name: z.string().trim().max(50, "이름은 최대 50자까지 입력 가능합니다").optional(),
   department_id: z.string().uuid("부서를 선택해주세요"),
   phone_number: z
     .string()

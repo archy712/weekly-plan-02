@@ -121,6 +121,10 @@ export function UserAdminDetail({
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
+            <p className="text-sm text-muted-foreground">이름</p>
+            <p className="font-medium">{user.name ?? "-"}</p>
+          </div>
+          <div>
             <p className="text-sm text-muted-foreground">소속 부서</p>
             <p className="font-medium">{user.department_name ?? "미배정"}</p>
           </div>

@@ -41,7 +41,7 @@ import { profileSchema, type ProfileFormData } from "@/lib/schemas/profile";
 
 type Profile = Pick<
   Tables<"profiles">,
-  "id" | "email" | "department_id" | "phone_number" | "avatar_key" | "bio"
+  "id" | "email" | "name" | "department_id" | "phone_number" | "avatar_key" | "bio"
 >;
 type Department = Pick<Tables<"departments">, "id" | "name" | "archived_at">;
 
@@ -60,6 +60,7 @@ export function ProfileForm({
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      name: profile.name ?? "",
       department_id: profile.department_id ?? "",
       phone_number: profile.phone_number ?? "",
       avatar_key: (profile.avatar_key as AvatarKey) ?? "fox",
@@ -77,6 +78,7 @@ export function ProfileForm({
       const { error } = await supabase
         .from("profiles")
         .update({
+          name: values.name || null,
           department_id: values.department_id,
           phone_number: values.phone_number || null,
           avatar_key: values.avatar_key,
@@ -127,6 +129,19 @@ export function ProfileForm({
                 <Label htmlFor="email">이메일</Label>
                 <Input id="email" type="email" value={profile.email ?? ""} disabled />
               </div>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>이름</FormLabel>
+                    <FormControl>
+                      <Input placeholder="홍길동" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="department_id"

@@ -16,7 +16,8 @@ import type {
   UserRole,
 } from "@/lib/types";
 
-const USERS_SELECT = "id, email, department_id, role, avatar_key, created_at, departments(name)";
+const USERS_SELECT =
+  "id, email, name, department_id, role, avatar_key, created_at, departments(name)";
 
 async function UsersContent({
   searchParams,
@@ -65,6 +66,7 @@ async function UsersContent({
   const items: UserAdminListItem[] = (userRows ?? []).map((row) => ({
     id: row.id,
     email: row.email ?? "",
+    name: row.name,
     department_id: row.department_id,
     department_name: row.departments?.name ?? null,
     role: (row.role as UserRole) ?? "user",

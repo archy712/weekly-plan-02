@@ -27,6 +27,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [avatarKey, setAvatarKey] = useState<AvatarKey>("fox");
   const [bio, setBio] = useState("");
@@ -41,6 +42,13 @@ export function SignUpForm({
 
     if (password !== repeatPassword) {
       setError("비밀번호가 일치하지 않습니다.");
+      setIsLoading(false);
+      return;
+    }
+
+    const nameCheck = profileSchema.shape.name.safeParse(name);
+    if (!nameCheck.success) {
+      setError(nameCheck.error.issues[0].message);
       setIsLoading(false);
       return;
     }
@@ -70,6 +78,7 @@ export function SignUpForm({
         await supabase
           .from("profiles")
           .update({
+            name: name || null,
             phone_number: phoneNumber || null,
             avatar_key: avatarKey,
             bio: bio || null,
@@ -128,6 +137,16 @@ export function SignUpForm({
                   required
                   value={repeatPassword}
                   onChange={(e) => setRepeatPassword(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="name">이름 (선택)</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="홍길동"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">

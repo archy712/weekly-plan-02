@@ -177,6 +177,9 @@ export function UserAdminTable({
                     이메일
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    이름
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 부서
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
@@ -213,6 +216,9 @@ export function UserAdminTable({
                             </Badge>
                           )}
                         </Link>
+                      </TableCell>
+                      <TableCell className="py-3 text-muted-foreground">
+                        {item.name ?? "-"}
                       </TableCell>
                       <TableCell className="py-3 text-muted-foreground">
                         {item.department_name ?? "미배정"}

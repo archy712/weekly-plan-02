@@ -61,6 +61,7 @@ export type RoleFilter = typeof ALL_ROLES_FILTER | UserRole;
 export type UserAdminListItem = {
   id: string;
   email: string;
+  name: string | null;
   department_id: string | null;
   department_name: string | null;
   role: UserRole;

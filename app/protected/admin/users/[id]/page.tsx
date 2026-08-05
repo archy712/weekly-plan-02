@@ -34,7 +34,7 @@ async function UserDetailContent({
   const { data: target, error: targetError } = await supabase
     .from("profiles")
     .select(
-      "id, email, department_id, role, avatar_key, phone_number, bio, created_at, departments(name)",
+      "id, email, name, department_id, role, avatar_key, phone_number, bio, created_at, departments(name)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -51,6 +51,7 @@ async function UserDetailContent({
   const user: UserAdminDetailData = {
     id: target.id,
     email: target.email ?? "",
+    name: target.name,
     department_id: target.department_id,
     department_name: target.departments?.name ?? null,
     role: (target.role as UserRole) ?? "user",
