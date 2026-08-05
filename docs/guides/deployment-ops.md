@@ -32,7 +32,9 @@ Supabase 대시보드 → **Authentication → URL Configuration** (프로젝트
 
 ## 4. 관리자 계정 지정 절차
 
-관리자 지정 UI는 MVP 범위 밖이므로, Supabase 대시보드의 **SQL Editor**(또는 `mcp__supabase__execute_sql`)에서 수동으로 `role`을 변경합니다.
+관리자 지정 UI는 MVP 범위 밖이므로, Supabase 대시보드의 **SQL Editor**(또는 `mcp__supabase__execute_sql`)에서 수동으로 `role`을 변경합니다. v1 고도화에서 UI로 대체될 예정이나(`docs/ROADMAP_v1.md`의 F020·Task 028 참고) 아직 구현 전이므로 이 수동 절차가 현재 유일한 방법입니다.
+
+> `profiles.role`에는 앱(PostgREST) 경로로 들어오는 **인증된 일반 사용자의 자기 role 상승만** 차단하는 `BEFORE UPDATE` 트리거(`prevent_unauthorized_role_change()`)가 적용되어 있습니다. `auth.uid()`가 없는 연결(SQL Editor, `mcp__supabase__execute_sql` 등 직접 DB 접속)은 이 트리거의 검사 대상이 아니므로 아래 절차는 그대로 동작합니다 — 앱의 로그인 세션으로 같은 SQL을 실행하려 하면(예: 브라우저 콘솔에서 `supabase-js` 호출) 관리자가 아닌 한 차단됩니다.
 
 ```sql
 update profiles
@@ -47,7 +49,7 @@ returning id, email, role;
 
 ## 5. 부서 seed 데이터 운영 반영 절차
 
-부서 관리 UI도 MVP 범위 밖입니다. 초기 5개 부서(개발팀/디자인팀/마케팅팀/인사팀/영업팀)는 Task 008 마이그레이션에 시드되어 있으며, 이후 조직 개편으로 부서를 추가·변경해야 하면 SQL Editor에서 직접 처리합니다.
+부서 관리 UI도 MVP 범위 밖입니다(v1에서 F019·Task 027로 대체될 예정, `docs/ROADMAP_v1.md` 참고). Task 008 마이그레이션으로 초기 부서를 시드했고 현재 운영 중인 부서는 3개(Commerce시스템팀/ERP시스템팀/IT기획팀, 2026-08-05 기준)이며, 이후 조직 개편으로 부서를 추가·변경해야 하면 SQL Editor에서 직접 처리합니다.
 
 ```sql
 -- 부서 추가
