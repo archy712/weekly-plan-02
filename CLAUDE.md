@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
-MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태이며, 부서 관리 UI·사용자 관리 UI·기간 범위 검색·댓글·멘션·실시간 알림·통계 대시보드를 추가하는 v1 고도화는 `docs/ROADMAP_v1.md`에 계획되어 있고 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1)까지 구현이 완료되었고, 기간 범위 검색·댓글·멘션·실시간 알림·통계 대시보드는 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
 
 ## 명령어
 
@@ -101,16 +101,22 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - 핵심 파일: `lib/storage/weekly-log-attachments.ts`(경로 생성·업로드·다운로드 URL 발급), `lib/actions/weekly-log-attachments.ts`(메타데이터 insert/delete 서버 액션), `hooks/use-weekly-log-attachments.ts`(pending files·진행률·기존 첨부파일 상태 관리), `components/weekly-log-attachment-field.tsx`(작성/수정 폼과 읽기 전용 상세 화면이 공유하는 UI, `onAddFiles`/`onRemoveAttachment` 등 prop이 없으면 자동으로 읽기 전용으로 렌더링됨).
 - 다운로드는 버킷이 private이므로 항상 `createSignedUrl`(짧은 만료 시간)로 서명된 URL을 새로 발급받아 사용합니다. 공개 URL(`getPublicUrl`)은 사용하지 않습니다.
 
-### 프로필 상세 정보 (전화번호·아바타·자기소개)
+### 프로필 상세 정보 (이름·전화번호·아바타·자기소개)
 
-- `profiles`에 `phone_number`(text, `^\d{3}-\d{4}-\d{4}$` CHECK 제약, nullable)·`avatar_key`(text, 24개 프리셋 키 CHECK 제약, 기본값 `'fox'`)·`bio`(text, 500자 CHECK 제약, nullable) 컬럼이 있습니다. 아바타는 이미지 업로드가 아니라 `lib/constants/avatars.ts`의 `AVATAR_PRESETS`(fox/bear/cat/panda/rabbit/owl/penguin/tiger/dog/lion/koala/cow/pig/frog/monkey/unicorn/wolf/raccoon/hamster/hedgehog/chicken/duck/butterfly/turtle 24종, 이모지 + 배경색 조합) 중 하나를 선택하는 방식이라 별도 Storage 버킷이 필요 없습니다.
+- `profiles`에 `name`(text, `CHECK (name IS NULL OR (char_length(trim(name)) BETWEEN 1 AND 50))`, nullable)·`phone_number`(text, `^\d{3}-\d{4}-\d{4}$` CHECK 제약, nullable)·`avatar_key`(text, 24개 프리셋 키 CHECK 제약, 기본값 `'fox'`)·`bio`(text, 500자 CHECK 제약, nullable) 컬럼이 있습니다. `name`은 나머지 세 필드와 동일하게 선택 입력이며(가입 시 비워도 서비스 이용에 지장 없음, 나중에 프로필 화면에서 채울 수 있음), 관리자 사용자 관리 화면(목록/상세)에도 함께 노출됩니다(`components/user-admin-table.tsx`, `components/user-admin-detail.tsx`). 아바타는 이미지 업로드가 아니라 `lib/constants/avatars.ts`의 `AVATAR_PRESETS`(fox/bear/cat/panda/rabbit/owl/penguin/tiger/dog/lion/koala/cow/pig/frog/monkey/unicorn/wolf/raccoon/hamster/hedgehog/chicken/duck/butterfly/turtle 24종, 이모지 + 배경색 조합) 중 하나를 선택하는 방식이라 별도 Storage 버킷이 필요 없습니다.
 - **프리셋 목록은 두 곳에서 반드시 동기화**해야 합니다: (1) `lib/constants/avatars.ts`의 `AVATAR_PRESETS`(런타임 선택지), (2) DB의 `profiles_avatar_key_check` CHECK 제약. 프리셋을 추가/제거하면 마이그레이션도 함께 적용할 것.
 - **아바타 선택 UI는 `components/avatar-picker-dialog.tsx`(`AvatarPickerDialog`)로 공통화**되어 있습니다 — 현재 아바타를 보여주는 트리거 버튼(`ui/dialog`의 `DialogTrigger`)을 누르면 24개 프리셋을 그리드로 보여주는 `Dialog`가 열리고, 하나를 클릭하면 즉시 값이 반영되며 다이얼로그가 자동으로 닫힙니다. `value`/`onChange` prop만 받는 순수 컴포넌트라 `components/profile-form.tsx`(RHF `FormField`)와 `components/sign-up-form.tsx`(일반 `useState`) 양쪽에서 동일하게 재사용됩니다.
 - 전화번호 자동 하이픈 포맷은 `lib/utils.ts`의 `formatPhoneNumberInput()`이 담당합니다 — 숫자만 남기고 3-4-4자리로 잘라 `-`를 삽입합니다. `components/profile-form.tsx`/`components/sign-up-form.tsx`의 전화번호 입력 모두 `onChange`에서 이 함수를 거쳐 값을 저장하므로 사용자는 숫자만 입력해도 자동으로 하이픈이 붙습니다.
-- `components/profile-form.tsx`는 이 세 필드가 추가되며 기존 수동 `useState` 기반 폼에서 **React Hook Form + Zod**(`lib/schemas/profile.ts`)로 전환되었습니다 — `weekly-log-form.tsx`와 동일한 `useForm` + `zodResolver` + shadcn `Form`/`FormField`/`FormMessage` 패턴을 따릅니다.
-- **`components/sign-up-form.tsx`에도 동일한 세 필드(모두 선택 입력)가 있습니다** — 단 이 폼은 다른 인증 폼들과 마찬가지로 RHF를 쓰지 않고 기존 수동 `useState` 패턴을 유지하며, 전화번호 유효성만 `profileSchema.shape.phone_number.safeParse()`로 재사용해 검증 로직을 이중으로 작성하지 않습니다. `supabase.auth.signUp()` 성공 후 `handle_new_user` 트리거가 이미 만들어 둔 `profiles` row에 이 값들을 곧바로 `update()`하며, 이 2차 업데이트가 실패해도 계정 생성 자체(및 페이지 이동)는 막지 않습니다 — 선택 입력이라 나중에 `/protected/profile`에서 채울 수 있기 때문입니다.
+- `components/profile-form.tsx`는 처음 이 필드들(전화번호·아바타·자기소개 3종, 이후 이름 추가로 4종)이 도입되며 기존 수동 `useState` 기반 폼에서 **React Hook Form + Zod**(`lib/schemas/profile.ts`)로 전환되었습니다 — `weekly-log-form.tsx`와 동일한 `useForm` + `zodResolver` + shadcn `Form`/`FormField`/`FormMessage` 패턴을 따릅니다.
+- **`components/sign-up-form.tsx`에도 동일한 네 필드(모두 선택 입력)가 있습니다** — 단 이 폼은 다른 인증 폼들과 마찬가지로 RHF를 쓰지 않고 기존 수동 `useState` 패턴을 유지하며, 전화번호 유효성만 `profileSchema.shape.phone_number.safeParse()`로 재사용해 검증 로직을 이중으로 작성하지 않습니다. `supabase.auth.signUp()` 성공 후 `handle_new_user` 트리거가 이미 만들어 둔 `profiles` row에 이 값들을 곧바로 `update()`하며, 이 2차 업데이트가 실패해도 계정 생성 자체(및 페이지 이동)는 막지 않습니다 — 선택 입력이라 나중에 `/protected/profile`에서 채울 수 있기 때문입니다.
 - **헤더에도 아바타가 노출**됩니다 — `components/header-nav.tsx`(데스크탑)와 `components/mobile-nav.tsx`(모바일 시트)가 `profiles.avatar_key`를 함께 조회해 이메일 앞에 `ui/avatar`(`AvatarFallback`)로 렌더링합니다. 이 헤더는 `components/site-header.tsx`를 통해 전 페이지에서 공유되므로, 별도 처리 없이 모든 보호된 페이지에 자동 반영됩니다.
 - `app/auth/login/page.tsx`/`app/auth/sign-up/page.tsx`의 카드 폭은 사용자 요청으로 반응형 확장을 시도했다가(`max-w-sm sm:max-w-md md:max-w-lg` → `max-w-5xl`) 다시 원래의 고정 `max-w-sm`으로 되돌렸습니다 — 이 두 페이지는 프로필 화면과 달리 좁고 짧은 로그인/회원가입 폼이라는 피드백에 따른 결정이므로, 임의로 다시 넓히지 말 것.
+
+### 관리자 콘솔 (부서 관리·사용자 관리)
+
+- `/protected/admin/*`는 `app/protected/admin/layout.tsx`가 `lib/auth/require-admin.ts`의 `requireAdmin()`으로 가드합니다(부서 게이트 → `profiles.role === 'admin'` 확인 순서). `proxy.ts`가 아니라 **레이아웃 레벨**에서 처리하는 이유는 요청당 `profiles` 조회가 이미 있어 proxy에서 중복 조회할 필요가 없기 때문입니다. `cacheComponents: true` 하에서 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 콘솔 에러가 나므로, `AdminLayout`은 얇은 동기 컴포넌트로 두고 내부의 `<Suspense>`로 감싼 비동기 가드 컴포넌트에서 호출합니다.
+- **부서 관리**(`app/protected/admin/departments/page.tsx`, `lib/actions/department.ts`) — 기본 동작은 **비활성화(소프트 삭제)**이며, `departments.archived_at`(nullable)로 표현합니다. 하드 삭제는 부서원(`profiles`) 또는 `weekly_logs` 참조가 0건일 때만 UI에서 허용되고, `deleteDepartmentAction`이 경합으로 `23503`(FK 위반)을 받으면 그 시점에 다시 참조 수를 세어 `lib/format.ts`의 `formatDepartmentDeleteBlockedMessage()`로 사전 안내와 동일한 문구를 만들어 폴백합니다(사전 체크·경합 폴백이 항상 같은 문구를 쓰도록 함수를 공유). `23505`(이름 중복)는 "이미 존재하는 부서명입니다."로 변환. 비활성 부서는 신규 선택 목록(프로필/회원가입)에서는 제외하되 이미 그 부서인 사용자에게는 "(비활성)" 라벨로 계속 노출하고, 목록 필터에서는 과거 데이터 조회를 위해 항상 노출합니다.
+- **사용자 관리**(`app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`, `lib/actions/user-admin.ts`) — `updateUserRoleAction`/`updateUserDepartmentAction` 모두 클라이언트가 보낸 값을 신뢰하지 않고 **호출자의 `profiles.role`을 서버에서 재조회**해 관리자인지 확인합니다. 자기 자신의 역할 변경은 관리자 수와 무관하게 **항상** 서버 액션에서 차단합니다 — `prevent_unauthorized_role_change()` 트리거는 "마지막 관리자"의 강등만 막고 관리자가 2명 이상이면 자기 강등을 허용하므로, 로드맵이 요구하는 "자기 강등은 항상 금지"를 만족하려면 트리거보다 넓은 조건을 서버 액션에 추가해야 합니다. 소속 부서 변경 시에는 대상 사용자가 이전 부서 로그의 쓰기 권한(RLS)을 잃는다는 경고(`formatDepartmentChangeWarning()`)를 확인 다이얼로그에 표시합니다. 역할 변경 UI(목록 인라인 + 상세 폼, `components/user-role-select.tsx`로 공유)는 `weekly-log-detail-view.tsx`의 진행상태 변경과 동일한 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴을 재사용합니다.
 
 ## Claude Code 커스텀 설정
 

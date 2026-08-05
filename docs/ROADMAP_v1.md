@@ -197,6 +197,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - [x] SQL `BEGIN/ROLLBACK`으로 마지막 관리자 강등 시도 → `P0001: 마지막 남은 관리자는 강등할 수 없습니다.` 발생 및 상태 불변 확인(트리거 자체 검증, 위 "로드맵과 다르게 처리한 부분" 참고)
     - [x] 일반 사용자(실로그인 세션)가 `/protected/admin/users`, `/protected/admin/users/[id]`에 직접 접근 시 `/protected/weekly-logs`로 리디렉션 확인
   - **범위 밖 유지**: 사용자 계정 삭제/비활성화, 초대 기반 가입, 부서별 관리자(부분 권한) 같은 3단계 이상의 역할 체계는 요청 범위 밖 — 역할은 `user`/`admin` 2단계 유지
+  - **(Task 완료 후 별도 ad hoc 요청으로 추가)** `profiles.name`(선택 입력, 최대 50자) 필드가 F018(프로필 상세 정보)에 신설되며 이 Task의 목록(`components/user-admin-table.tsx`)·상세(`components/user-admin-detail.tsx`) 화면에도 "이름" 컬럼/항목으로 함께 반영됨. 로드맵 Task로 별도 등록하지 않고 기존 F018 확장으로 처리(`docs/PRD.md` F018·데이터 모델 갱신, 기존 34건 프로필에 더미 이름 백필 완료)
 
 ---
 
