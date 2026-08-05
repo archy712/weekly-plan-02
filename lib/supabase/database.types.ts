@@ -210,6 +210,43 @@ export type Database = {
     Functions: {
       current_department_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      stats_logs_by_department: {
+        Args: { from_date?: string; to_date?: string }
+        Returns: {
+          completed_count: number
+          department_id: string
+          department_name: string
+          in_progress_count: number
+          planned_count: number
+          total_count: number
+        }[]
+      }
+      stats_logs_by_status: {
+        Args: { dept_id?: string; from_date?: string; to_date?: string }
+        Returns: {
+          log_count: number
+          status: string
+        }[]
+      }
+      stats_logs_monthly_trend: {
+        Args: { dept_id?: string; months?: number }
+        Returns: {
+          completed_count: number
+          created_count: number
+          month: string
+        }[]
+      }
+      stats_workload_summary: {
+        Args: { dept_id?: string; from_date?: string; to_date?: string }
+        Returns: {
+          avg_duration_days: number
+          cost_count: number
+          cost_sum: number
+          mm_count: number
+          mm_sum: number
+          total_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
