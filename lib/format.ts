@@ -24,6 +24,15 @@ export function formatCurrency(value: number): string {
   return `${value.toLocaleString("ko-KR")}원`;
 }
 
+// 부서 하드 삭제가 막혔을 때 UI(사전 비활성화)와 서버 액션(경합 상황의 23503 폴백) 양쪽에서
+// 동일한 문구를 쓰도록 공유하는 포맷터.
+export function formatDepartmentDeleteBlockedMessage(
+  memberCount: number,
+  logCount: number,
+): string {
+  return `${memberCount}명의 부서원과 ${logCount}건의 업무일지가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   const units = ["KB", "MB", "GB"];

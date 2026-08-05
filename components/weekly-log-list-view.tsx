@@ -171,7 +171,7 @@ export function WeeklyLogListView({
               <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
               {departments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
+                  {dept.archived_at ? `${dept.name} (비활성)` : dept.name}
                 </SelectItem>
               ))}
             </SelectContent>

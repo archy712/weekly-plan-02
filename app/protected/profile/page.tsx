@@ -22,7 +22,7 @@ async function ProfileContent() {
         .select("id, email, department_id, phone_number, avatar_key, bio")
         .eq("id", userId)
         .maybeSingle(),
-      supabase.from("departments").select("id, name").order("name"),
+      supabase.from("departments").select("id, name, archived_at").order("name"),
     ]);
 
   if (profileError) {
@@ -31,6 +31,13 @@ async function ProfileContent() {
   if (departmentsError) {
     throw departmentsError;
   }
+
+  // 비활성 부서는 신규 선택 목록에서 제외하되, 이미 그 부서에 속한 사용자에게는
+  // 현재 값이 계속 보이도록 예외를 둔다 — 그렇지 않으면 선택지에서 사라진 값이
+  // 폼 제출 시 빈 값으로 저장되는 사고로 이어질 수 있다.
+  const visibleDepartments = (departments ?? []).filter(
+    (department) => !department.archived_at || department.id === profile?.department_id,
+  );
 
   return (
     <ProfileForm
@@ -44,7 +51,7 @@ async function ProfileContent() {
           bio: null,
         }
       }
-      departments={departments ?? []}
+      departments={visibleDepartments}
     />
   );
 }

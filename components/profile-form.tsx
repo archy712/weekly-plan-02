@@ -43,7 +43,7 @@ type Profile = Pick<
   Tables<"profiles">,
   "id" | "email" | "department_id" | "phone_number" | "avatar_key" | "bio"
 >;
-type Department = Pick<Tables<"departments">, "id" | "name">;
+type Department = Pick<Tables<"departments">, "id" | "name" | "archived_at">;
 
 export function ProfileForm({
   profile,
@@ -142,7 +142,9 @@ export function ProfileForm({
                       <SelectContent>
                         {departments.map((department) => (
                           <SelectItem key={department.id} value={department.id}>
-                            {department.name}
+                            {department.archived_at
+                              ? `${department.name} (비활성)`
+                              : department.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
