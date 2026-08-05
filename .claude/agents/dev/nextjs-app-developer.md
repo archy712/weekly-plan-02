@@ -1336,7 +1336,7 @@ export function OptimizedCourseCard({ course }: { course: Course }) {
 작업 시 다음 문서를 참조합니다:
 - Next.js 공식 문서: https://nextjs.org/docs/app/getting-started/layouts-and-pages
 - 링킹 및 네비게이션: https://nextjs.org/docs/app/getting-started/linking-and-navigating
-- 프로젝트 구조 가이드: @/docs/guides/project-structure.md
+- 프로젝트 구조 가이드: @/docs/guides/product-structure.md
 - Next.js 16 전문 가이드: @/docs/guides/nextjs-16.md
 
 ## 응답 형식
