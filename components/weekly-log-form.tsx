@@ -13,10 +13,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { HtmlEditor } from "@/components/html-editor";
 import { Input } from "@/components/ui/input";
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import type { PendingAttachment } from "@/hooks/use-weekly-log-attachments";
+import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogAttachment } from "@/lib/types";
 
@@ -47,6 +49,7 @@ export function WeeklyLogForm({
     resolver: zodResolver(weeklyLogSchema),
     defaultValues: {
       title: defaultValues?.title ?? "",
+      work_type: defaultValues?.work_type ?? [],
       content: defaultValues?.content ?? "",
       start_date: defaultValues?.start_date ?? "",
       target_end_date: defaultValues?.target_end_date ?? "",
@@ -104,6 +107,49 @@ export function WeeklyLogForm({
             )}
           />
         </div>
+        {/* work_type은 다중 선택(체크박스)이라 shadcn의 표준 "체크박스 배열" 패턴을 쓴다:
+            바깥 FormField는 라벨/에러 메시지 표시 용도이고, 항목별 FormField가 실제 배열
+            값(field.value)에 포함 여부를 확인해 추가/제거한다. */}
+        <FormField
+          control={form.control}
+          name="work_type"
+          render={() => (
+            <FormItem>
+              <FormLabel>업무 타입</FormLabel>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+                {WORK_TYPE_OPTIONS.map((type) => (
+                  <FormField
+                    key={type}
+                    control={form.control}
+                    name="work_type"
+                    render={({ field }) => {
+                      const checked = field.value?.includes(type) ?? false;
+                      return (
+                        <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(isChecked) => {
+                                const current = field.value ?? [];
+                                field.onChange(
+                                  isChecked
+                                    ? [...current, type]
+                                    : current.filter((value) => value !== type),
+                                );
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal">{type}</FormLabel>
+                        </FormItem>
+                      );
+                    }}
+                  />
+                ))}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="title"

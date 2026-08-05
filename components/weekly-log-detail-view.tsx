@@ -18,7 +18,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { HtmlContent } from "@/components/html-content";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -34,12 +36,14 @@ import {
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
+import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
-import type { WeeklyLogDetail, WeeklyLogStatus } from "@/lib/types";
+import type { WeeklyLogDetail, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import {
   deleteWeeklyLogAction,
   updateWeeklyLogStatusAction,
+  updateWeeklyLogWorkTypeAction,
   updateWeeklyLogAction,
 } from "@/lib/actions/weekly-log";
 
@@ -60,6 +64,8 @@ export function WeeklyLogDetailView({
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState<WeeklyLogStatus>(log.status);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [workType, setWorkType] = useState<WeeklyLogWorkType[]>(log.work_type);
+  const [isUpdatingWorkType, setIsUpdatingWorkType] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   // isDeleting 리렌더 반영 전에 도착하는 연속 클릭(더블클릭)을 막기 위한 동기 가드.
   const isDeletingRef = useRef(false);
@@ -113,6 +119,35 @@ export function WeeklyLogDetailView({
     }
   };
 
+  const handleWorkTypeChange = async (type: WeeklyLogWorkType, checked: boolean) => {
+    const previous = workType;
+    const next = checked
+      ? [...previous, type]
+      : previous.filter((value) => value !== type);
+
+    if (next.length === 0) {
+      toast.error("업무 타입을 1개 이상 선택해주세요.");
+      return;
+    }
+
+    setWorkType(next);
+    setIsUpdatingWorkType(true);
+    try {
+      const result = await updateWeeklyLogWorkTypeAction(log.id, next);
+      if (!result.success) {
+        setWorkType(previous);
+        toast.error(result.error);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setWorkType(previous);
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsUpdatingWorkType(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (isDeletingRef.current) return;
     isDeletingRef.current = true;
@@ -150,6 +185,7 @@ export function WeeklyLogDetailView({
         <WeeklyLogForm
           defaultValues={{
             title: log.title,
+            work_type: workType,
             content: log.content,
             start_date: log.start_date,
             target_end_date: log.target_end_date,
@@ -178,6 +214,41 @@ export function WeeklyLogDetailView({
         <h1 className="text-2xl font-bold">{log.title}</h1>
         <StatusBadge status={status} />
       </div>
+      {canWrite ? (
+        <div className="flex flex-col gap-1.5">
+          <Label>업무 타입</Label>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+            {WORK_TYPE_OPTIONS.map((type) => {
+              const checked = workType.includes(type);
+              return (
+                <div key={type} className="flex flex-row items-center gap-2">
+                  <Checkbox
+                    id={`work-type-${type}`}
+                    checked={checked}
+                    disabled={isUpdatingWorkType}
+                    onCheckedChange={(isChecked) =>
+                      handleWorkTypeChange(type, isChecked === true)
+                    }
+                  />
+                  <Label htmlFor={`work-type-${type}`} className="text-sm font-normal">
+                    {type}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        workType.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {workType.map((type) => (
+              <Badge key={type} variant="outline" className="font-normal text-muted-foreground">
+                {type}
+              </Badge>
+            ))}
+          </div>
+        )
+      )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{log.department_name}</span>
         {log.author_email && <span>{log.author_email}</span>}

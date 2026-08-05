@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/supabase/database.types";
+import type { WeeklyLogWorkType } from "@/lib/constants/work-types";
 
 export type UserRole = "user" | "admin";
 
@@ -10,8 +11,12 @@ export type Profile = Omit<Tables<"profiles">, "role"> & {
 
 export type WeeklyLogStatus = "planned" | "in_progress" | "completed";
 
-export type WeeklyLog = Omit<Tables<"weekly_logs">, "status"> & {
+export type { WeeklyLogWorkType };
+
+export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type"> & {
   status: WeeklyLogStatus;
+  // 다중 선택(체크박스)이라 배열로 저장한다 — 최소 1개(DB CHECK 제약 cardinality > 0).
+  work_type: WeeklyLogWorkType[];
 };
 
 export type WeeklyLogListItem = Pick<
@@ -36,6 +41,7 @@ export type WeeklyLogDetail = Pick<
   | "target_end_date"
   | "status"
   | "department_id"
+  | "work_type"
   | "estimated_mm"
   | "estimated_cost"
   | "partner_company"

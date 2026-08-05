@@ -1,11 +1,17 @@
 import { z } from "zod";
 
+import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
+
 export const weeklyLogSchema = z
   .object({
     title: z
       .string()
       .min(1, "업무명을 입력해주세요")
       .max(100, "업무명은 최대 100자까지 입력 가능합니다"),
+    // 체크박스 다중 선택 — 최소 1개는 선택해야 한다.
+    work_type: z
+      .array(z.enum(WORK_TYPE_OPTIONS))
+      .min(1, "업무 타입을 1개 이상 선택해주세요"),
     content: z
       .string()
       .min(1, "업무 상세 내용을 입력해주세요")

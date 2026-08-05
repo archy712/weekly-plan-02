@@ -243,6 +243,7 @@ export type Database = {
           target_end_date: string
           title: string
           updated_at: string
+          work_type: string[]
         }
         Insert: {
           author_id: string
@@ -258,6 +259,7 @@ export type Database = {
           target_end_date: string
           title: string
           updated_at?: string
+          work_type: string[]
         }
         Update: {
           author_id?: string
@@ -273,6 +275,7 @@ export type Database = {
           target_end_date?: string
           title?: string
           updated_at?: string
+          work_type?: string[]
         }
         Relationships: [
           {
@@ -332,6 +335,13 @@ export type Database = {
         Returns: {
           log_count: number
           status: string
+        }[]
+      }
+      stats_logs_by_work_type: {
+        Args: { dept_id?: string; from_date?: string; to_date?: string }
+        Returns: {
+          log_count: number
+          work_type: string
         }[]
       }
       stats_logs_monthly_trend: {
