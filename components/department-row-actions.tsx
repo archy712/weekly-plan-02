@@ -22,7 +22,6 @@ import {
   deleteDepartmentAction,
   restoreDepartmentAction,
 } from "@/lib/actions/department";
-import { formatDepartmentDeleteBlockedMessage } from "@/lib/format";
 
 export function DepartmentRowActions({
   department,
@@ -76,63 +75,51 @@ export function DepartmentRowActions({
   };
 
   return (
-    <div className="flex flex-col items-end gap-1 whitespace-normal">
-      <div className="flex items-center justify-end gap-1">
-        <DepartmentFormDialog
-          mode="edit"
-          department={{ id: department.id, name: department.name }}
-          trigger={
-            <Button variant="ghost" size="sm">
-              수정
-            </Button>
-          }
-        />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleToggleArchive}
-          disabled={isArchiving}
-        >
-          {isArchiving ? "처리 중..." : isArchived ? "활성화" : "비활성화"}
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              disabled={hasReferences}
-              title={
-                hasReferences
-                  ? formatDepartmentDeleteBlockedMessage(memberCount, logCount)
-                  : undefined
-              }
-            >
-              삭제
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{department.name} 부서를 삭제하시겠습니까?</AlertDialogTitle>
-              <AlertDialogDescription>
-                이 작업은 되돌릴 수 없습니다. 부서원과 업무일지가 없는 경우에만 삭제할 수
-                있습니다.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-                {isDeleting ? "삭제 중..." : "삭제"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-      {hasReferences && (
-        <p className="max-w-56 text-right text-xs text-muted-foreground">
-          {formatDepartmentDeleteBlockedMessage(memberCount, logCount)}
-        </p>
-      )}
+    <div className="flex items-center justify-end gap-1">
+      <DepartmentFormDialog
+        mode="edit"
+        department={{ id: department.id, name: department.name }}
+        trigger={
+          <Button variant="ghost" size="sm">
+            수정
+          </Button>
+        }
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleToggleArchive}
+        disabled={isArchiving}
+      >
+        {isArchiving ? "처리 중..." : isArchived ? "활성화" : "비활성화"}
+      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            disabled={hasReferences}
+          >
+            삭제
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{department.name} 부서를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 부서원과 업무일지가 없는 경우에만 삭제할 수
+              있습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? "삭제 중..." : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
