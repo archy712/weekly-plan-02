@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { UserRoleSelect } from "@/components/user-role-select";
+import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { formatDate } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, ALL_ROLES_FILTER } from "@/lib/types";
@@ -43,9 +44,15 @@ import type {
   DepartmentFilter,
   RoleFilter,
   UserAdminListItem,
+  UserRole,
 } from "@/lib/types";
 
 const PAGE_SIZE = 20;
+
+type UserAdminSortKey = "email" | "name" | "department_name" | "role" | "created_at";
+
+// 역할은 가나다순이 아니라 "관리자를 먼저" 보는 편이 실무적으로 더 유용해 별도 순위표를 둔다.
+const ROLE_SORT_RANK: Record<UserRole, number> = { admin: 0, user: 1 };
 
 // weekly-log-list-view.tsx와 동일한 앞/뒤/현재 주변 페이지 번호 + 생략(...) 처리.
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -84,6 +91,8 @@ export function UserAdminTable({
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(currentSearchQuery ?? "");
+  const [sortKey, setSortKey] = useState<UserAdminSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [prevKey, setPrevKey] = useState(
     `${currentDepartmentId}::${currentRole}::${currentSearchQuery ?? ""}`,
   );
@@ -97,11 +106,49 @@ export function UserAdminTable({
     setSearchInput(currentSearchQuery ?? "");
   }
 
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  // 이름/소속 부서는 미입력(null)일 수 있어 빈 문자열로 취급해 비교한다(weekly-log-list-view.tsx와
+  // 동일한 정렬 원칙: 컬럼 타입에 맞는 비교 기준을 각각 사용).
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items;
+    const sorted = [...items].sort((a, b) => {
+      let comparison = 0;
+      switch (sortKey) {
+        case "email":
+          comparison = a.email.localeCompare(b.email);
+          break;
+        case "name":
+          comparison = (a.name ?? "").localeCompare(b.name ?? "", "ko");
+          break;
+        case "department_name":
+          comparison = (a.department_name ?? "").localeCompare(b.department_name ?? "", "ko");
+          break;
+        case "role":
+          comparison = ROLE_SORT_RANK[a.role] - ROLE_SORT_RANK[b.role];
+          break;
+        case "created_at":
+          comparison = a.created_at.localeCompare(b.created_at);
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+    return sorted;
+  }, [items, sortKey, sortDirection]);
+
+  const handleSort = (key: UserAdminSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const pagedItems = useMemo(
-    () => items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [items, safePage],
+    () => sortedItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [sortedItems, safePage],
   );
 
   const navigate = (overrides: { department?: string; role?: string; q?: string }) => {
@@ -173,21 +220,42 @@ export function UserAdminTable({
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
-                    이메일
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    이름
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 부서
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    역할
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    가입일
-                  </TableHead>
+                  <SortableTableHead
+                    label="이메일"
+                    sortKey="email"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="pl-4"
+                  />
+                  <SortableTableHead
+                    label="이름"
+                    sortKey="name"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label="소속 부서"
+                    sortKey="department_name"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label="역할"
+                    sortKey="role"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHead
+                    label="가입일"
+                    sortKey="created_at"
+                    currentSortKey={sortKey}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                  />
                   <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
                     액션
                   </TableHead>

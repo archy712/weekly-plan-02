@@ -25,7 +25,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { WeeklyLogTable } from "@/components/weekly-log-table";
+import { WeeklyLogTable, type SortDirection, type WeeklyLogSortKey } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
@@ -43,6 +43,14 @@ import type {
 const STATUS_FILTER_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
 
 const PAGE_SIZE = 20;
+
+// 진행상태는 알파벳/가나다 순이 아니라 업무 흐름 순서(예정 → 진행중 → 완료)로 정렬해야
+// 의미가 통하므로 별도 순위표를 둔다.
+const STATUS_SORT_RANK: Record<WeeklyLogStatus, number> = {
+  planned: 0,
+  in_progress: 1,
+  completed: 2,
+};
 
 // 총 페이지가 많을 때 앞/뒤/현재 주변만 보여주고 나머지는 생략(...) 처리한다.
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -86,6 +94,8 @@ export function WeeklyLogListView({
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(currentSearchQuery ?? "");
+  const [sortKey, setSortKey] = useState<WeeklyLogSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [prevKey, setPrevKey] = useState(
     `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}`,
   );
@@ -100,11 +110,47 @@ export function WeeklyLogListView({
     setSearchInput(currentSearchQuery ?? "");
   }
 
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items;
+    const sorted = [...items].sort((a, b) => {
+      let comparison = 0;
+      switch (sortKey) {
+        case "title":
+          comparison = a.title.localeCompare(b.title, "ko");
+          break;
+        case "department_name":
+          comparison = a.department_name.localeCompare(b.department_name, "ko");
+          break;
+        case "start_date":
+          comparison = a.start_date.localeCompare(b.start_date);
+          break;
+        case "target_end_date":
+          comparison = a.target_end_date.localeCompare(b.target_end_date);
+          break;
+        case "status":
+          comparison = STATUS_SORT_RANK[a.status] - STATUS_SORT_RANK[b.status];
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+    return sorted;
+  }, [items, sortKey, sortDirection]);
+
+  const handleSort = (key: WeeklyLogSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const pagedItems = useMemo(
-    () => items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [items, safePage],
+    () => sortedItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [sortedItems, safePage],
   );
 
   // 부서/상태/검색어/기간 필터는 클라이언트 상태가 아니라 URL(?department=&q=&from=&to=)로
@@ -173,7 +219,7 @@ export function WeeklyLogListView({
   const handleDownloadPdf = async () => {
     setIsDownloading(true);
     try {
-      await downloadWeeklyLogListPdf({ items, departmentLabel: scopeLabel, dateRangeLabel });
+      await downloadWeeklyLogListPdf({ items: sortedItems, departmentLabel: scopeLabel, dateRangeLabel });
     } catch {
       toast.error("PDF 생성 중 오류가 발생했습니다.");
     } finally {
@@ -317,7 +363,13 @@ export function WeeklyLogListView({
         />
       ) : (
         <>
-          <WeeklyLogTable items={pagedItems} showDepartment />
+          <WeeklyLogTable
+            items={pagedItems}
+            showDepartment
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
           <WeeklyLogCardList items={pagedItems} showDepartment />
           {totalPages > 1 && (
             <Pagination>
