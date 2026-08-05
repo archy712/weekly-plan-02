@@ -103,23 +103,24 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 > 목표: `/protected/admin` 영역이 생기고, 관리자만 접근 가능하며, **일반 사용자가 스스로 관리자가 될 수 없는** 상태.
 > **선행 조건**: 없음 (즉시 착수 가능). Phase 2와 병렬 진행 가능.
 
-- **Task 025: 관리자 전용 라우트 골격 및 공통 가드 구축** - 우선순위
-  - [ ] `app/protected/admin/layout.tsx` 신규 — `getClaims()` + `profiles.role` 조회 후 `role !== 'admin'`이면 `redirect("/protected/weekly-logs")`. 관리자 화면 공통 탭 내비게이션(부서 관리 / 사용자 관리) 배치
-  - [ ] `app/protected/admin/departments/page.tsx`, `app/protected/admin/users/page.tsx` 빈 껍데기 페이지 생성 (구조 우선 — 실제 기능은 Task 027·028)
-  - [ ] `lib/auth/require-admin.ts` 신규 — `requireAdmin()` / `getCurrentProfile()` 헬퍼로 "세션 확인 → `profiles` 조회 → 부서 게이트 → 관리자 확인" 반복 코드를 한 곳으로 통합. 기존 4개 보호 페이지의 중복 부서 체크도 이 헬퍼로 점진 교체 가능하도록 시그니처 설계
-  - [ ] **가드 위치 결정**: `proxy.ts`가 아니라 **레이아웃/페이지 레벨**에서 처리 — proxy는 이미 요청당 `profiles` 조회를 1회 하고 있고, CLAUDE.md가 `lib/supabase/proxy.ts` 수정을 금지하고 있으며, 관리자 라우트는 전체 트래픽 중 극소수라 전역 미들웨어에 비용을 얹을 이유가 없음
-  - [ ] `components/header-nav.tsx`의 `navLinks`(현재 빈 배열)에 관리자일 때만 "관리자 설정" 링크 노출, `components/mobile-nav.tsx`에도 동일 반영 (두 컴포넌트가 `navLinks`를 공유하므로 role 조건부 배열 생성 방식으로 처리)
-  - [ ] **주간업무일지 목록 페이지(메인)에 명시적 진입 링크 배치** — `components/weekly-log-list-view.tsx`의 "[신규 작성]" 버튼 옆(또는 페이지 상단 툴바)에 관리자일 때만 노출되는 "관리자 콘솔" 버튼/링크를 추가해 `/protected/admin`으로 이동. 헤더 내비게이션(위 항목)과는 **별도의 진입점**으로, 로그인 후 가장 먼저 보는 화면인 주간업무일지 목록에서 곧바로 관리자 화면에 들어갈 수 있어야 함(요구사항: "관리자로 로그인하기 위해서는 주간업무일지 메인에서 링크를 통해 이동"). `canWrite` 계산과 마찬가지로 서버 컴포넌트에서 `profiles.role`을 조회해 `isAdmin` prop으로 전달하고 클라이언트에서는 노출 여부만 판단(실제 접근 차단은 Task 025의 레이아웃 가드가 담당)
-  - [ ] `app/protected/admin/{loading,error}.tsx` 배치 — 기존 라우트와 동일하게 `components/error-state.tsx` 재사용
-  - **관련 파일**: `app/protected/admin/**`, `lib/auth/require-admin.ts`(신규), `components/header-nav.tsx`, `components/mobile-nav.tsx`, `components/weekly-log-list-view.tsx`, `app/protected/weekly-logs/page.tsx`
-  - **수락 기준**: 관리자 계정으로 `/protected/admin/departments` 접근 시 빈 화면이 렌더링되고, 일반 사용자 계정으로 URL 직접 입력 시 목록 페이지로 리디렉션된다. 헤더 메뉴와 주간업무일지 목록 페이지 양쪽에서 관리자에게만 진입 링크가 보인다
-  - **테스트 체크리스트**
-    - [ ] 관리자 계정으로 `/protected/admin/*` 2개 라우트 접근 성공 확인
-    - [ ] 일반 사용자 계정으로 URL 직접 접근 시 리디렉션 확인 (UI 은닉만으로 방어하지 않음)
-    - [ ] 비로그인 상태 접근 시 기존 `proxy.ts` 게이트로 `/auth/login` 리디렉션되는지 확인
-    - [ ] 부서 미설정 관리자 계정이 `/protected/admin`에 접근할 때 온보딩 게이트가 먼저 동작하는지 확인
-    - [ ] 관리자 계정으로 주간업무일지 목록 페이지 진입 시 "관리자 콘솔" 링크가 보이고 클릭하면 `/protected/admin`으로 이동하는지 확인
-    - [ ] 일반 사용자 계정으로 주간업무일지 목록 페이지 진입 시 해당 링크가 보이지 않는지 확인
+- **Task 025: 관리자 전용 라우트 골격 및 공통 가드 구축 ✅**
+  - [x] `app/protected/admin/layout.tsx` 신규 — `getClaims()` + `profiles.role` 조회 후 `role !== 'admin'`이면 `redirect("/protected/weekly-logs")`. 관리자 화면 공통 탭 내비게이션(부서 관리 / 사용자 관리) 배치
+  - [x] `app/protected/admin/departments/page.tsx`, `app/protected/admin/users/page.tsx` 빈 껍데기 페이지 생성 (구조 우선 — 실제 기능은 Task 027·028). `app/protected/admin/page.tsx`도 추가해 `/protected/admin` 인덱스를 `/protected/admin/departments`로 리다이렉트(원래 계획엔 없었으나, 헤더/목록 링크가 `/protected/admin`을 직접 가리키는데 해당 세그먼트에 `page.tsx`가 없으면 404가 나는 문제를 구현 중 실측해 추가)
+  - [x] `lib/auth/require-admin.ts` 신규 — `getCurrentProfile()` / `requireDepartment()` / `requireAdmin()` 3단 헬퍼로 "세션 확인 → `profiles` 조회 → 부서 게이트 → 관리자 확인" 반복 코드를 한 곳으로 통합. 기존 4개 보호 페이지의 중복 부서 체크도 `requireDepartment()`로 점진 교체 가능
+  - [x] **가드 위치 결정**: `proxy.ts`가 아니라 **레이아웃 레벨**에서 처리
+  - [x] `components/header-nav.tsx`의 `navLinks`를 모듈 상단 고정 배열 대신 `getNavLinks(user)` 함수로 바꿔 관리자일 때만 "관리자 설정" 링크를 넣도록 수정. `components/mobile-nav.tsx`는 `HeaderNav`가 넘기는 `navLinks` prop을 그대로 쓰는 구조라 별도 수정 없이 동일하게 반영됨
+  - [x] `components/weekly-log-list-view.tsx`에 `isAdmin` prop 추가, PDF 다운로드 버튼 왼쪽에 관리자에게만 보이는 "관리자 콘솔" 버튼 배치 → `/protected/admin`으로 이동. `app/protected/weekly-logs/page.tsx`에서 이미 계산해 두던 `isAdmin`을 그대로 prop으로 전달
+  - [x] `app/protected/admin/{loading,error}.tsx` 배치 — `error.tsx`는 기존 `components/error-state.tsx` 재사용. `loading.tsx`는 신규 `components/admin-layout-skeleton.tsx`(`ui/skeleton` 조합) 재사용
+  - [x] **(구현 중 실측 발견 — 원래 계획에 없던 수정)** `cacheComponents: true` 하에서 `layout.tsx`가 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 "Uncached data ... accessed outside of `<Suspense>`" 콘솔 에러가 발생(라우트의 `loading.tsx`는 같은 세그먼트의 `layout.tsx` 최상위 실행 자체는 감싸주지 않음). `AdminLayout`을 얇은 동기 컴포넌트로 두고 내부에 `<Suspense fallback={<AdminLayoutSkeleton />}>`로 감싼 비동기 `AdminGuard` 컴포넌트를 두어 해소 — 이후 v1의 다른 신규 레이아웃(있다면)도 동일 패턴 적용 필요
+  - **관련 파일**: `app/protected/admin/**`(`layout.tsx`, `page.tsx`, `departments/page.tsx`, `users/page.tsx`, `loading.tsx`, `error.tsx`), `lib/auth/require-admin.ts`(신규), `components/admin-tab-nav.tsx`(신규), `components/admin-layout-skeleton.tsx`(신규), `components/header-nav.tsx`, `components/weekly-log-list-view.tsx`, `app/protected/weekly-logs/page.tsx`
+  - **수락 기준**: 관리자 계정으로 `/protected/admin/departments`·`/protected/admin/users` 접근 시 빈 화면이 렌더링되고, 일반 사용자 계정으로 URL 직접 입력 시 목록 페이지로 리디렉션된다. 헤더 메뉴와 주간업무일지 목록 페이지 양쪽에서 관리자에게만 진입 링크가 보인다
+  - **테스트 체크리스트** (Playwright MCP + Supabase MCP `execute_sql`로 임시 테스트 계정을 만들어 실제 브라우저에서 검증, 종료 후 계정 삭제로 정리)
+    - [x] 관리자 계정으로 `/protected/admin/*` 2개 라우트(부서 관리·사용자 관리 탭 전환 포함) 접근 성공 확인
+    - [x] 일반 사용자 계정으로 URL 직접 접근(`/protected/admin/departments`) 시 `/protected/weekly-logs`로 리디렉션 확인 (UI 은닉만으로 방어하지 않음)
+    - [x] 비로그인 상태 접근 시 기존 `proxy.ts` 게이트로 `/auth/login` 리디렉션되는지 확인 (`curl -L --max-redirs 0`로 307 확인)
+    - [x] 부서 미설정 관리자 계정이 `/protected/admin/departments`에 접근할 때 온보딩 게이트(`/protected/profile`)가 관리자 확인보다 먼저 동작하는지 확인
+    - [x] 관리자 계정으로 주간업무일지 목록 페이지 진입 시 "관리자 콘솔" 링크가 보이고 클릭하면 `/protected/admin`(→ `/protected/admin/departments`)으로 이동하는지 확인. 역할을 DB에서 `admin`으로 승격한 직후 **재로그인 없이** 헤더·목록 페이지에 즉시 반영되는 것도 함께 확인(매 요청 `profiles.role` 재조회 구조)
+    - [x] 일반 사용자 계정으로 주간업무일지 목록 페이지 진입 시 해당 링크가 보이지 않는지 확인 (데스크톱 헤더·모바일 시트 메뉴 양쪽)
   - **범위 밖 유지**: 실제 부서/사용자 CRUD 기능(Task 027·028), 기존 4개 페이지의 중복 부서 체크 리팩터링(헬퍼만 준비하고 교체는 선택)
 
 - **Task 026: 권한 모델 하드닝 및 관리자 쓰기 정책 마이그레이션**
