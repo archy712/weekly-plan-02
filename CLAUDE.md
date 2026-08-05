@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
-MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1)까지 구현이 완료되었고, 기간 범위 검색·댓글·멘션·실시간 알림·통계 대시보드는 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1)과 기간 범위 검색·통계 대시보드(Phase 2)까지 구현이 완료되었고, 댓글·멘션·실시간 알림(Phase 3·4)은 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
 
 ## 명령어
 
@@ -112,10 +112,11 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **헤더에도 아바타가 노출**됩니다 — `components/header-nav.tsx`(데스크탑)와 `components/mobile-nav.tsx`(모바일 시트)가 `profiles.avatar_key`를 함께 조회해 이메일 앞에 `ui/avatar`(`AvatarFallback`)로 렌더링합니다. 이 헤더는 `components/site-header.tsx`를 통해 전 페이지에서 공유되므로, 별도 처리 없이 모든 보호된 페이지에 자동 반영됩니다.
 - `app/auth/login/page.tsx`/`app/auth/sign-up/page.tsx`의 카드 폭은 사용자 요청으로 반응형 확장을 시도했다가(`max-w-sm sm:max-w-md md:max-w-lg` → `max-w-5xl`) 다시 원래의 고정 `max-w-sm`으로 되돌렸습니다 — 이 두 페이지는 프로필 화면과 달리 좁고 짧은 로그인/회원가입 폼이라는 피드백에 따른 결정이므로, 임의로 다시 넓히지 말 것.
 
-### 관리자 콘솔 (부서 관리·사용자 관리)
+### 관리자 콘솔 (대시보드·부서 관리·사용자 관리)
 
-- `/protected/admin/*`는 `app/protected/admin/layout.tsx`가 `lib/auth/require-admin.ts`의 `requireAdmin()`으로 가드합니다(부서 게이트 → `profiles.role === 'admin'` 확인 순서). `proxy.ts`가 아니라 **레이아웃 레벨**에서 처리하는 이유는 요청당 `profiles` 조회가 이미 있어 proxy에서 중복 조회할 필요가 없기 때문입니다. `cacheComponents: true` 하에서 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 콘솔 에러가 나므로, `AdminLayout`은 얇은 동기 컴포넌트로 두고 내부의 `<Suspense>`로 감싼 비동기 가드 컴포넌트에서 호출합니다.
-- **부서 관리**(`app/protected/admin/departments/page.tsx`, `lib/actions/department.ts`) — 기본 동작은 **비활성화(소프트 삭제)**이며, `departments.archived_at`(nullable)로 표현합니다. 하드 삭제는 부서원(`profiles`) 또는 `weekly_logs` 참조가 0건일 때만 UI에서 허용되고, `deleteDepartmentAction`이 경합으로 `23503`(FK 위반)을 받으면 그 시점에 다시 참조 수를 세어 `lib/format.ts`의 `formatDepartmentDeleteBlockedMessage()`로 사전 안내와 동일한 문구를 만들어 폴백합니다(사전 체크·경합 폴백이 항상 같은 문구를 쓰도록 함수를 공유). `23505`(이름 중복)는 "이미 존재하는 부서명입니다."로 변환. 비활성 부서는 신규 선택 목록(프로필/회원가입)에서는 제외하되 이미 그 부서인 사용자에게는 "(비활성)" 라벨로 계속 노출하고, 목록 필터에서는 과거 데이터 조회를 위해 항상 노출합니다.
+- `/protected/admin/*`는 `app/protected/admin/layout.tsx`가 `lib/auth/require-admin.ts`의 `requireAdmin()`으로 가드합니다(부서 게이트 → `profiles.role === 'admin'` 확인 순서). `proxy.ts`가 아니라 **레이아웃 레벨**에서 처리하는 이유는 요청당 `profiles` 조회가 이미 있어 proxy에서 중복 조회할 필요가 없기 때문입니다. `cacheComponents: true` 하에서 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 콘솔 에러가 나므로, `AdminLayout`은 얇은 동기 컴포넌트로 두고 내부의 `<Suspense>`로 감싼 비동기 가드 컴포넌트에서 호출합니다. `components/admin-tab-nav.tsx`의 `TABS`가 대시보드/부서 관리/사용자 관리 3개 탭을 정의하고, `app/protected/admin/page.tsx`(`/protected/admin` 인덱스)는 대시보드 탭으로 리다이렉트합니다.
+- **대시보드**(`app/protected/admin/dashboard/page.tsx`, `lib/queries/stats.ts`) — 원래 `/protected/dashboard`에서 전 사용자 공개로 구현됐다가, 진입점이 헤더와 목록 페이지에 흩어져 있다는 피드백에 따라 **관리자 전용으로 전환**되어 이 경로로 이전했습니다. `AdminLayout`의 `requireAdmin()` 가드가 이미 이 라우트를 관리자 전용으로 막고 있어 페이지 자체에는 별도 가드나 부서 게이트 코드가 없습니다(있었다면 중복). 부서별·기간별·상태별 집계는 `stats_*` RPC 함수(`SECURITY INVOKER`, `weekly_logs`의 전 부서 공개 SELECT RLS를 그대로 적용받음)를 통해 서버에서 조회합니다.
+- **부서 관리**(`app/protected/admin/departments/page.tsx`, `lib/actions/department.ts`) — 기본 동작은 **비활성화(소프트 삭제)**이며, `departments.archived_at`(nullable)로 표현합니다. 하드 삭제는 부서원(`profiles`) 또는 `weekly_logs` 참조가 0건일 때만 UI에서 허용되고(참조가 있으면 삭제 버튼만 비활성화, 별도 안내 문구는 사용자 요청으로 제거됨), `deleteDepartmentAction`이 경합으로 `23503`(FK 위반)을 받으면 그 시점에 다시 참조 수를 세어 `lib/format.ts`의 `formatDepartmentDeleteBlockedMessage()`로 에러 토스트를 띄웁니다(이 함수는 더 이상 사전 안내 UI에는 쓰이지 않고, 경합 상황의 에러 메시지 생성에만 남아 있음). `23505`(이름 중복)는 "이미 존재하는 부서명입니다."로 변환. 비활성 부서는 신규 선택 목록(프로필/회원가입)에서는 제외하되 이미 그 부서인 사용자에게는 "(비활성)" 라벨로 계속 노출하고, 목록 필터에서는 과거 데이터 조회를 위해 항상 노출합니다.
 - **사용자 관리**(`app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`, `lib/actions/user-admin.ts`) — `updateUserRoleAction`/`updateUserDepartmentAction` 모두 클라이언트가 보낸 값을 신뢰하지 않고 **호출자의 `profiles.role`을 서버에서 재조회**해 관리자인지 확인합니다. 자기 자신의 역할 변경은 관리자 수와 무관하게 **항상** 서버 액션에서 차단합니다 — `prevent_unauthorized_role_change()` 트리거는 "마지막 관리자"의 강등만 막고 관리자가 2명 이상이면 자기 강등을 허용하므로, 로드맵이 요구하는 "자기 강등은 항상 금지"를 만족하려면 트리거보다 넓은 조건을 서버 액션에 추가해야 합니다. 소속 부서 변경 시에는 대상 사용자가 이전 부서 로그의 쓰기 권한(RLS)을 잃는다는 경고(`formatDepartmentChangeWarning()`)를 확인 다이얼로그에 표시합니다. 역할 변경 UI(목록 인라인 + 상세 폼, `components/user-role-select.tsx`로 공유)는 `weekly-log-detail-view.tsx`의 진행상태 변경과 동일한 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴을 재사용합니다.
 
 ## Claude Code 커스텀 설정
