@@ -74,6 +74,8 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 `src/` 없이 `components/` 루트에 페이지별 컴포넌트를 평평하게 배치하고, `components/ui/`는 shadcn/ui가 생성한 프리미티브(추가는 `npx shadcn@latest add`), `components/tutorial/`은 스타터킷 온보딩 전용 컴포넌트입니다. 파일명은 전부 kebab-case, 컴포넌트명은 PascalCase입니다.
 
+- 테이블 컬럼 정렬 헤더는 `components/sortable-table-head.tsx`(`SortableTableHead`)로 공통화되어 있습니다 — 클릭 시 오름차순/내림차순을 토글하는 UI만 담당하는 순수 컴포넌트이고, 실제 정렬 로직(정렬 키·방향 state, 데이터 정렬)은 호출하는 쪽(`components/weekly-log-list-view.tsx`, `components/user-admin-table.tsx`)이 클라이언트 사이드로 처리합니다. 서버 재조회 없이 이미 불러온 페이지 데이터만 정렬하는 방식이라, 새 테이블에 정렬을 추가할 때도 이 컴포넌트를 재사용하세요.
+
 ### 폼 처리
 
 React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의, 에러 표시, 서버 에러 매핑 등)은 `docs/guides/forms-react-hook-form.md`를 참고하세요.
@@ -100,6 +102,14 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - 수정(edit) 플로우는 `weekly_log_id`/`department_id`가 이미 존재하므로 이런 가드가 필요 없고, `components/weekly-log-detail-view.tsx`가 `updateWeeklyLogAction` 성공 후 곧바로 신규 첨부파일을 업로드합니다.
 - 핵심 파일: `lib/storage/weekly-log-attachments.ts`(경로 생성·업로드·다운로드 URL 발급), `lib/actions/weekly-log-attachments.ts`(메타데이터 insert/delete 서버 액션), `hooks/use-weekly-log-attachments.ts`(pending files·진행률·기존 첨부파일 상태 관리), `components/weekly-log-attachment-field.tsx`(작성/수정 폼과 읽기 전용 상세 화면이 공유하는 UI, `onAddFiles`/`onRemoveAttachment` 등 prop이 없으면 자동으로 읽기 전용으로 렌더링됨).
 - 다운로드는 버킷이 private이므로 항상 `createSignedUrl`(짧은 만료 시간)로 서명된 URL을 새로 발급받아 사용합니다. 공개 URL(`getPublicUrl`)은 사용하지 않습니다.
+
+### 업무 타입(work_type) 다중 선택 속성 (주간업무일지, ad hoc)
+
+- `weekly_logs.work_type`은 `text[]` 컬럼입니다(v1 원래 계획에 없던 항목, `docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 참고). 네트워크·데이터 추출·보고서 작성·보안·사업계획수립·솔루션 도입·시스템 개발·시스템 검토·클라우드·프로젝트 개발 10개 값만 허용하는 CHECK 제약과 `cardinality > 0`(최소 1개 필수) 제약이 걸려 있습니다.
+- **허용 목록은 `lib/constants/work-types.ts`의 `WORK_TYPE_OPTIONS`(가나다순 정렬)가 유일한 소스**이며, (1) 작성/수정 폼의 체크박스 선택지(`components/weekly-log-form.tsx`), (2) `lib/schemas/weekly-log.ts`의 Zod enum 검증, (3) DB `weekly_logs_work_type_check` CHECK 제약, (4) `stats_logs_by_work_type` RPC의 고정 카테고리 목록, 이 4곳이 이 배열을 공유합니다. 항목을 추가/제거하면 (1)은 자동으로 반영되지만 (3)·(4)는 마이그레이션으로 함께 수정해야 합니다(아바타 프리셋과 동일한 동기화 관례).
+- **선택 UI는 프리셋 아바타와 마찬가지로 체크박스 다중 선택**입니다 — 하나의 업무일지가 여러 타입에 속할 수 있어, 대시보드 차트의 비율 합계가 100%를 넘을 수 있음을 캡션에 명시해두었습니다.
+- **상세 페이지에서는 진행상태(status)와 동일한 패턴으로 인라인 편집**됩니다 — 별도 "수정" 모드에 들어가지 않고 상세 화면에 항상 노출되는 체크박스에서 바로 체크/해제하면 `updateWeeklyLogWorkTypeAction`(`lib/actions/weekly-log.ts`)이 즉시 저장하고, 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴은 `handleStatusChange`와 동일합니다(`components/weekly-log-detail-view.tsx`). 마지막 1개를 해제하려는 시도는 서버 호출 없이 클라이언트에서 즉시 에러 토스트로 막습니다. 전체 편집 폼("수정" 버튼)에도 동일한 체크박스가 남아 있어 두 경로 모두 편집 가능하지만, `defaultValues.work_type`이 항상 최신 상태를 참조하므로 값이 어긋나지 않습니다.
+- **대시보드 차트**(`components/dashboard-worktype-chart.tsx`)는 10개 카테고리가 `--chart-1`~`--chart-5`(5색) 팔레트보다 많아, `WORK_TYPE_CHART_COLORS`(`lib/constants/chart-colors.ts`)로 5색을 순환시켜 `Cell`로 막대마다 다른 색을 부여합니다. 막대 안쪽 라벨은 "N건, NN.N%" 형식(천 단위 콤마 + 소수점 1자리 퍼센트)입니다.
 
 ### 프로필 상세 정보 (이름·전화번호·아바타·자기소개)
 

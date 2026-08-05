@@ -355,6 +355,19 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ---
 
+### Phase 3 이후 ad hoc 확장 (원래 F019~F024 계획 범위 밖, 사용자 요청으로 추가) ✅
+
+> Phase 4(실시간 알림) 착수 전 시점에, 계획에 없던 사용자 요청 4건을 별도 Task 번호 없이 이 섹션에 일괄 기록한다(뒤에 이미 Task 035~037이 예약되어 있어 번호 재배치 대신 이 방식을 택함). **이 섹션의 항목들은 로그인 테스트 계정이 세션에 없어 Playwright 실브라우저 검증을 거치지 못했고, `npx tsc --noEmit`/`npm run lint`/`npm run build` 통과로만 검증**했다 — 다른 Task들과 달리 실측 테스트 체크리스트가 없는 이유.
+
+- **목록·사용자 관리 테이블 정렬 헤더** — 주간업무일지 목록(`components/weekly-log-table.tsx`)과 관리자 사용자 관리 목록(`components/user-admin-table.tsx`)의 모든 컬럼 헤더를 클릭해 오름차순/내림차순으로 토글 정렬하도록 공통 `components/sortable-table-head.tsx`(신규)를 도입. `components/weekly-log-list-view.tsx`가 정렬 상태(`sortKey`/`sortDirection`)를 관리하며 서버 재조회 없이 클라이언트 사이드로 정렬한다(페이지당 20건 규모에서는 충분하다고 판단, RPC 추가 없음).
+- **대시보드 차트 라벨 개선** — 부서별 건수(스택 막대)·진행상태 분포(도넛)·부서별 예상 M/M·금액 차트(`components/dashboard-department-chart.tsx`, `dashboard-status-chart.tsx`, `dashboard-workload-chart.tsx`)에 막대/조각별 비율(%) 또는 절대값 라벨을 추가해 그래프만으로 값을 바로 읽을 수 있게 했다. 스택 막대는 세그먼트 폭이 24px 미만이면 라벨을 숨겨 텍스트 겹침을 방지.
+- **업무 타입(다중 선택) 속성 신설 — 신규 F025** — `weekly_logs.work_type text[]`(신규 컬럼, `cardinality > 0`이고 고정 10개 값만 허용하는 CHECK 제약)를 추가해 네트워크/데이터 추출/보고서 작성/보안/사업계획수립/솔루션 도입/시스템 개발/시스템 검토/클라우드/프로젝트 개발 중 1개 이상을 체크박스로 다중 선택하도록 구현. `lib/constants/work-types.ts`(신규)의 `WORK_TYPE_OPTIONS`(가나다순 정렬)가 폼 선택지·Zod 스키마·CHECK 제약·통계 RPC 4곳이 공유하는 단일 소스이며, 항목을 추가/제거하면 이 4곳을 함께 맞춰야 한다(아바타 프리셋과 동일한 동기화 관례). 작성 폼(`components/weekly-log-form.tsx`)뿐 아니라 **상세 페이지에서도 진행상태 Select와 동일하게 "수정" 모드에 들어가지 않고 체크/해제 즉시 저장**되도록 구현(`components/weekly-log-detail-view.tsx`, `updateWeeklyLogWorkTypeAction` 신규 — 낙관적 업데이트 → 실패 시 롤백 + 토스트 패턴은 기존 `updateWeeklyLogStatusAction`과 동일). 최소 1개 선택 제약 때문에 마지막 항목을 해제하려 하면 서버 호출 없이 즉시 에러 토스트로 막는다. 기존 더미 데이터 317건도 신규 10개 카테고리 기준으로 재배정.
+- **업무 타입별 통계 차트 추가** — 관리자 대시보드에 5번째 차트로 업무 타입별 건수(가로 막대, `components/dashboard-worktype-chart.tsx` 신규)를 추가. `stats_logs_by_work_type(from_date, to_date, dept_id)` RPC 신규(`SECURITY INVOKER`, 기존 `stats_*` 컨벤션과 동일하게 `anon` EXECUTE 명시적 회수), `lib/queries/stats.ts`/`lib/types/stats.ts`에 대응 항목 추가. 업무 타입이 10종으로 `--chart-1`~`--chart-5`(5색) 팔레트보다 많아 `WORK_TYPE_CHART_COLORS`(신규, `lib/constants/chart-colors.ts`)로 5색을 순환시켜 `Cell`로 막대마다 다른 색을 부여하고, 막대 안쪽에 "N건, NN.N%" 라벨을 표시. 하나의 업무일지가 여러 타입에 속할 수 있어 비율 합계가 100%를 넘을 수 있음을 캡션에 명시.
+- **관련 파일**: 위 각 항목 참고. DB 변경(컬럼·CHECK 제약·RPC)은 전부 Supabase MCP `apply_migration`으로 직접 적용되어 로컬 `supabase/migrations/`에는 없음(`prevent_unauthorized_role_change()`와 동일한 배포 방식) — 스키마 확인 시 `mcp__supabase__list_migrations`/`execute_sql`로 실측할 것.
+- **범위 밖 유지**: 이 4건의 실브라우저 회귀 테스트는 다음 통합 검증(Task 036)에서 v1 나머지 기능과 함께 수행하기로 미룸.
+
+---
+
 ### Phase 4: 실시간 알림 시스템
 
 > 목표: 멘션·댓글이 발생하면 상대방 화면에 새로고침 없이 알림이 뜨는 상태. **이 프로젝트 최초의 Supabase Realtime 도입**이라 인프라 리스크가 가장 큼.
@@ -460,6 +473,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F022 | 댓글·멘션 협업 | Task 032(스키마·액션), Task 033(UI) |
 | F023 | 실시간 알림 | Task 034(스키마·Realtime 인프라), Task 035(UI·구독) |
 | F024 | 통계/대시보드 차트 | Task 030(집계 RPC), Task 031(차트 UI) |
+| F025 | 업무 타입(다중 선택) 분류 | ad hoc(Phase 3 이후, Task 번호 없음) |
 | — | 통합 검증·마감 | Task 036, Task 037 |
 
 ## 데이터 모델 변경 요약 (MVP 대비)
@@ -468,7 +482,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 |--------|------|------|
 | `departments` | `archived_at`(또는 `is_active`) 컬럼 추가, admin 전용 INSERT/UPDATE/DELETE 정책 3종 신규 | 026 |
 | `profiles` | UPDATE 정책을 `own_or_admin`으로 통합, `role` 변경 차단 트리거 신규 | 026 |
-| `weekly_logs` | **변경 없음** (기간 필터·통계는 읽기 전용) | — |
+| `weekly_logs` | `work_type text[]` 컬럼 추가(CHECK 제약, 신규 `stats_logs_by_work_type` RPC) | ad hoc |
 | `weekly_log_attachments` | **변경 없음** | — |
 | `weekly_log_comments` | 신규 (소프트 삭제·1단계 대댓글 지원) | 032 |
 | `weekly_log_comment_mentions` | 신규 (멘션 정규화) | 032 |
