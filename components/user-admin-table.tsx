@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { UserRoleSelect } from "@/components/user-role-select";
+import { UserAdminCardList } from "@/components/user-admin-card";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { formatDate } from "@/lib/format";
@@ -216,7 +217,10 @@ export function UserAdminTable({
         />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border shadow-sm">
+          {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 weekly-log 목록과
+              동일하게 md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
+          <UserAdminCardList items={pagedItems} currentUserId={currentUserId} />
+          <div className="hidden overflow-x-auto rounded-lg border shadow-sm md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { AdminDepartmentsSkeleton } from "@/components/admin-departments-skeleton";
+import { DepartmentCardList } from "@/components/department-card";
 import { DepartmentFormDialog } from "@/components/department-form-dialog";
 import { DepartmentRowActions } from "@/components/department-row-actions";
 import { EmptyState } from "@/components/empty-state";
@@ -68,64 +69,69 @@ async function DepartmentsContent() {
           description="부서 추가 버튼을 눌러 첫 부서를 만들어보세요."
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
-                  부서명
-                </TableHead>
-                <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                  소속 인원 수
-                </TableHead>
-                <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                  주간업무일지 수
-                </TableHead>
-                <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                  상태
-                </TableHead>
-                <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
-                  액션
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {departments.map((department) => {
-                const { memberCount, logCount } = countMap.get(department.id) ?? {
-                  memberCount: 0,
-                  logCount: 0,
-                };
-                const isArchived = Boolean(department.archived_at);
+        <>
+          {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 weekly-log 목록과
+              동일하게 md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
+          <DepartmentCardList departments={departments} countMap={countMap} />
+          <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
+                    부서명
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    소속 인원 수
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    주간업무일지 수
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    상태
+                  </TableHead>
+                  <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
+                    액션
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {departments.map((department) => {
+                  const { memberCount, logCount } = countMap.get(department.id) ?? {
+                    memberCount: 0,
+                    logCount: 0,
+                  };
+                  const isArchived = Boolean(department.archived_at);
 
-                return (
-                  <TableRow key={department.id}>
-                    <TableCell className="py-3 pl-4 font-medium">
-                      {department.name}
-                    </TableCell>
-                    <TableCell className="py-3 tabular-nums text-muted-foreground">
-                      {memberCount}명
-                    </TableCell>
-                    <TableCell className="py-3 tabular-nums text-muted-foreground">
-                      {logCount}건
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <Badge variant={isArchived ? "secondary" : "success"}>
-                        {isArchived ? "비활성" : "활성"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="py-3 pr-4">
-                      <DepartmentRowActions
-                        department={department}
-                        memberCount={memberCount}
-                        logCount={logCount}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                  return (
+                    <TableRow key={department.id}>
+                      <TableCell className="py-3 pl-4 font-medium">
+                        {department.name}
+                      </TableCell>
+                      <TableCell className="py-3 tabular-nums text-muted-foreground">
+                        {memberCount}명
+                      </TableCell>
+                      <TableCell className="py-3 tabular-nums text-muted-foreground">
+                        {logCount}건
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <Badge variant={isArchived ? "secondary" : "success"}>
+                          {isArchived ? "비활성" : "활성"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-3 pr-4">
+                        <DepartmentRowActions
+                          department={department}
+                          memberCount={memberCount}
+                          logCount={logCount}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );
