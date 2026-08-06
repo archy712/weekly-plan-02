@@ -237,6 +237,7 @@ export type Database = {
           estimated_cost: number | null
           estimated_mm: number | null
           id: string
+          importance: number
           partner_company: string | null
           start_date: string
           status: string
@@ -253,6 +254,7 @@ export type Database = {
           estimated_cost?: number | null
           estimated_mm?: number | null
           id?: string
+          importance?: number
           partner_company?: string | null
           start_date: string
           status?: string
@@ -269,6 +271,7 @@ export type Database = {
           estimated_cost?: number | null
           estimated_mm?: number | null
           id?: string
+          importance?: number
           partner_company?: string | null
           start_date?: string
           status?: string
@@ -328,6 +331,13 @@ export type Database = {
           in_progress_count: number
           planned_count: number
           total_count: number
+        }[]
+      }
+      stats_logs_by_importance: {
+        Args: { dept_id?: string; from_date?: string; to_date?: string }
+        Returns: {
+          importance: number
+          log_count: number
         }[]
       }
       stats_logs_by_status: {

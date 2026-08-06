@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   DepartmentLogStats,
+  ImportanceLogStats,
   MonthlyLogTrend,
   StatsDateRange,
   StatusLogStats,
@@ -78,6 +79,26 @@ export async function getLogsByWorkType(
   }
 
   return (data ?? []) as WorkTypeLogStats[];
+}
+
+// 업무 중요도(1~5단계) 분포. departmentId를 생략하면 전 부서 대상.
+export async function getLogsByImportance(
+  range: StatsDateRange = {},
+  departmentId?: string,
+): Promise<ImportanceLogStats[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stats_logs_by_importance", {
+    from_date: range.from,
+    to_date: range.to,
+    dept_id: departmentId,
+  });
+
+  if (error) {
+    console.error("[lib/queries/stats] stats_logs_by_importance 조회 실패:", error);
+    return [];
+  }
+
+  return (data ?? []) as ImportanceLogStats[];
 }
 
 // 최근 N개월(현재월 포함) 월별 신규 작성·완료 추이. departmentId를 생략하면 전 부서 대상.

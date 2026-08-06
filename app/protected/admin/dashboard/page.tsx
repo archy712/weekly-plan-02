@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   getLogsByDepartment,
+  getLogsByImportance,
   getLogsByStatus,
   getLogsByWorkType,
   getMonthlyTrend,
@@ -15,6 +16,7 @@ import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
 import { DashboardDepartmentChart } from "@/components/dashboard-department-chart";
 import { DashboardStatusChart } from "@/components/dashboard-status-chart";
 import { DashboardWorkTypeChart } from "@/components/dashboard-worktype-chart";
+import { DashboardImportanceChart } from "@/components/dashboard-importance-chart";
 import { DashboardTrendChart } from "@/components/dashboard-trend-chart";
 import {
   DashboardWorkloadChart,
@@ -68,12 +70,14 @@ async function DashboardContent({
     .order("name");
   const departments: Department[] = departmentRows ?? [];
 
-  const [departmentStats, statusStats, workTypeStats, monthlyTrend] = await Promise.all([
-    getLogsByDepartment(range),
-    getLogsByStatus(range, departmentId),
-    getLogsByWorkType(range, departmentId),
-    getMonthlyTrend(TREND_MONTHS, departmentId),
-  ]);
+  const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend] =
+    await Promise.all([
+      getLogsByDepartment(range),
+      getLogsByStatus(range, departmentId),
+      getLogsByWorkType(range, departmentId),
+      getLogsByImportance(range, departmentId),
+      getMonthlyTrend(TREND_MONTHS, departmentId),
+    ]);
 
   // stats_workload_summary는 부서별 그룹화 없이 단일 행 요약만 반환하므로(Task 030),
   // "부서별" 비교 차트를 만들려면 부서마다 개별 호출해야 한다. departmentStats에 이미
@@ -106,6 +110,7 @@ async function DashboardContent({
         <DashboardDepartmentChart data={departmentStats} />
         <DashboardStatusChart data={statusStats} />
         <DashboardWorkTypeChart data={workTypeStats} />
+        <DashboardImportanceChart data={importanceStats} />
         <DashboardTrendChart data={monthlyTrend} />
         <DashboardWorkloadChart data={workloadRows} />
       </div>

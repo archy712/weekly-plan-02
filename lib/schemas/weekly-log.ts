@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
 import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 
 export const weeklyLogSchema = z
@@ -12,6 +13,12 @@ export const weeklyLogSchema = z
     work_type: z
       .array(z.enum(WORK_TYPE_OPTIONS))
       .min(1, "업무 타입을 1개 이상 선택해주세요"),
+    // 슬라이더 1개 값 — 항상 1~5 정수만 들어오므로 min/max만 확인한다.
+    importance: z
+      .number()
+      .int()
+      .min(IMPORTANCE_MIN, "업무 중요도를 선택해주세요")
+      .max(IMPORTANCE_MAX, "업무 중요도를 선택해주세요"),
     content: z
       .string()
       .min(1, "업무 상세 내용을 입력해주세요")

@@ -1,5 +1,5 @@
 import type { Database } from "@/lib/supabase/database.types";
-import type { WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
+import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 
 // Task 030: 통계 집계 RPC(SECURITY INVOKER, lib/queries/stats.ts에서 호출)의 반환 타입.
 // database.types.ts의 Functions 정의를 그대로 재사용해 RPC 시그니처가 바뀌면(재생성 시)
@@ -24,6 +24,13 @@ export type WorkTypeLogStats = Omit<
   StatsFunctions["stats_logs_by_work_type"]["Returns"][number],
   "work_type"
 > & { work_type: WeeklyLogWorkType };
+
+// 업무 중요도 분포 — stats_logs_by_importance(from_date, to_date, dept_id).
+// DB 컬럼은 smallint이지만 CHECK 제약과 동일한 1~5 값만 오므로 WeeklyLogImportance로 좁힌다.
+export type ImportanceLogStats = Omit<
+  StatsFunctions["stats_logs_by_importance"]["Returns"][number],
+  "importance"
+> & { importance: WeeklyLogImportance };
 
 // 월별 생성·완료 추이 — stats_logs_monthly_trend(months, dept_id).
 // month는 각 달의 1일을 나타내는 date 문자열(YYYY-MM-DD)이다.

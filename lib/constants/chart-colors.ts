@@ -41,3 +41,9 @@ export const WORK_TYPE_CHART_COLORS = [
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
 ] as const;
+
+// 업무 중요도 분포(레이더) 차트 색상. 5개 축이 전부 같은 지표(건수)의 단일 계열이라
+// 축마다 다른 색을 줄 필요가 없어 --chart-4 하나만 사용(부서별 M/M·금액 차트가 이미
+// --chart-1/--chart-2를, 업무 타입 차트가 --chart-1~5를 순환 사용 중이라 시각적으로
+// 구분되도록 선택).
+export const IMPORTANCE_CHART_COLOR = "hsl(var(--chart-4))";

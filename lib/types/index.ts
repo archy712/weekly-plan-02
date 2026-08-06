@@ -1,4 +1,5 @@
 import type { Tables } from "@/lib/supabase/database.types";
+import type { WeeklyLogImportance } from "@/lib/constants/importance";
 import type { WeeklyLogWorkType } from "@/lib/constants/work-types";
 
 export type UserRole = "user" | "admin";
@@ -12,11 +13,14 @@ export type Profile = Omit<Tables<"profiles">, "role"> & {
 export type WeeklyLogStatus = "planned" | "in_progress" | "completed";
 
 export type { WeeklyLogWorkType };
+export type { WeeklyLogImportance };
 
-export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type"> & {
+export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type" | "importance"> & {
   status: WeeklyLogStatus;
   // 다중 선택(체크박스)이라 배열로 저장한다 — 최소 1개(DB CHECK 제약 cardinality > 0).
   work_type: WeeklyLogWorkType[];
+  // 슬라이더 1~5단계 — DB는 smallint라 number로 오지만 1~5로 좁힌다(CHECK 제약과 동일).
+  importance: WeeklyLogImportance;
 };
 
 export type WeeklyLogListItem = Pick<
@@ -42,6 +46,7 @@ export type WeeklyLogDetail = Pick<
   | "status"
   | "department_id"
   | "work_type"
+  | "importance"
   | "estimated_mm"
   | "estimated_cost"
   | "partner_company"

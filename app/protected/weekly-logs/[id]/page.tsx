@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
 import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton";
 import { getWeeklyLogComments } from "@/lib/queries/comments";
-import type { WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
+import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 
 async function WeeklyLogDetailContent({
   params,
@@ -41,7 +41,7 @@ async function WeeklyLogDetailContent({
   const { data: log, error: logError } = await supabase
     .from("weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, status, department_id, work_type, estimated_mm, estimated_cost, partner_company, departments(name), profiles(email)",
+      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, estimated_mm, estimated_cost, partner_company, departments(name), profiles(email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -83,6 +83,7 @@ async function WeeklyLogDetailContent({
         status: log.status as WeeklyLogStatus,
         department_id: log.department_id,
         work_type: log.work_type as WeeklyLogWorkType[],
+        importance: log.importance as WeeklyLogImportance,
         estimated_mm: log.estimated_mm,
         estimated_cost: log.estimated_cost,
         partner_company: log.partner_company,

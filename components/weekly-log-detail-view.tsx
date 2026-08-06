@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { StatusBadge } from "@/components/status-badge";
 import {
   WeeklyLogForm,
@@ -36,14 +37,26 @@ import {
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
+import {
+  formatImportanceLabel,
+  IMPORTANCE_LEVELS,
+  IMPORTANCE_MAX,
+  IMPORTANCE_MIN,
+} from "@/lib/constants/importance";
 import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
-import type { WeeklyLogDetail, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
+import type {
+  WeeklyLogDetail,
+  WeeklyLogImportance,
+  WeeklyLogStatus,
+  WeeklyLogWorkType,
+} from "@/lib/types";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import {
   deleteWeeklyLogAction,
   updateWeeklyLogStatusAction,
   updateWeeklyLogWorkTypeAction,
+  updateWeeklyLogImportanceAction,
   updateWeeklyLogAction,
 } from "@/lib/actions/weekly-log";
 
@@ -66,6 +79,12 @@ export function WeeklyLogDetailView({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [workType, setWorkType] = useState<WeeklyLogWorkType[]>(log.work_type);
   const [isUpdatingWorkType, setIsUpdatingWorkType] = useState(false);
+  const [importance, setImportance] = useState<WeeklyLogImportance>(log.importance);
+  const [isUpdatingImportance, setIsUpdatingImportance] = useState(false);
+  // 슬라이더 드래그 중에는 화면에만 반영하고(onValueChange), 손을 뗄 때만 서버에 저장한다
+  // (onValueCommit). 저장 실패 시 롤백할 "마지막으로 저장된 값"을 별도로 추적해야 한다 —
+  // importance state 자체는 드래그 중 계속 바뀌므로 실패 시점의 "이전 값"으로 쓸 수 없다.
+  const savedImportanceRef = useRef<WeeklyLogImportance>(log.importance);
   const [isDeleting, setIsDeleting] = useState(false);
   // isDeleting 리렌더 반영 전에 도착하는 연속 클릭(더블클릭)을 막기 위한 동기 가드.
   const isDeletingRef = useRef(false);
@@ -148,6 +167,27 @@ export function WeeklyLogDetailView({
     }
   };
 
+  const handleImportanceCommit = async (next: WeeklyLogImportance) => {
+    if (next === savedImportanceRef.current) return;
+    setIsUpdatingImportance(true);
+    try {
+      const result = await updateWeeklyLogImportanceAction(log.id, next);
+      if (!result.success) {
+        setImportance(savedImportanceRef.current);
+        toast.error(result.error);
+        return;
+      }
+      savedImportanceRef.current = next;
+      toast.success(`업무 중요도가 '${formatImportanceLabel(next)}'(으)로 변경되었습니다.`);
+      router.refresh();
+    } catch {
+      setImportance(savedImportanceRef.current);
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsUpdatingImportance(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (isDeletingRef.current) return;
     isDeletingRef.current = true;
@@ -186,6 +226,7 @@ export function WeeklyLogDetailView({
           defaultValues={{
             title: log.title,
             work_type: workType,
+            importance,
             content: log.content,
             start_date: log.start_date,
             target_end_date: log.target_end_date,
@@ -212,7 +253,10 @@ export function WeeklyLogDetailView({
       {backLink}
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold">{log.title}</h1>
-        <StatusBadge status={status} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Badge variant="secondary">중요도: {formatImportanceLabel(importance)}</Badge>
+          <StatusBadge status={status} />
+        </div>
       </div>
       {canWrite ? (
         <div className="flex flex-col gap-1.5">
@@ -302,6 +346,25 @@ export function WeeklyLogDetailView({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="importance">업무 중요도 {formatImportanceLabel(importance)}</Label>
+            <Slider
+              id="importance"
+              min={IMPORTANCE_MIN}
+              max={IMPORTANCE_MAX}
+              step={1}
+              value={[importance]}
+              disabled={isUpdatingImportance}
+              onValueChange={([next]) => setImportance(next as WeeklyLogImportance)}
+              onValueCommit={([next]) => handleImportanceCommit(next as WeeklyLogImportance)}
+              aria-label="업무 중요도"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              {IMPORTANCE_LEVELS.map((level) => (
+                <span key={level}>{formatImportanceLabel(level)}</span>
+              ))}
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <AlertDialog>

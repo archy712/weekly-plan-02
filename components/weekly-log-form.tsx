@@ -16,8 +16,16 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { HtmlEditor } from "@/components/html-editor";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import type { PendingAttachment } from "@/hooks/use-weekly-log-attachments";
+import {
+  DEFAULT_IMPORTANCE,
+  formatImportanceLabel,
+  IMPORTANCE_LEVELS,
+  IMPORTANCE_MAX,
+  IMPORTANCE_MIN,
+} from "@/lib/constants/importance";
 import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogAttachment } from "@/lib/types";
@@ -50,6 +58,7 @@ export function WeeklyLogForm({
     defaultValues: {
       title: defaultValues?.title ?? "",
       work_type: defaultValues?.work_type ?? [],
+      importance: defaultValues?.importance ?? DEFAULT_IMPORTANCE,
       content: defaultValues?.content ?? "",
       start_date: defaultValues?.start_date ?? "",
       target_end_date: defaultValues?.target_end_date ?? "",
@@ -146,6 +155,37 @@ export function WeeklyLogForm({
                   />
                 ))}
               </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="importance"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                업무 중요도{" "}
+                <span className="text-muted-foreground font-normal">
+                  {formatImportanceLabel(field.value as (typeof IMPORTANCE_LEVELS)[number])}
+                </span>
+              </FormLabel>
+              <FormControl>
+                <div className="flex flex-col gap-2 pt-1">
+                  <Slider
+                    min={IMPORTANCE_MIN}
+                    max={IMPORTANCE_MAX}
+                    step={1}
+                    value={[field.value]}
+                    onValueChange={([next]) => field.onChange(next)}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    {IMPORTANCE_LEVELS.map((level) => (
+                      <span key={level}>{formatImportanceLabel(level)}</span>
+                    ))}
+                  </div>
+                </div>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html";
+import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
 import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
@@ -12,6 +13,8 @@ import { z } from "zod";
 const workTypeUpdateSchema = z
   .array(z.enum(WORK_TYPE_OPTIONS))
   .min(1, "업무 타입을 1개 이상 선택해주세요");
+
+const importanceUpdateSchema = z.number().int().min(IMPORTANCE_MIN).max(IMPORTANCE_MAX);
 
 export type WeeklyLogActionResult =
   | { success: true }
@@ -28,6 +31,7 @@ function toWeeklyLogPayload(data: WeeklyLogFormData) {
   return {
     title: data.title,
     work_type: data.work_type,
+    importance: data.importance,
     content: sanitizeWeeklyLogContent(data.content),
     start_date: data.start_date,
     target_end_date: data.target_end_date,
@@ -163,6 +167,40 @@ export async function updateWeeklyLogWorkTypeAction(
 
   if (error) {
     return { success: false, error: "업무 타입 변경 중 오류가 발생했습니다." };
+  }
+  if (!updated) {
+    return { success: false, error: "변경 권한이 없거나 존재하지 않는 항목입니다." };
+  }
+
+  revalidatePath("/protected/weekly-logs");
+  revalidatePath(`/protected/weekly-logs/${id}`);
+  return { success: true };
+}
+
+export async function updateWeeklyLogImportanceAction(
+  id: string,
+  importance: number,
+): Promise<WeeklyLogActionResult> {
+  const parsed = importanceUpdateSchema.safeParse(importance);
+  if (!parsed.success) {
+    return { success: false, error: "업무 중요도를 확인해주세요." };
+  }
+
+  const supabase = await createClient();
+  const { data, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !data?.claims) {
+    return { success: false, error: "로그인이 필요합니다." };
+  }
+
+  const { data: updated, error } = await supabase
+    .from("weekly_logs")
+    .update({ importance: parsed.data })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { success: false, error: "업무 중요도 변경 중 오류가 발생했습니다." };
   }
   if (!updated) {
     return { success: false, error: "변경 권한이 없거나 존재하지 않는 항목입니다." };
