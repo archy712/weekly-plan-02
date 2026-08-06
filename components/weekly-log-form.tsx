@@ -26,13 +26,13 @@ import {
   IMPORTANCE_MAX,
   IMPORTANCE_MIN,
 } from "@/lib/constants/importance";
-import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
-import type { WeeklyLogAttachment } from "@/lib/types";
+import type { WeeklyLogAttachment, WorkTypeOption } from "@/lib/types";
 import { formatThousandsInput } from "@/lib/utils";
 
 export function WeeklyLogForm({
   defaultValues,
+  workTypeOptions,
   submitLabel = "저장",
   onSubmit,
   onCancel,
@@ -44,6 +44,7 @@ export function WeeklyLogForm({
   onRemoveAttachment,
 }: {
   defaultValues?: Partial<WeeklyLogFormData>;
+  workTypeOptions: WorkTypeOption[];
   submitLabel?: string;
   onSubmit: (values: WeeklyLogFormData) => Promise<void> | void;
   onCancel: () => void;
@@ -127,7 +128,7 @@ export function WeeklyLogForm({
             <FormItem>
               <FormLabel>업무 타입</FormLabel>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-                {WORK_TYPE_OPTIONS.map((type) => (
+                {workTypeOptions.map(({ name: type, archived }) => (
                   <FormField
                     key={type}
                     control={form.control}
@@ -149,7 +150,9 @@ export function WeeklyLogForm({
                               }}
                             />
                           </FormControl>
-                          <FormLabel className="text-sm font-normal">{type}</FormLabel>
+                          <FormLabel className="text-sm font-normal">
+                            {archived ? `${type} (비활성)` : type}
+                          </FormLabel>
                         </FormItem>
                       );
                     }}

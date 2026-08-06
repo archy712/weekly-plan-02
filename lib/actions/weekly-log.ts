@@ -5,13 +5,14 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html";
 import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
-import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 import { z } from "zod";
 
+// 허용값은 관리자가 work_types 테이블에서 관리하는 동적 목록이라 형태만 검증하고,
+// 실존 여부는 DB 트리거(validate_weekly_log_work_type)가 최종 검증한다.
 const workTypeUpdateSchema = z
-  .array(z.enum(WORK_TYPE_OPTIONS))
+  .array(z.string().min(1))
   .min(1, "업무 타입을 1개 이상 선택해주세요");
 
 const importanceUpdateSchema = z.number().int().min(IMPORTANCE_MIN).max(IMPORTANCE_MAX);

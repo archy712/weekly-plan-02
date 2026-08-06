@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
-import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 
 export const weeklyLogSchema = z
   .object({
@@ -9,9 +8,11 @@ export const weeklyLogSchema = z
       .string()
       .min(1, "업무명을 입력해주세요")
       .max(100, "업무명은 최대 100자까지 입력 가능합니다"),
-    // 체크박스 다중 선택 — 최소 1개는 선택해야 한다.
+    // 체크박스 다중 선택 — 최소 1개는 선택해야 한다. 허용값은 관리자가 work_types
+    // 테이블에서 관리하는 동적 목록이라 컴파일 타임에 알 수 없으므로 여기서는 형태만
+    // 검증하고, 실존 여부는 DB 트리거(validate_weekly_log_work_type)가 최종 검증한다.
     work_type: z
-      .array(z.enum(WORK_TYPE_OPTIONS))
+      .array(z.string().min(1))
       .min(1, "업무 타입을 1개 이상 선택해주세요"),
     // 슬라이더 1개 값 — 항상 1~5 정수만 들어오므로 min/max만 확인한다.
     importance: z

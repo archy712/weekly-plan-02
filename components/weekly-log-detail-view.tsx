@@ -43,7 +43,6 @@ import {
   IMPORTANCE_MAX,
   IMPORTANCE_MIN,
 } from "@/lib/constants/importance";
-import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
 import { formatThousandsInput } from "@/lib/utils";
 import type {
@@ -51,6 +50,7 @@ import type {
   WeeklyLogImportance,
   WeeklyLogStatus,
   WeeklyLogWorkType,
+  WorkTypeOption,
 } from "@/lib/types";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import {
@@ -68,11 +68,13 @@ export function WeeklyLogDetailView({
   canWrite,
   currentUserId,
   isAdmin,
+  workTypeOptions,
 }: {
   log: WeeklyLogDetail;
   canWrite: boolean;
   currentUserId: string;
   isAdmin: boolean;
+  workTypeOptions: WorkTypeOption[];
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -224,6 +226,7 @@ export function WeeklyLogDetailView({
       <div className="flex flex-col gap-6">
         {backLink}
         <WeeklyLogForm
+          workTypeOptions={workTypeOptions}
           defaultValues={{
             title: log.title,
             work_type: workType,
@@ -264,7 +267,7 @@ export function WeeklyLogDetailView({
         <div className="flex flex-col gap-1.5">
           <Label>업무 타입</Label>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-            {WORK_TYPE_OPTIONS.map((type) => {
+            {workTypeOptions.map(({ name: type, archived }) => {
               const checked = workType.includes(type);
               return (
                 <div key={type} className="flex flex-row items-center gap-2">
@@ -277,7 +280,7 @@ export function WeeklyLogDetailView({
                     }
                   />
                   <Label htmlFor={`work-type-${type}`} className="text-sm font-normal">
-                    {type}
+                    {archived ? `${type} (비활성)` : type}
                   </Label>
                 </div>
               );

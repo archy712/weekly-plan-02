@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   getLogsByDepartment,
   getLogsByImportance,
@@ -46,7 +47,11 @@ async function DashboardContent({
   const supabase = await createClient();
 
   // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
-  // 처리하므로 여기서는 다시 조회하지 않는다.
+  // 처리하지만, 이 페이지는 관리자 소속 조직으로 범위를 좁혀야 해서 organizationId를
+  // 얻기 위해 다시 호출한다(약간의 중복 조회, CLAUDE.md의 페이지별 부서 게이트 반복
+  // 관례와 동일한 트레이드오프).
+  const { organizationId } = await requireAdmin();
+
   const {
     department: departmentParam,
     from: fromParam,
@@ -67,16 +72,17 @@ async function DashboardContent({
   const { data: departmentRows } = await supabase
     .from("departments")
     .select("id, name, created_at, archived_at, organization_id")
+    .eq("organization_id", organizationId)
     .order("name");
   const departments: Department[] = departmentRows ?? [];
 
   const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend] =
     await Promise.all([
-      getLogsByDepartment(range),
-      getLogsByStatus(range, departmentId),
-      getLogsByWorkType(range, departmentId),
-      getLogsByImportance(range, departmentId),
-      getMonthlyTrend(TREND_MONTHS, departmentId),
+      getLogsByDepartment(range, organizationId),
+      getLogsByStatus(range, departmentId, organizationId),
+      getLogsByWorkType(range, departmentId, organizationId),
+      getLogsByImportance(range, departmentId, organizationId),
+      getMonthlyTrend(TREND_MONTHS, departmentId, organizationId),
     ]);
 
   // stats_workload_summary는 부서별 그룹화 없이 단일 행 요약만 반환하므로(Task 030),
@@ -85,7 +91,7 @@ async function DashboardContent({
   // 0건짜리 빈 막대를 피한다.
   const workloadRows = await Promise.all(
     departmentStats.map(async (dept) => {
-      const [summary] = await getWorkloadSummary(range, dept.department_id);
+      const [summary] = await getWorkloadSummary(range, dept.department_id, organizationId);
       return {
         department_id: dept.department_id,
         department_name: dept.department_name,

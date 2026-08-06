@@ -19,6 +19,11 @@ import type {
 // 각 함수는 실패 시 예외를 던지지 않고 빈 배열로 폴백한다. 대시보드(Task 031)가 여러
 // 차트를 동시에 그리는 구조라, 통계 위젯 하나의 RPC 실패가 페이지 전체를 죽이지 않게
 // 하기 위함이다. 실패는 콘솔에 로그를 남겨 원인 추적은 가능하게 한다.
+//
+// organizationId는 관리자 콘솔 대시보드가 호출자의 소속 조직으로 결과를 제한하기 위해
+// 모든 함수에 공통으로 전달한다(departmentId를 생략해 "전체 부서"를 선택해도 다른 조직의
+// 부서/로그가 섞이지 않도록 하는 최종 방어선 — URL의 department 쿼리 파라미터가 다른
+// 조직 부서로 조작되더라도 RPC가 organization_id 불일치 시 걸러낸다).
 
 // Server Component에서 Fluid compute 대응을 위해 매 호출마다 새 클라이언트를 만든다
 // (전역 변수에 저장하지 않음, CLAUDE.md 명시).
@@ -26,11 +31,13 @@ import type {
 // 부서별 건수(상태별 분해 포함)
 export async function getLogsByDepartment(
   range: StatsDateRange = {},
+  organizationId?: string,
 ): Promise<DepartmentLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_department", {
     from_date: range.from,
     to_date: range.to,
+    org_id: organizationId,
   });
 
   if (error) {
@@ -45,12 +52,14 @@ export async function getLogsByDepartment(
 export async function getLogsByStatus(
   range: StatsDateRange = {},
   departmentId?: string,
+  organizationId?: string,
 ): Promise<StatusLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_status", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
+    org_id: organizationId,
   });
 
   if (error) {
@@ -65,12 +74,14 @@ export async function getLogsByStatus(
 export async function getLogsByWorkType(
   range: StatsDateRange = {},
   departmentId?: string,
+  organizationId?: string,
 ): Promise<WorkTypeLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_work_type", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
+    org_id: organizationId,
   });
 
   if (error) {
@@ -85,12 +96,14 @@ export async function getLogsByWorkType(
 export async function getLogsByImportance(
   range: StatsDateRange = {},
   departmentId?: string,
+  organizationId?: string,
 ): Promise<ImportanceLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_importance", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
+    org_id: organizationId,
   });
 
   if (error) {
@@ -105,11 +118,13 @@ export async function getLogsByImportance(
 export async function getMonthlyTrend(
   months: number = 6,
   departmentId?: string,
+  organizationId?: string,
 ): Promise<MonthlyLogTrend[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_monthly_trend", {
     months,
     dept_id: departmentId,
+    org_id: organizationId,
   });
 
   if (error) {
@@ -126,12 +141,14 @@ export async function getMonthlyTrend(
 export async function getWorkloadSummary(
   range: StatsDateRange = {},
   departmentId?: string,
+  organizationId?: string,
 ): Promise<WorkloadSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_workload_summary", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
+    org_id: organizationId,
   });
 
   if (error) {

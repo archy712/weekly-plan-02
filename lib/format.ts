@@ -33,13 +33,6 @@ export function formatDepartmentDeleteBlockedMessage(
   return `${memberCount}명의 부서원과 ${logCount}건의 업무일지가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
 }
 
-// 조직 하드 삭제가 막혔을 때 UI(사전 비활성화)와 서버 액션(경합 상황의 23503 폴백) 양쪽에서
-// 동일한 문구를 쓰도록 공유하는 포맷터. departments.organization_id가 NOT NULL이라
-// 부서가 있는 조직은 항상 하드 삭제가 막힌다.
-export function formatOrganizationDeleteBlockedMessage(departmentCount: number): string {
-  return `${departmentCount}개의 부서가 속해 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
-}
-
 // 사용자의 소속 부서 변경 확인 다이얼로그에서 쓰는 경고 문구. weekly_logs RLS의 쓰기 조건이
 // department_id = current_department_id()이므로, 부서를 바꾸면 이 사용자가 작성한 기존
 // 업무일지에 대한 쓰기 권한을 잃는다는 점을 명시한다.

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { AdminUsersSkeleton } from "@/components/admin-users-skeleton";
 import { UserAdminTable } from "@/components/user-admin-table";
 import { escapeLikePattern } from "@/lib/utils";
@@ -25,11 +26,10 @@ async function UsersContent({
   searchParams: Promise<{ department?: string; role?: string; q?: string }>;
 }) {
   const supabase = await createClient();
-  // 이 페이지는 app/protected/admin/layout.tsx의 requireAdmin() 가드를 이미 통과한
-  // 뒤에만 렌더링되지만, 로그인 사용자 본인 id(자기 자신 강등 방지 UI에 필요)를 얻기
-  // 위해 getClaims()를 다시 호출한다.
-  const { data } = await supabase.auth.getClaims();
-  const currentUserId = data?.claims?.sub ?? "";
+  // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
+  // 처리하지만, 이 페이지는 관리자 소속 조직으로 범위를 좁혀야 해서 organizationId·본인
+  // id(자기 자신 강등 방지 UI에 필요)를 얻기 위해 다시 호출한다.
+  const { id: currentUserId, organizationId } = await requireAdmin();
 
   const { department: departmentParam, role: roleParam, q: rawQuery } = await searchParams;
 
@@ -41,9 +41,21 @@ async function UsersContent({
       : ALL_ROLES_FILTER;
   const searchQuery = rawQuery?.trim() ?? "";
 
+  // 관리자 소속 조직의 부서만 필터 드롭다운과 사용자 목록 범위를 동시에 결정한다.
+  const { data: departmentRows } = await supabase
+    .from("departments")
+    .select("id, name, created_at, archived_at, organization_id")
+    .eq("organization_id", organizationId)
+    .order("name");
+  const departments: Department[] = departmentRows ?? [];
+  const departmentIds = departments.map((department) => department.id);
+
+  // 소속 조직에 부서가 하나도 없으면(현실적으로 드묾) in([]) 대신 빈 배열을 그대로 써서
+  // "일치하는 행 없음"을 안전하게 표현한다.
   let usersQuery = supabase
     .from("profiles")
     .select(USERS_SELECT)
+    .in("department_id", departmentIds)
     .order("email", { ascending: true });
 
   if (selectedDepartment !== ALL_DEPARTMENTS_FILTER) {
@@ -73,12 +85,6 @@ async function UsersContent({
     avatar_key: row.avatar_key ?? "fox",
     created_at: row.created_at,
   }));
-
-  const { data: departmentRows } = await supabase
-    .from("departments")
-    .select("id, name, created_at, archived_at, organization_id")
-    .order("name");
-  const departments: Department[] = departmentRows ?? [];
 
   return (
     <UserAdminTable

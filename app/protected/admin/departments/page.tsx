@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { AdminDepartmentsSkeleton } from "@/components/admin-departments-skeleton";
 import { DepartmentCardList } from "@/components/department-card";
 import { DepartmentFormDialog } from "@/components/department-form-dialog";
@@ -20,11 +21,17 @@ import {
 async function DepartmentsContent() {
   const supabase = await createClient();
 
-  // 조직 목록은 폼 선택지·비활성 라벨링에 모두 필요해 부서 조회와 별도로 가져온다.
+  // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
+  // 처리하지만, 이 페이지는 관리자 소속 조직으로 범위를 좁혀야 해서 organizationId를
+  // 얻기 위해 다시 호출한다.
+  const { organizationId } = await requireAdmin();
+
+  // 조직은 관리자 소속 조직 1건뿐이다(폼 선택지·비활성 라벨링에 모두 필요해 부서 조회와
+  // 별도로 가져온다) — 여러 조직을 넘나드는 선택은 더 이상 불가능하다.
   const { data: organizationRows, error: organizationsError } = await supabase
     .from("organizations")
     .select("id, name, created_at, archived_at")
-    .order("name");
+    .eq("id", organizationId);
 
   if (organizationsError) {
     throw organizationsError;
@@ -35,6 +42,7 @@ async function DepartmentsContent() {
   const { data: departmentRows, error: departmentsError } = await supabase
     .from("departments")
     .select("id, name, created_at, archived_at, organization_id, organizations(name)")
+    .eq("organization_id", organizationId)
     .order("name");
 
   if (departmentsError) {

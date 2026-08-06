@@ -8,8 +8,9 @@ import { WeeklyLogForm } from "@/components/weekly-log-form";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
 import { createWeeklyLogAction } from "@/lib/actions/weekly-log";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
+import type { WorkTypeOption } from "@/lib/types";
 
-export function WeeklyLogNewForm() {
+export function WeeklyLogNewForm({ workTypeOptions }: { workTypeOptions: WorkTypeOption[] }) {
   const router = useRouter();
   const attachmentsState = useWeeklyLogAttachments();
   // 첨부파일 업로드 실패로 재제출될 때 weekly_logs 행이 중복 생성되지 않도록,
@@ -51,6 +52,7 @@ export function WeeklyLogNewForm() {
 
   return (
     <WeeklyLogForm
+      workTypeOptions={workTypeOptions}
       submitLabel="저장"
       onCancel={() => router.push("/protected/weekly-logs")}
       onSubmit={handleSubmit}

@@ -19,7 +19,8 @@ export type StatusLogStats = Omit<
 > & { status: WeeklyLogStatus };
 
 // 타입별 건수 — stats_logs_by_work_type(from_date, to_date, dept_id).
-// DB 컬럼은 text이지만 CHECK 제약과 동일한 8개 값만 오므로 WeeklyLogWorkType으로 좁힌다.
+// 관리자가 work_types 테이블에서 관리하는 동적 목록이므로 값 개수가 고정되어 있지 않다
+// (활성 상태인 것만 반환됨). WeeklyLogWorkType은 string 별칭이라 실질적으로 재노출용.
 export type WorkTypeLogStats = Omit<
   StatsFunctions["stats_logs_by_work_type"]["Returns"][number],
   "work_type"

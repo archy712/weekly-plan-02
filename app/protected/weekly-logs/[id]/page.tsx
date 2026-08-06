@@ -41,7 +41,7 @@ async function WeeklyLogDetailContent({
   const { data: log, error: logError } = await supabase
     .from("weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, estimated_mm, estimated_cost, partner_company, departments(name), profiles(email)",
+      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, estimated_mm, estimated_cost, partner_company, departments(name, organization_id), profiles(email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -72,6 +72,32 @@ async function WeeklyLogDetailContent({
   // 댓글도 첨부파일과 동일하게 weekly_logs SELECT 공개 범위를 그대로 따른다(부서 무관 조회).
   const comments = await getWeeklyLogComments(supabase, id);
 
+  // 부서 select의 "비활성 라벨링"과 동일한 패턴 — 이 로그의 부서가 속한 조직의 활성
+  // 업무 타입은 항상 노출하고, 다른 조직 소속이거나 비활성인 타입은 이 로그에 이미
+  // 선택되어 있는 경우에만(조직 재배정 등으로 어긋난 과거 값 보존) "(비활성)" 라벨로
+  // 계속 노출한다.
+  const logOrganizationId = log.departments?.organization_id ?? null;
+  const { data: workTypeRows, error: workTypesError } = await supabase
+    .from("work_types")
+    .select("name, archived_at, organization_id")
+    .order("name");
+
+  if (workTypesError) {
+    throw workTypesError;
+  }
+
+  const workTypeOptions = (workTypeRows ?? [])
+    .filter((row) => {
+      const alreadySelected = log.work_type.includes(row.name);
+      const isActiveInLogOrganization =
+        !row.archived_at && row.organization_id === logOrganizationId;
+      return alreadySelected || isActiveInLogOrganization;
+    })
+    .map((row) => ({
+      name: row.name,
+      archived: Boolean(row.archived_at) || row.organization_id !== logOrganizationId,
+    }));
+
   return (
     <WeeklyLogDetailView
       log={{
@@ -95,6 +121,7 @@ async function WeeklyLogDetailContent({
       canWrite={canWrite}
       currentUserId={data.claims.sub}
       isAdmin={profile.role === "admin"}
+      workTypeOptions={workTypeOptions}
     />
   );
 }

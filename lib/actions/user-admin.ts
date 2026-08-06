@@ -18,7 +18,7 @@ const RLS_VIOLATION = "42501";
 
 async function requireCallerAdmin(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<{ callerId: string } | { error: string }> {
+): Promise<{ callerId: string; organizationId: string } | { error: string }> {
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims) {
     return { error: "로그인이 필요합니다." };
@@ -31,7 +31,7 @@ async function requireCallerAdmin(
   // 관리자 여부 판단에는 절대 쓰지 않는다(CLAUDE.md 관례).
   const { data: callerProfile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, departments(organization_id)")
     .eq("id", callerId)
     .maybeSingle();
 
@@ -39,7 +39,31 @@ async function requireCallerAdmin(
     return { error: "권한이 없습니다." };
   }
 
-  return { callerId };
+  const organizationId = callerProfile.departments?.organization_id;
+  if (!organizationId) {
+    return { error: "권한이 없습니다." };
+  }
+
+  return { callerId, organizationId };
+}
+
+// 대상 부서가 호출자의 소속 조직에 속하는지 확인한다. 관리자 콘솔 화면은 이미 자기
+// 조직의 부서만 선택지로 보여주지만, 클라이언트가 보낸 값은 신뢰하지 않고 서버에서
+// 재검증한다(자기 자신 강등 방지와 동일하게 액션 레벨 방어 — profiles RLS/트리거는
+// 건드리지 않는다는 결정에 따른 것).
+async function isDepartmentInOrganization(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  departmentId: string | null,
+  organizationId: string,
+): Promise<boolean> {
+  if (!departmentId) return false;
+  const { data } = await supabase
+    .from("departments")
+    .select("id")
+    .eq("id", departmentId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  return Boolean(data);
 }
 
 // 트리거(prevent_unauthorized_role_change)가 던지는 예외는 이미 자연스러운 한국어
@@ -79,6 +103,21 @@ export async function updateUserRoleAction(
     return { success: false, error: "본인 역할은 변경할 수 없습니다." };
   }
 
+  // 대상 사용자가 호출자와 같은 조직 소속인지 확인 — 다른 조직 사용자의 역할은
+  // 건드릴 수 없다.
+  const { data: targetProfile } = await supabase
+    .from("profiles")
+    .select("department_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (
+    !targetProfile ||
+    !(await isDepartmentInOrganization(supabase, targetProfile.department_id, auth.organizationId))
+  ) {
+    return { success: false, error: "권한이 없습니다." };
+  }
+
   const { data: updated, error } = await supabase
     .from("profiles")
     .update({ role })
@@ -112,6 +151,28 @@ export async function updateUserDepartmentAction(
   const supabase = await createClient();
   const auth = await requireCallerAdmin(supabase);
   if ("error" in auth) return { success: false, error: auth.error };
+
+  // 대상 사용자의 현재 부서와, 새로 지정하려는 부서 양쪽 모두 호출자의 소속 조직에
+  // 속해야 한다 — 다른 조직 사용자를 건드리는 것도, 다른 조직으로 이동시키는 것도
+  // 차단한다.
+  const { data: targetProfile } = await supabase
+    .from("profiles")
+    .select("department_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const currentDepartmentInOrg =
+    !!targetProfile &&
+    (await isDepartmentInOrganization(supabase, targetProfile.department_id, auth.organizationId));
+  const newDepartmentInOrg = await isDepartmentInOrganization(
+    supabase,
+    departmentId,
+    auth.organizationId,
+  );
+
+  if (!currentDepartmentInOrg || !newDepartmentInOrg) {
+    return { success: false, error: "권한이 없습니다." };
+  }
 
   const { data: updated, error } = await supabase
     .from("profiles")

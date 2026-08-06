@@ -15,15 +15,33 @@ async function NewWeeklyLogContent() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("department_id")
+    .select("department_id, departments(organization_id)")
     .eq("id", data.claims.sub)
     .maybeSingle();
 
-  if (!profile?.department_id) {
+  if (!profile?.department_id || !profile.departments) {
     redirect("/protected/profile");
   }
 
-  return <WeeklyLogNewForm />;
+  // 신규 작성이라 기존 선택값이 없으므로, 작성자 부서가 속한 조직의 활성 업무 타입만
+  // 노출한다(업무 타입도 부서처럼 조직 하위에 속함).
+  const { data: workTypeRows, error: workTypesError } = await supabase
+    .from("work_types")
+    .select("name")
+    .eq("organization_id", profile.departments.organization_id)
+    .is("archived_at", null)
+    .order("name");
+
+  if (workTypesError) {
+    throw workTypesError;
+  }
+
+  const workTypeOptions = (workTypeRows ?? []).map((row) => ({
+    name: row.name,
+    archived: false,
+  }));
+
+  return <WeeklyLogNewForm workTypeOptions={workTypeOptions} />;
 }
 
 export default function NewWeeklyLogPage() {

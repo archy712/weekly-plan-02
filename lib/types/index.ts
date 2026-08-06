@@ -1,6 +1,5 @@
 import type { Tables } from "@/lib/supabase/database.types";
 import type { WeeklyLogImportance } from "@/lib/constants/importance";
-import type { WeeklyLogWorkType } from "@/lib/constants/work-types";
 
 export type UserRole = "user" | "admin";
 
@@ -8,14 +7,23 @@ export type Department = Tables<"departments">;
 
 export type Organization = Tables<"organizations">;
 
+export type WorkType = Tables<"work_types">;
+
 export type Profile = Omit<Tables<"profiles">, "role"> & {
   role: UserRole;
 };
 
 export type WeeklyLogStatus = "planned" | "in_progress" | "completed";
 
-export type { WeeklyLogWorkType };
+// 업무 타입은 관리자가 work_types 테이블에서 관리하는 동적 목록이라 컴파일 타임 리터럴
+// 유니온으로 좁힐 수 없다 — 유효성은 DB 트리거(validate_weekly_log_work_type)가 최종 방어선.
+export type WeeklyLogWorkType = string;
 export type { WeeklyLogImportance };
+
+// 작성/수정 폼의 업무 타입 체크박스 선택지. 부서 select의 "비활성 라벨링" 패턴과 동일하게
+// 활성 항목은 항상 노출하고, 비활성 항목은 이미 선택된 로그에서만 archived: true로 표시해
+// "(비활성)" 라벨을 붙인다(app/protected/weekly-logs/[id]/page.tsx, new/page.tsx 참고).
+export type WorkTypeOption = { name: string; archived: boolean };
 
 export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type" | "importance"> & {
   status: WeeklyLogStatus;
