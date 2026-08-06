@@ -7,16 +7,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { formatDate } from "@/lib/format";
+import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
 import type { WeeklyLogListItem } from "@/lib/types";
 
 export type WeeklyLogSortKey =
   | "title"
-  | "department_name"
+  | "author_name"
   | "start_date"
   | "target_end_date"
   | "status";
@@ -24,13 +25,13 @@ export type { SortDirection };
 
 export function WeeklyLogTable({
   items,
-  showDepartment = false,
+  showAuthor = false,
   sortKey,
   sortDirection,
   onSort,
 }: {
   items: WeeklyLogListItem[];
-  showDepartment?: boolean;
+  showAuthor?: boolean;
   sortKey: WeeklyLogSortKey | null;
   sortDirection: SortDirection;
   onSort: (key: WeeklyLogSortKey) => void;
@@ -48,10 +49,10 @@ export function WeeklyLogTable({
               onSort={onSort}
               className="pl-4"
             />
-            {showDepartment && (
+            {showAuthor && (
               <SortableTableHead
-                label="부서"
-                sortKey="department_name"
+                label="작성자"
+                sortKey="author_name"
                 currentSortKey={sortKey}
                 currentDirection={sortDirection}
                 onSort={onSort}
@@ -100,11 +101,18 @@ export function WeeklyLogTable({
                   )}
                 </Link>
               </TableCell>
-              {showDepartment && (
+              {showAuthor && (
                 <TableCell className="py-3">
-                  <Badge variant="outline" className="font-normal text-muted-foreground">
-                    {item.department_name}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Avatar size="sm" className={getAvatarPreset(item.author_avatar_key).bgClass}>
+                      <AvatarFallback className="bg-transparent text-xs">
+                        {getAvatarPreset(item.author_avatar_key).emoji}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-muted-foreground">
+                      {item.author_name ?? item.author_email ?? "알 수 없는 사용자"}
+                    </span>
+                  </div>
                 </TableCell>
               )}
               <TableCell className="py-3 tabular-nums text-muted-foreground">

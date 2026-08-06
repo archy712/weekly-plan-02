@@ -16,7 +16,7 @@ import type {
 } from "@/lib/types";
 
 const LOGS_SELECT =
-  "id, title, start_date, target_end_date, status, department_id, created_at, departments(name)";
+  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, departments(name)";
 
 // 잘못된 형식의 from/to는 500 크래시 대신 조용히 무시한다(MVP Task 014에서 잘못된 UUID가
 // 500을 유발했던 사례와 동일한 방어 관례).
@@ -174,16 +174,40 @@ async function WeeklyLogsContent({
     }
   }
 
-  const items: WeeklyLogListItem[] = logs.map((log) => ({
-    id: log.id,
-    title: log.title,
-    start_date: log.start_date,
-    target_end_date: log.target_end_date,
-    status: log.status as WeeklyLogStatus,
-    department_id: log.department_id,
-    department_name: log.departments?.name ?? "",
-    comment_count: commentCounts.get(log.id) ?? 0,
-  }));
+  // 부서 컬럼을 아바타+작성자명으로 대체하기 위해 author_id들을 get_profile_identities로
+  // 배치 조회한다 — profiles_select_own_or_admin RLS 때문에 embed로는 타인의 이름/아바타를
+  // 가져올 수 없다(weekly_log_comments 작성자 조회와 동일한 패턴, lib/queries/comments.ts 참고).
+  const authorIds = [...new Set(logs.map((log) => log.author_id))];
+  const identityMap = new Map<
+    string,
+    { email: string; name: string | null; avatar_key: string }
+  >();
+  if (authorIds.length > 0) {
+    const { data: identities } = await supabase.rpc("get_profile_identities", {
+      profile_ids: authorIds,
+    });
+    for (const identity of identities ?? []) {
+      identityMap.set(identity.id, identity);
+    }
+  }
+
+  const items: WeeklyLogListItem[] = logs.map((log) => {
+    const author = identityMap.get(log.author_id);
+    return {
+      id: log.id,
+      title: log.title,
+      start_date: log.start_date,
+      target_end_date: log.target_end_date,
+      status: log.status as WeeklyLogStatus,
+      department_id: log.department_id,
+      department_name: log.departments?.name ?? "",
+      author_id: log.author_id,
+      author_name: author?.name ?? null,
+      author_email: author?.email ?? null,
+      author_avatar_key: author?.avatar_key ?? "fox",
+      comment_count: commentCounts.get(log.id) ?? 0,
+    };
+  });
 
   const { data: departmentRows } = await supabase
     .from("departments")

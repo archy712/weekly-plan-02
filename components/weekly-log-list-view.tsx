@@ -127,9 +127,12 @@ export function WeeklyLogListView({
         case "title":
           comparison = a.title.localeCompare(b.title, "ko");
           break;
-        case "department_name":
-          comparison = a.department_name.localeCompare(b.department_name, "ko");
+        case "author_name": {
+          const nameA = a.author_name ?? a.author_email ?? "";
+          const nameB = b.author_name ?? b.author_email ?? "";
+          comparison = nameA.localeCompare(nameB, "ko");
           break;
+        }
         case "start_date":
           comparison = a.start_date.localeCompare(b.start_date);
           break;
@@ -414,12 +417,12 @@ export function WeeklyLogListView({
         <>
           <WeeklyLogTable
             items={pagedItems}
-            showDepartment
+            showAuthor
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={handleSort}
           />
-          <WeeklyLogCardList items={pagedItems} showDepartment />
+          <WeeklyLogCardList items={pagedItems} showAuthor />
           {totalPages > 1 && (
             <Pagination>
               <PaginationContent>

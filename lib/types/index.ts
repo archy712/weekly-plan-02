@@ -35,9 +35,14 @@ export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type" | "im
 
 export type WeeklyLogListItem = Pick<
   WeeklyLog,
-  "id" | "title" | "start_date" | "target_end_date" | "status" | "department_id"
+  "id" | "title" | "start_date" | "target_end_date" | "status" | "department_id" | "author_id"
 > & {
   department_name: string;
+  // 목록 화면의 부서 컬럼을 아바타+작성자명으로 대체하며 추가됨. profiles_select_own_or_admin
+  // RLS 때문에 embed가 아니라 get_profile_identities RPC로 배치 조회한다(comments와 동일 패턴).
+  author_name: string | null;
+  author_email: string | null;
+  author_avatar_key: string;
   comment_count: number;
 };
 

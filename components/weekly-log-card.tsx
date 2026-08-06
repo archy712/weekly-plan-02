@@ -1,17 +1,19 @@
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/format";
+import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
 import type { WeeklyLogListItem } from "@/lib/types";
 
 export function WeeklyLogCard({
   item,
-  showDepartment = false,
+  showAuthor = false,
 }: {
   item: WeeklyLogListItem;
-  showDepartment?: boolean;
+  showAuthor?: boolean;
 }) {
   return (
     <Card>
@@ -34,8 +36,17 @@ export function WeeklyLogCard({
         </CardTitle>
         <StatusBadge status={item.status} />
       </CardHeader>
-      <CardContent className="flex flex-col gap-0.5 p-4 pt-0 text-sm text-muted-foreground">
-        {showDepartment && <span>{item.department_name}</span>}
+      <CardContent className="flex flex-col gap-1 p-4 pt-0 text-sm text-muted-foreground">
+        {showAuthor && (
+          <div className="flex items-center gap-2">
+            <Avatar size="sm" className={getAvatarPreset(item.author_avatar_key).bgClass}>
+              <AvatarFallback className="bg-transparent text-xs">
+                {getAvatarPreset(item.author_avatar_key).emoji}
+              </AvatarFallback>
+            </Avatar>
+            <span>{item.author_name ?? item.author_email ?? "알 수 없는 사용자"}</span>
+          </div>
+        )}
         <span>
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
         </span>
@@ -46,15 +57,15 @@ export function WeeklyLogCard({
 
 export function WeeklyLogCardList({
   items,
-  showDepartment = false,
+  showAuthor = false,
 }: {
   items: WeeklyLogListItem[];
-  showDepartment?: boolean;
+  showAuthor?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2 md:hidden">
       {items.map((item) => (
-        <WeeklyLogCard key={item.id} item={item} showDepartment={showDepartment} />
+        <WeeklyLogCard key={item.id} item={item} showAuthor={showAuthor} />
       ))}
     </div>
   );
