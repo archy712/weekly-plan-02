@@ -3,7 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
@@ -30,12 +36,15 @@ import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { downloadWeeklyLogListPdf } from "@/lib/pdf/weekly-log-pdf";
+import { downloadWeeklyLogListExcel } from "@/lib/excel/weekly-log-excel";
+import { createClient } from "@/lib/supabase/client";
 import { formatDate, getStatusLabel } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
   Department,
   DepartmentFilter,
   StatusFilter,
+  WeeklyLogExportItem,
   WeeklyLogListItem,
   WeeklyLogStatus,
 } from "@/lib/types";
@@ -227,6 +236,42 @@ export function WeeklyLogListView({
     }
   };
 
+  // Excel은 목록 조회에 없는 업무 속성(업무타입/중요도/예상소요기간·금액/협력업체/내용)까지
+  // 담아야 하므로, 목록 페이로드를 무겁게 만들지 않기 위해 다운로드 시점에만 별도 조회한다.
+  // weekly_logs SELECT는 전 부서 공개이므로 부서와 무관하게 조회할 수 있다.
+  const handleDownloadExcel = async () => {
+    setIsDownloading(true);
+    try {
+      const ids = sortedItems.map((item) => item.id);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("weekly_logs")
+        .select("id, work_type, importance, estimated_mm, estimated_cost, partner_company, content")
+        .in("id", ids);
+      if (error) throw error;
+
+      const detailsById = new Map(data.map((row) => [row.id, row]));
+      const exportItems: WeeklyLogExportItem[] = sortedItems.map((item) => {
+        const details = detailsById.get(item.id);
+        return {
+          ...item,
+          work_type: (details?.work_type ?? []) as WeeklyLogExportItem["work_type"],
+          importance: (details?.importance ?? 3) as WeeklyLogExportItem["importance"],
+          estimated_mm: details?.estimated_mm ?? null,
+          estimated_cost: details?.estimated_cost ?? null,
+          partner_company: details?.partner_company ?? null,
+          content: details?.content ?? "",
+        };
+      });
+
+      await downloadWeeklyLogListExcel({ items: exportItems, departmentLabel: scopeLabel, dateRangeLabel });
+    } catch {
+      toast.error("Excel 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // 활성 필터 요약: 4종 필터가 조합되면 "왜 결과가 0건인지" 알기 어려워지므로
   // 기본값(전체 부서/전체 상태/검색어 없음/기간 없음)과 다른 항목만 배지로 노출한다.
   type ActiveFilterBadge = { key: string; label: string; onRemove: () => void };
@@ -311,14 +356,18 @@ export function WeeklyLogListView({
           </Select>
         </div>
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isDownloading}
-            onClick={handleDownloadPdf}
-          >
-            {isDownloading ? "생성 중..." : "PDF 다운로드"}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" disabled={isDownloading}>
+                {isDownloading ? "생성 중..." : "다운로드"}
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleDownloadPdf}>PDF 다운로드</DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleDownloadExcel}>Excel 다운로드</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button asChild>
             <Link href="/protected/weekly-logs/new">신규 작성</Link>
           </Button>

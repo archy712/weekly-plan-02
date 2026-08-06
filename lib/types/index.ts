@@ -33,6 +33,15 @@ export type WeeklyLogListItem = Pick<
   comment_count: number;
 };
 
+// Excel 다운로드는 목록 조회에 포함되지 않는 업무 속성(업무타입/중요도/예상소요기간·금액/
+// 협력업체/내용)까지 필요하므로, 목록 페이로드를 무겁게 만들지 않기 위해 다운로드 시점에
+// 별도 조회해 WeeklyLogListItem에 덧붙이는 확장 타입을 둔다.
+export type WeeklyLogExportItem = WeeklyLogListItem &
+  Pick<
+    WeeklyLog,
+    "work_type" | "importance" | "estimated_mm" | "estimated_cost" | "partner_company" | "content"
+  >;
+
 export type WeeklyLogAttachment = Pick<
   Tables<"weekly_log_attachments">,
   "id" | "file_name" | "file_path" | "file_size" | "content_type" | "created_at"
