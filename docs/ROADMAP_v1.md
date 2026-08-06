@@ -436,57 +436,68 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 > 목표: 멘션·댓글이 발생하면 상대방 화면에 새로고침 없이 알림이 뜨는 상태. **이 프로젝트 최초의 Supabase Realtime 도입**이라 인프라 리스크가 가장 큼.
 > **선행 조건**: Task 032·033 완료 (알림의 발생원이 댓글·멘션).
 
-- **Task 034: 알림 스키마 설계 및 Realtime 인프라 도입 (F023 백엔드)**
-  - [ ] **DB 마이그레이션 — `notifications` 테이블 신규 생성**
+- **Task 034: 알림 스키마 설계 및 Realtime 인프라 도입 (F023 백엔드) ✅**
+  - [x] **DB 마이그레이션 — `notifications` 테이블 신규 생성**
     - `id uuid pk`, `recipient_id uuid → profiles(id) on delete cascade`, `actor_id uuid → profiles(id)`, `type text` (`mention` | `comment` | `reply` CHECK 제약 — MVP의 `status`/`role`과 동일한 CHECK 방식), `weekly_log_id uuid → weekly_logs(id) on delete cascade`, `comment_id uuid null → weekly_log_comments(id) on delete cascade`, `read_at timestamptz null`, `created_at`
     - 인덱스: `(recipient_id, read_at, created_at desc)` — "내 안 읽은 알림" 조회가 유일한 핫 경로
-  - [ ] **RLS 정책 — 알림은 부서 모델이 아니라 수신자 기준**
+  - [x] **RLS 정책 — 알림은 부서 모델이 아니라 수신자 기준**
     - SELECT: `recipient_id = (select auth.uid())`만 (전 부서 공개인 다른 테이블과 **다름** — 알림은 개인 데이터)
     - UPDATE: 수신자 본인만, 그리고 **`read_at`만 변경 가능**해야 함 (Task 026에서 `profiles.role`에 적용한 것과 같은 컬럼 보호 문제 — 동일한 트리거 패턴 재사용)
     - INSERT: **클라이언트 직접 삽입을 허용하지 않음**(정책 없음). 알림은 아래 DB 트리거로만 생성 — 클라이언트가 임의 사용자에게 알림을 보낼 수 있으면 스팸 벡터가 됨
     - DELETE: 수신자 본인만
-  - [ ] **알림 생성 트리거 작성** — `weekly_log_comment_mentions`에 INSERT 시 `mention` 알림, `weekly_log_comments`에 INSERT 시 해당 로그의 작성자에게 `comment` 알림(+ 대댓글이면 부모 댓글 작성자에게 `reply`). `SECURITY DEFINER`로 작성해 RLS INSERT 정책 부재를 우회. **자기 자신에게는 알림을 만들지 않고**, 멘션과 댓글 알림이 같은 사람에게 중복되지 않도록 억제
-  - [ ] **Realtime publication 등록** — `alter publication supabase_realtime add table notifications`. 현재 publication에 테이블이 0개이므로 이것이 이 프로젝트 최초의 등록. **`notifications`만 등록하고 `weekly_logs`/`comments`는 등록하지 않는다** — 필요 이상으로 브로드캐스트 대상을 늘리면 대역폭과 권한 노출면이 함께 커짐
-  - [ ] **Realtime 권한 확인 (가장 중요)** — Supabase Realtime의 Postgres Changes는 **구독자의 RLS를 평가해 페이로드를 필터링**하므로, `notifications`의 SELECT 정책이 `recipient_id = auth.uid()`인지 반드시 재확인. 정책이 느슨하면 **타인의 알림이 그대로 브로드캐스트됨**
-  - [ ] `mcp__supabase__generate_typescript_types` 재생성, `lib/types/index.ts`에 `Notification` 타입 추가
-  - [ ] `lib/actions/notification.ts` 신규 — `markNotificationReadAction`, `markAllNotificationsReadAction`, `deleteNotificationAction`
-  - [ ] 보존 정책 결정 — 오래된 읽은 알림의 정리 방식(예: 90일 경과분 삭제)을 결정하고, 구현하지 않더라도 `docs/guides/deployment-ops.md`에 운영 절차로 기록
-  - [ ] `mcp__supabase__get_advisors`로 신규 테이블·함수 경고 확인 및 해소
-  - **관련 파일**: DB 마이그레이션, `lib/actions/notification.ts`(신규), `lib/types/index.ts`, `lib/supabase/database.types.ts`, `docs/guides/deployment-ops.md`
+  - [x] **알림 생성 트리거 작성** — `weekly_log_comment_mentions`에 INSERT 시 `mention` 알림, `weekly_log_comments`에 INSERT 시 해당 로그의 작성자에게 `comment` 알림(+ 대댓글이면 부모 댓글 작성자에게 `reply`). `SECURITY DEFINER`로 작성해 RLS INSERT 정책 부재를 우회. **자기 자신에게는 알림을 만들지 않고**, 멘션과 댓글 알림이 같은 사람에게 중복되지 않도록 억제
+  - [x] **Realtime publication 등록** — `alter publication supabase_realtime add table notifications`. 현재 publication에 테이블이 0개이므로 이것이 이 프로젝트 최초의 등록. **`notifications`만 등록하고 `weekly_logs`/`comments`는 등록하지 않는다** — 필요 이상으로 브로드캐스트 대상을 늘리면 대역폭과 권한 노출면이 함께 커짐
+  - [x] **Realtime 권한 확인 (가장 중요)** — Supabase Realtime의 Postgres Changes는 **구독자의 RLS를 평가해 페이로드를 필터링**하므로, `notifications`의 SELECT 정책이 `recipient_id = auth.uid()`인지 반드시 재확인. 정책이 느슨하면 **타인의 알림이 그대로 브로드캐스트됨** — publication 등록 이후 `pg_policy`를 재조회해 `notifications_select_own`이 정확히 `recipient_id = ( SELECT auth.uid() AS uid)`인지 확인
+  - [x] `mcp__supabase__generate_typescript_types` 재생성, `lib/types/index.ts`에 `Notification`(+ `NotificationType`) 타입 추가
+  - [x] `lib/actions/notification.ts` 신규 — `markNotificationReadAction`, `markAllNotificationsReadAction`, `deleteNotificationAction`. 기존 액션과 동일한 `{success, error}` 규약 + `revalidatePath("/protected", "layout")`(아직 헤더에 알림 UI가 없어 구체적인 페이지 경로 대신 공유 레이아웃을 무효화 — Task 035가 헤더에 뱃지를 추가하면 그대로 반영됨)
+  - [x] 보존 정책 결정 — **읽은(`read_at not null`) 알림 중 90일 경과분만 삭제, 읽지 않은 알림은 기간과 무관하게 보존**. `pg_cron` 등 정기 실행 인프라가 아직 없어 자동화는 구현하지 않고, 수동/주기 실행 SQL 절차를 `docs/guides/deployment-ops.md` 7절에 기록
+  - [x] `mcp__supabase__get_advisors`로 신규 테이블·함수 경고 확인 및 해소 — security는 신규 경고 0건(트리거 함수 3개 모두 `revoke execute ... from public, anon, authenticated`로 `prevent_unauthorized_role_change()`와 동일하게 처리해 `authenticated_security_definer_function_executable` 경고 대상에서 제외됨). performance는 `notifications`의 FK 3개(`actor_id`/`comment_id`/`weekly_log_id`)에 대한 `unindexed_foreign_keys` INFO를 커버링 인덱스 3개 추가로 해소(아래 "다르게 처리한 부분" 참고). 남은 INFO는 기존에 문서화된 것(`weekly_log_attachments` 미인덱스 FK 2건, `departments_organization_id_idx` unused, leaked password protection)과 신규 테이블이라 트래픽이 없어 나타나는 `unused_index` 3건(Task 032 전례와 동일하게 데이터 축적 후 재확인 예정)뿐
+  - **관련 파일**: DB 마이그레이션(`create_notifications_table`, `add_notification_generation_triggers`, `add_notifications_to_realtime_publication`, `fix_notification_internal_upsert_column_guard`, `add_notifications_fk_covering_indexes`), `lib/actions/notification.ts`(신규), `lib/types/index.ts`, `lib/supabase/database.types.ts`, `docs/guides/deployment-ops.md`
+  - **로드맵과 다르게 처리한 부분**:
+    - **중복 억제 방식**: 로드맵이 제시한 "같은 트랜잭션 내 임시 배열로 억제" 대신 **`notifications`에 `unique(recipient_id, comment_id)` 제약을 걸고 `ON CONFLICT` upsert로 억제**하는 방식을 택함. 댓글 INSERT 트리거(`notify_on_new_comment`)와 멘션 INSERT 트리거(`notify_on_comment_mention`)는 서버 액션의 서로 다른 두 INSERT 문(댓글 저장 → 멘션 저장)에서 각각 별도로 실행되어 "같은 트랜잭션"이라도 "같은 트리거 호출"은 아니므로, 두 트리거가 실행 순서와 무관하게 서로의 존재를 몰라도 안전하게 동작하려면 DB 제약 기반 upsert가 더 견고하다고 판단. 우선순위는 **mention > reply > comment**(더 구체적인 알림이 이김)로 정해 마이그레이션 주석에 명시
+    - **실측으로 발견한 버그 수정**: 멘션 upsert(`ON CONFLICT DO UPDATE`)가 `type`/`actor_id` 등을 변경하는데, 이것이 read_at 외 컬럼 변경을 막는 컬럼 보호 트리거(`notifications_protect_columns`)에 그대로 걸려 실패하는 문제를 impersonation 테스트 중 실제로 재현. `SECURITY DEFINER`로 실행돼도 `auth.uid()`는 세션 GUC를 그대로 읽어 "누가 호출했는지"만으로는 내부 트리거의 정당한 쓰기와 클라이언트의 직접 UPDATE를 구분할 수 없었기 때문 — 트랜잭션 로컬 GUC 플래그(`app.bypass_notification_column_guard`, `set_config(..., true)`)를 신뢰 경계로 추가해 해소(`fix_notification_internal_upsert_column_guard` 마이그레이션)
+    - **FK 커버링 인덱스 3개 추가**: 로드맵은 `(recipient_id, read_at, created_at desc)` 인덱스만 명시했지만, 테이블 생성 직후 `get_advisors`에서 `actor_id`/`comment_id`/`weekly_log_id` FK에 대한 `unindexed_foreign_keys` 경고가 새로 발생함을 확인하고 Task 032의 동일 전례(`weekly_log_comments.author_id`)를 따라 3개 인덱스를 추가 적용(`add_notifications_fk_covering_indexes`)
+    - **컬럼 보호 트리거의 `auth.uid() IS NOT NULL` 예외**: `prevent_unauthorized_role_change()`와 동일하게 직접 DB 접속(SQL Editor 등)은 검사 대상에서 제외해 운영 중 수동 정정을 막지 않도록 함 — 로드맵에 명시되진 않았지만 CLAUDE.md가 문서화한 기존 트리거 컨벤션을 그대로 재사용
   - **수락 기준**: 댓글·멘션 발생 시 알림 행이 자동 생성되고, 수신자 외에는 어떤 경로로도 그 알림을 조회할 수 없다
-  - **테스트 체크리스트** (impersonation SQL 중심, `ROLLBACK` 사용)
-    - [ ] 사용자 A가 B를 멘션한 댓글 작성 → B에게 `mention` 알림 1건 생성 확인
-    - [ ] A가 자기 글에 자기 댓글 작성 → 알림이 생성되지 않는지 확인
-    - [ ] 한 댓글에서 로그 작성자를 멘션한 경우 `mention`/`comment` 알림이 중복 생성되지 않는지 확인
-    - [ ] B를 impersonate해 A의 알림 SELECT 시도 → 0건 확인
-    - [ ] 클라이언트 롤로 `notifications` 직접 INSERT 시도 → 거부 확인
-    - [ ] 수신자가 `read_at` 외 컬럼(`recipient_id` 등) 변경 시도 → 거부 확인
-    - [ ] 댓글/로그 삭제 시 연결된 알림이 CASCADE로 정리되는지 확인
-    - [ ] `supabase_realtime` publication에 `notifications`만 등록되어 있는지 확인
+  - **테스트 체크리스트** (impersonation SQL, Task 032와 동일하게 `SAVEPOINT`/`DO $$ ... $$` 블록 + 트랜잭션 마지막에 강제 `RAISE EXCEPTION`으로 결과를 노출하면서 자동 `ROLLBACK`시키는 방식 사용 — 커밋 경로 자체가 없어 테스트 데이터가 남을 가능성을 원천 차단. 테스트 계정: 일반 사용자 commerce05@example.com(A)·commerce08@example.com(B), 대상 로그 2건은 A·B와 무관한 제3자 소속으로 선정)
+    - [x] 사용자 A가 B를 멘션한 댓글 작성 → B에게 `mention` 알림 1건 생성 확인 — `notifications`에 recipient=B, type=mention 정확히 1행 생성 확인(로그 작성자(제3자)에게는 별도 `comment` 알림이 정상 생성되어 두 알림이 서로 다른 사람에게 감을 확인)
+    - [x] A가 자기 글에 자기 댓글 작성 → 알림이 생성되지 않는지 확인 — `recipient_id = actor_id`인 알림 0건 확인
+    - [x] 한 댓글에서 로그 작성자를 멘션한 경우 `mention`/`comment` 알림이 중복 생성되지 않는지 확인 — 최상위 댓글이 로그 작성자를 멘션하는 시나리오에서 해당 작성자의 알림이 정확히 1건이며 type이 `mention`으로 승격됨을 확인(comment 알림이 먼저 생성된 뒤 멘션 트리거가 `ON CONFLICT DO UPDATE`로 덮어씀)
+    - [x] B를 impersonate해 A의 알림 SELECT 시도 → 0건 확인 — B로 SELECT 시 자신의 알림 1건만 보이고, A(수신 이력 없음)로 SELECT 시 0건 확인
+    - [x] 클라이언트 롤로 `notifications` 직접 INSERT 시도 → 거부 확인 — `new row violates row-level security policy for table "notifications"`로 명시적 거부(INSERT 정책이 아예 없어 발생)
+    - [x] 수신자가 `read_at` 외 컬럼(`recipient_id` 등) 변경 시도 → 거부 확인 — `recipient_id` 변경 시도는 RLS `WITH CHECK` 위반으로 거부됨을 1차 확인했으나, 이는 "다른 사람 소유로 바꾸기"라 RLS만으로도 막히는 약한 검증이라고 판단해 **`recipient_id`는 그대로 두고 `type`만 변경**하는 2차 테스트를 추가 실행 — 컬럼 보호 트리거 고유의 메시지("권한이 없습니다: read_at 외의 컬럼은 변경할 수 없습니다")로 명시적 거부됨을 확인해 트리거 자체가 동작함을 검증. `read_at`만 변경하는 UPDATE는 정상 허용됨도 함께 확인
+    - [x] 댓글/로그 삭제 시 연결된 알림이 CASCADE로 정리되는지 확인 — 댓글 삭제 시 해당 알림 0건, `weekly_logs` 행 삭제 시 그 로그를 참조하던 알림 0건으로 정리됨을 각각 확인
+    - [x] `supabase_realtime` publication에 `notifications`만 등록되어 있는지 확인 — `pg_publication_tables`에 `public.notifications` 1건만 존재
 
 - **Task 035: 실시간 알림 UI 및 구독 구현 (F023 프론트엔드)**
-  - [ ] `components/notification-bell.tsx` 신규 — 헤더에 종 아이콘 + 안 읽은 개수 배지, 클릭 시 `ui/dropdown-menu`로 최근 알림 10건. `components/header-nav.tsx`(데스크탑)·`components/mobile-nav.tsx`(모바일) **양쪽에 반영**(아바타 노출 때와 동일한 이중 반영 필요, MVP Task 024 전례)
-  - [ ] **Realtime 구독 구현** — `hooks/use-notifications.ts` 신규. **반드시 `lib/supabase/client.ts`(브라우저 클라이언트)로** `supabase.channel("notifications:{userId}").on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "recipient_id=eq.{userId}" }, ...)` 구독. 서버 클라이언트로는 구독할 수 없음(CLAUDE.md의 클라이언트 3종 구분 규칙)
-  - [ ] **구독 정리(cleanup) 필수** — `useEffect` 반환값에서 `supabase.removeChannel(channel)` 호출. 누락하면 라우트 이동마다 채널이 누적돼 커넥션이 고갈됨. 이 프로젝트 최초의 Realtime 사용이라 **누수 여부를 실제로 계측할 것**(라우트 10회 이동 후 채널 수 확인)
-  - [ ] 초기 데이터는 서버에서, 이후 갱신만 Realtime으로 — 헤더는 서버 컴포넌트에서 안 읽은 개수를 조회해 첫 페인트에 반영하고, 구독은 그 위에 증분으로 얹음(`cacheComponents` 하에서 Suspense fallback 유지)
-  - [ ] **연결 실패 폴백** — Realtime 연결이 끊기거나 실패해도 앱이 정상 동작해야 함. `channel.subscribe((status) => ...)`로 상태를 감지해 실패 시 폴링(예: 60초 간격) 또는 조용한 비활성화로 폴백하고, **에러 토스트로 사용자를 방해하지 않을 것**
-  - [ ] 알림 클릭 동선 — 해당 주간업무일지 상세 페이지의 댓글 위치로 이동(`/protected/weekly-logs/{id}#comment-{commentId}`) 후 자동으로 읽음 처리
-  - [ ] [모두 읽음] 버튼, 알림 없을 때 EmptyState (`components/empty-state.tsx` 재사용)
-  - [ ] 브라우저 탭 제목에 안 읽은 개수 표시 검토(선택) — 데스크탑 알림(Notification API)은 권한 요청 UX 부담이 있으므로 **이번 범위에서 제외**
-  - [ ] 접근성 — 종 버튼에 `aria-label`(예: "알림 3건") 부여. MVP Task 015에서 아이콘 전용 버튼의 접근성 이름 누락이 실제로 발견된 전례가 있으므로 처음부터 반영
-  - **관련 파일**: `components/notification-bell.tsx`(신규), `hooks/use-notifications.ts`(신규), `components/header-nav.tsx`, `components/mobile-nav.tsx`, `components/site-header.tsx`
-  - **수락 기준**: 브라우저 두 개(사용자 A·B)에서 A가 B를 멘션하면 **새로고침 없이** B의 헤더에 알림이 나타나고, 클릭 시 해당 댓글로 이동하며 읽음 처리된다
+  - [x] `components/notification-bell.tsx` 신규 — 헤더에 종 아이콘 + 안 읽은 개수 배지, 클릭 시 `ui/dropdown-menu`로 최근 알림 10건. `components/header-nav.tsx`(데스크탑)·`components/mobile-nav.tsx`(모바일) **양쪽에 반영**(아바타 노출 때와 동일한 이중 반영 필요, MVP Task 024 전례)
+  - [x] **Realtime 구독 구현** — `hooks/use-notifications.ts` 신규. **반드시 `lib/supabase/client.ts`(브라우저 클라이언트)로** `supabase.channel("notifications:{userId}").on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "recipient_id=eq.{userId}" }, ...)` 구독. 서버 클라이언트로는 구독할 수 없음(CLAUDE.md의 클라이언트 3종 구분 규칙)
+  - [x] **구독 정리(cleanup) 필수** — `useEffect` 반환값에서 `supabase.removeChannel(channel)` 호출. 코드 구현은 완료했고, 헤더가 속한 레이아웃(`app/protected/layout.tsx`)이 클라이언트 사이드 라우트 이동에서 리마운트되지 않는 구조라 실사용 시 채널이 라우트당 1개로 유지됨을 확인 — **다만 "10회 이동 후 채널 수"를 바이트 단위로 계측하는 것은 도구 한계로 완전히 검증하지 못함**(아래 "로드맵과 다르게 처리한 부분" 참고)
+  - [x] 초기 데이터는 서버에서, 이후 갱신만 Realtime으로 — 헤더는 서버 컴포넌트에서 안 읽은 개수를 조회해 첫 페인트에 반영하고, 구독은 그 위에 증분으로 얹음(`cacheComponents` 하에서 Suspense fallback 유지)
+  - [x] **연결 실패 폴백** — Realtime 연결이 끊기거나 실패해도 앱이 정상 동작해야 함. `channel.subscribe((status) => ...)`로 상태를 감지해 실패 시 폴링(예: 60초 간격) 또는 조용한 비활성화로 폴백하고, **에러 토스트로 사용자를 방해하지 않을 것** — 코드 구현 완료(아래 "다르게 처리한 부분" 참고, 강제 단절 실측은 도구 한계로 미완)
+  - [x] 알림 클릭 동선 — 해당 주간업무일지 상세 페이지의 댓글 위치로 이동(`/protected/weekly-logs/{id}#comment-{commentId}`) 후 자동으로 읽음 처리
+  - [x] [모두 읽음] 버튼, 알림 없을 때 EmptyState (`components/empty-state.tsx` 재사용)
+  - [ ] 브라우저 탭 제목에 안 읽은 개수 표시 검토(선택) — 데스크탑 알림(Notification API)은 권한 요청 UX 부담이 있으므로 **이번 범위에서 제외**(로드맵 원문에도 선택 항목으로 명시, 미구현)
+  - [x] 접근성 — 종 버튼에 `aria-label`(예: "알림 3건") 부여. MVP Task 015에서 아이콘 전용 버튼의 접근성 이름 누락이 실제로 발견된 전례가 있으므로 처음부터 반영 — Playwright `browser_snapshot`으로 "알림"(0건)·"알림 N건" 두 상태 모두 접근성 이름에 정상 반영됨을 확인
+  - **관련 파일**: `components/notification-bell.tsx`(신규), `hooks/use-notifications.ts`(신규), `lib/queries/notifications.ts`(신규), `lib/actions/notification.ts`(Task 034에서 이미 작성, 변경 없음), `lib/types/index.ts`(`NotificationListItem` 추가), `lib/format.ts`(`formatNotificationMessage` 추가), `components/header-nav.tsx`, `components/mobile-nav.tsx`, `components/weekly-log-comment-section.tsx`(댓글 `<li>`에 `id={comment-{id}}` 앵커 추가)
+  - **수락 기준**: 브라우저 두 개(사용자 A·B)에서 A가 B를 멘션하면 **새로고침 없이** B의 헤더에 알림이 나타나고, 클릭 시 해당 댓글로 이동하며 읽음 처리된다 — QA 계정 A·B로 실측 확인(아래 테스트 체크리스트 참고)
   - **테스트 체크리스트**
-    - [ ] Playwright MCP로 두 개의 브라우저 컨텍스트(A·B)를 띄워 A의 멘션 댓글 작성 → B 화면에 새로고침 없이 알림 배지 증가 확인 (**이 Task의 핵심 검증**)
-    - [ ] 알림 클릭 → 해당 상세 페이지·댓글 위치로 이동하고 읽음 처리되어 배지가 감소하는지 확인
-    - [ ] [모두 읽음] 클릭 시 배지가 0이 되고 새로고침 후에도 유지되는지 확인
-    - [ ] 타인의 알림이 브로드캐스트되지 않는지 확인 (B의 알림 발생 시 A의 배지가 변하지 않는지)
-    - [ ] 라우트를 10회 이동한 뒤 Realtime 채널이 누적되지 않는지 계측 (구독 정리 검증)
-    - [ ] Realtime 연결을 강제로 끊었을 때 앱이 정상 동작하고 에러 토스트로 사용자를 방해하지 않는지 확인
-    - [ ] 로그아웃 시 구독이 정리되고, 다른 계정으로 로그인했을 때 이전 사용자의 알림이 남지 않는지 확인
-    - [ ] 데스크탑·모바일 헤더 양쪽에서 알림 UI가 정상 노출되는지 확인
-    - [ ] 콘솔 에러·하이드레이션 경고 0건 확인
-  - **범위 밖 유지**: 이메일 알림, 브라우저 푸시 알림(Web Push), 알림 설정 화면(유형별 on/off), 실시간 댓글 스트리밍(다른 사람의 댓글이 상세 페이지에 실시간으로 추가되는 것)은 요청 범위 밖
+    - [ ] Playwright MCP로 두 개의 브라우저 컨텍스트(A·B)를 띄워 A의 멘션 댓글 작성 → B 화면에 새로고침 없이 알림 배지 증가 확인 (**이 Task의 핵심 검증**) — **완전한 형태로는 검증하지 못함**: 이 프로젝트에 연결된 Playwright MCP는 탭(`browser_tabs`)만 지원하고 브라우저 컨텍스트는 하나뿐이라 쿠키/세션이 모든 탭에 공유됨(직접 실측: 로그인한 탭에서 새 탭을 열어도 동일 세션 유지). 대신 (1) A 계정으로 실제 UI(멘션 입력 `@` 자동완성 포함)에서 B를 멘션하는 댓글을 작성해 정상 동작을 1회 확인하고, (2) B 계정으로 로그인해 그 브라우저 탭을 열어둔 채 Supabase MCP `execute_sql`로 A를 impersonate(`set local role authenticated` + `request.jwt.claim.sub`)해 실제 앱과 동일한 INSERT(댓글+멘션)를 실행 — **B의 열려 있는 탭에서 새로고침 없이 배지가 1→2로 증가**함을 반복 확인(총 2회, 이후 재확인 1회 포함 3회 모두 성공, 단 도중 1회는 지연 없이 갱신되지 않아 새로고침 후에는 정상 반영됨을 확인 — 아래 노트 참고). Realtime 자체가 정상 동작함은 실증됐으나 "두 브라우저 컨텍스트"라는 문구 그대로의 검증은 도구 한계로 대체 수단을 썼음을 명시
+    - [x] 알림 클릭 → 해당 상세 페이지·댓글 위치로 이동하고 읽음 처리되어 배지가 감소하는지 확인 — 알림 클릭 시 `/protected/weekly-logs/{id}#comment-{commentId}`로 이동하고 해당 `id`를 가진 댓글 DOM 엘리먼트가 실제로 존재함을 확인, 배지가 2→1로 감소
+    - [x] [모두 읽음] 클릭 시 배지가 0이 되고 새로고침 후에도 유지되는지 확인 — 클릭 직후 배지 소멸(`aria-label`이 "알림 N건"에서 "알림"으로 전환) 및 페이지 새로고침(SSR 재조회) 후에도 0 유지 확인
+    - [ ] 타인의 알림이 브로드캐스트되지 않는지 확인 (B의 알림 발생 시 A의 배지가 변하지 않는지) — 위와 동일한 단일 컨텍스트 한계로 "동시에 열린 두 탭"으로는 검증하지 못함. 대신 A로 로그인했을 때 헤더가 항상 "알림"(0건, B에게 간 알림이 전혀 보이지 않음)으로 뜨는 것을 확인했고, 이는 `notifications` SELECT RLS(`recipient_id = auth.uid()`)와 채널 필터(`recipient_id=eq.{userId}`)가 Task 034에서 이미 SQL로 검증된 것과 동일한 조건이라 구조적으로 격리됨 — 다만 "동시 세션에서 실시간으로 안 변함"을 직접 관찰하지는 못해 미체크로 남김
+    - [ ] 라우트를 10회 이동한 뒤 Realtime 채널이 누적되지 않는지 계측 (구독 정리 검증) — 브라우저 콘솔에서 `WebSocket` 생성자를 프록시로 감싸 라우트 10회 이상 클라이언트 사이드 이동(`history.back/forward`, `Link` 클릭) 동안 새 연결이 열리는지 계측을 시도했으나, `@supabase/realtime-js`가 페이지 로드 시점에 네이티브 `WebSocket` 참조를 모듈 스코프에 미리 캡처해두는 것으로 보여 런타임 몽키패치로는 신뢰할 수 있는 수치를 얻지 못함(패치 이후 10회 이상 이동에도 "opened: 0"만 관측 — 이것이 "누수 없음"의 증거가 아니라 계측 자체가 무력화된 정황). Playwright MCP에 CDP 수준 네트워크 검사·WebSocket 라우팅 도구가 없어 대체 수단도 없었음. 대신 (1) 코드 리뷰로 `useEffect` cleanup의 `supabase.removeChannel(channel)` 호출을 재확인했고, (2) `app/protected/layout.tsx`가 클라이언트 사이드 라우트 전환에서 리마운트되지 않는 레이아웃 구조임을 확인해 동일 레이아웃 내 이동에서는 애초에 재구독 자체가 일어나지 않음을 확인했으며, (3) 다수의 전체 페이지 새로고침·계정 전환·A/B 왕복 이후에도 알림 기능이 계속 정상 동작함(연결이 죽거나 뒤엉키지 않음)을 확인 — 정량적 채널 수 계측은 미완으로 남김
+    - [ ] Realtime 연결을 강제로 끊었을 때 앱이 정상 동작하고 에러 토스트로 사용자를 방해하지 않는지 확인 — Playwright MCP에 네트워크 오프라인 에뮬레이션·WebSocket 강제 종료 도구가 없어 실측하지 못함. 코드 리뷰로 `channel.subscribe` 콜백의 `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` 분기가 토스트 없이 60초 폴링만 시작하는 것을 재확인했고, 이번 테스트 전체(약 20회 이상의 페이지 이동·계정 전환·SQL 기반 강제 INSERT, 그중 1회는 실시간 반영이 지연되고 새로고침으로만 해소된 사례 포함)에서 에러 토스트가 단 한 번도 뜨지 않았음을 콘솔·스냅샷으로 확인 — 이는 정황 증거이며 의도적인 강제 단절 재현은 아니므로 미체크로 남김
+    - [x] 로그아웃 시 구독이 정리되고, 다른 계정으로 로그인했을 때 이전 사용자의 알림이 남지 않는지 확인 — B로 로그인해 안 읽은 알림 배지를 만든 뒤 로그아웃 → A로 로그인 시 헤더가 즉시 "알림"(0건)으로 뜨고 B의 알림이 전혀 보이지 않음을 확인
+    - [x] 데스크탑·모바일 헤더 양쪽에서 알림 UI가 정상 노출되는지 확인 — 데스크탑(1280px)·모바일(390px) 뷰포트 양쪽에서 종 배지·드롭다운(알림 목록·모두 읽음)이 정상 렌더링됨을 확인
+    - [x] 콘솔 에러·하이드레이션 경고 0건 확인 — 회원가입·로그인·로그아웃·댓글 작성·알림 클릭·모두 읽음·라우트 이동 전 구간에서 `browser_console_messages`로 error/warning 0건 확인
+  - **범위 밖 유지**: 이메일 알림, 브라우저 푸시 알림(Web Push), 알림 설정 화면(유형별 on/off), 실시간 댓글 스트리밍(다른 사람의 댓글이 상세 페이지에 실시간으로 추가되는 것), 브라우저 탭 제목 안 읽은 개수 표시는 요청 범위 밖
+  - **로드맵과 다르게 처리한 부분**:
+    - **Realtime 구독을 데스크탑·모바일 두 곳에서 각자 열지 않고 단일 Provider로 공유** — `components/header-nav.tsx`(데스크탑)와 `components/mobile-nav.tsx`(모바일)가 항상 동시에 DOM에 존재하고 CSS(`hidden md:flex`/`md:hidden`)로만 화면을 전환하는 구조라, `NotificationBell`을 두 곳에 각각 독립적으로 두면 `useNotifications()`가 두 번 호출되어 **같은 사용자에 대해 WebSocket 연결이 2개** 열리는 구조적 낭비가 생김을 설계 단계에서 인지. `components/notification-bell.tsx`에 `NotificationsProvider`(Realtime 구독·상태를 소유하는 클라이언트 컴포넌트, `header-nav.tsx`가 데스크탑·모바일 두 블록을 감싸는 형태로 1회만 렌더)와 `NotificationBell`(컨텍스트를 구독만 하는 표시 전용 컴포넌트, 데스크탑·모바일 두 곳에서 각각 렌더)로 분리해 **연결은 1개, 드롭다운 UI는 두 곳에 독립 렌더**되도록 구현. 로드맵 원문의 "양쪽에 반영"은 그대로 만족하되 구현 방식만 다르게 선택
+    - **채널 누수 계측 방법 변경 및 미완료**: 로드맵이 예시로 제시한 "라우트 10회 이동 후 채널 수 확인"을 브라우저 `WebSocket` 생성자 몽키패치로 시도했으나 `@supabase/realtime-js`가 페이지 로드 시점에 네이티브 참조를 캡처해두는 것으로 보여 신뢰할 수 없는 결과(항상 0)만 얻었고, Playwright MCP에 CDP 레벨 대안이 없어 정량적 계측을 완료하지 못함(위 테스트 체크리스트 참고). 코드 리뷰(cleanup 호출 확인)와 정성적 관찰(레이아웃 비-리마운트 구조, 장시간 사용 후에도 기능 정상)로 대체
+    - **강제 연결 끊기 테스트 미완료**: 같은 이유로 Playwright MCP에 네트워크 오프라인 에뮬레이션 도구가 없어 의도적인 강제 단절 재현을 하지 못함. 코드 리뷰와 테스트 전 구간에서 에러 토스트가 한 번도 뜨지 않았다는 정황 증거로 대체(위 참고)
+    - **A/B 실시간 테스트를 "두 브라우저 컨텍스트" 대신 하이브리드 방식으로 수행**: Playwright MCP가 탭 단위로만 동작하고 브라우저 컨텍스트(쿠키/세션)가 하나뿐임을 실측으로 확인(로그인 후 새 탭을 열어도 동일 세션 공유) — 완전히 독립된 두 로그인 세션을 동시에 띄우는 것이 도구상 불가능했다. 대신 B 계정의 브라우저 탭을 열어둔 채, A의 실제 앱 액션(멘션 댓글 작성)과 동등한 INSERT를 Supabase MCP `execute_sql`의 `authenticated` 롤 impersonation(Task 032·034와 동일 컨벤션)으로 실행해 B 탭이 새로고침 없이 반응하는지 확인하는 방식으로 핵심 메커니즘(Realtime 구독·페이로드 필터링·클라이언트 병합)을 검증했다. QA 계정: `qa-task035-a@example.com`/`qa-task035-b@example.com`(Task 033 관례를 따름), 둘 다 Commerce시스템팀 소속으로 가입 후 테스트 종료 시 생성한 댓글 4건·멘션·알림 3건과 두 계정을 모두 삭제해 원상복구(실측 확인: 삭제 후 관련 테이블 잔여 행 0건)
+    - **1회 관찰된 실시간 반영 지연**: 다수의 페이지 이동·계정 전환·모니터링 코드 삽입(WebSocket 몽키패치)을 반복하던 중 1회, SQL로 생성한 알림이 열려 있던 B 탭에 즉시 반영되지 않는 사례를 관찰했다(3초 대기 후에도 배지 불변, 페이지를 새로고침하자 정상 반영됨 — 즉 데이터·RLS·SSR 조회 경로는 정상이었고 그 시점의 실시간 채널만 응답하지 않음). 직후 동일한 방식으로 재시도했을 때는 정상 동작(1→2 갱신)해 재현되지 않았고, 원인은 정상 사용 흐름이 아닌 테스트용 `WebSocket` 몽키패치가 연결 상태를 교란했을 가능성이 유력하다고 판단해 코드 결함으로 확정하지 않았다. 다만 완전히 배제할 수는 없으므로, 실제 운영 환경에서 유사 현상이 보고되면 이 노트를 참고할 것 — 폴링 폴백(60초)과 새로고침 시 정확한 SSR 재조회가 이중 안전망으로 이미 존재해 사용자가 데이터를 영구히 놓치지는 않는다
 
 ---
 
