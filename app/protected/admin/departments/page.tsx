@@ -20,16 +20,35 @@ import {
 async function DepartmentsContent() {
   const supabase = await createClient();
 
+  // 조직 목록은 폼 선택지·비활성 라벨링에 모두 필요해 부서 조회와 별도로 가져온다.
+  const { data: organizationRows, error: organizationsError } = await supabase
+    .from("organizations")
+    .select("id, name, created_at, archived_at")
+    .order("name");
+
+  if (organizationsError) {
+    throw organizationsError;
+  }
+
+  const organizations = organizationRows ?? [];
+
   const { data: departmentRows, error: departmentsError } = await supabase
     .from("departments")
-    .select("id, name, created_at, archived_at")
+    .select("id, name, created_at, archived_at, organization_id, organizations(name)")
     .order("name");
 
   if (departmentsError) {
     throw departmentsError;
   }
 
-  const departments = departmentRows ?? [];
+  const departments = (departmentRows ?? []).map((department) => ({
+    id: department.id,
+    name: department.name,
+    created_at: department.created_at,
+    archived_at: department.archived_at,
+    organization_id: department.organization_id,
+    organization_name: department.organizations?.name ?? "",
+  }));
 
   // 부서원 수/업무일지 수는 삭제 가능 여부를 사용자가 미리 알 수 있게 하기 위한 것이라
   // 부서별로 count 집계 쿼리를 병렬로 실행한다(부서 수가 적은 사내 도구 특성상 N*2건의
@@ -60,6 +79,7 @@ async function DepartmentsContent() {
       <div className="flex justify-end">
         <DepartmentFormDialog
           mode="create"
+          organizations={organizations}
           trigger={<Button>부서 추가</Button>}
         />
       </div>
@@ -72,13 +92,20 @@ async function DepartmentsContent() {
         <>
           {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 weekly-log 목록과
               동일하게 md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
-          <DepartmentCardList departments={departments} countMap={countMap} />
+          <DepartmentCardList
+            departments={departments}
+            organizations={organizations}
+            countMap={countMap}
+          />
           <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
                     부서명
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    소속 조직
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 인원 수
@@ -107,6 +134,9 @@ async function DepartmentsContent() {
                       <TableCell className="py-3 pl-4 font-medium">
                         {department.name}
                       </TableCell>
+                      <TableCell className="py-3 text-muted-foreground">
+                        {department.organization_name}
+                      </TableCell>
                       <TableCell className="py-3 tabular-nums text-muted-foreground">
                         {memberCount}명
                       </TableCell>
@@ -121,6 +151,7 @@ async function DepartmentsContent() {
                       <TableCell className="py-3 pr-4">
                         <DepartmentRowActions
                           department={department}
+                          organizations={organizations}
                           memberCount={memberCount}
                           logCount={logCount}
                         />

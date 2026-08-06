@@ -6,6 +6,8 @@ export type UserRole = "user" | "admin";
 
 export type Department = Tables<"departments">;
 
+export type Organization = Tables<"organizations">;
+
 export type Profile = Omit<Tables<"profiles">, "role"> & {
   role: UserRole;
 };

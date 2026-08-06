@@ -1,19 +1,24 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DepartmentRowActions } from "@/components/department-row-actions";
+import type { Organization } from "@/lib/types";
 
 type DepartmentCardData = {
   id: string;
   name: string;
   archived_at: string | null;
+  organization_id: string;
+  organization_name: string;
 };
 
 export function DepartmentCard({
   department,
+  organizations,
   memberCount,
   logCount,
 }: {
   department: DepartmentCardData;
+  organizations: Organization[];
   memberCount: number;
   logCount: number;
 }) {
@@ -28,12 +33,14 @@ export function DepartmentCard({
         </Badge>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 p-4 pt-0">
-        <div className="flex gap-4 text-sm text-muted-foreground">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <span>{department.organization_name}</span>
           <span>소속 인원 {memberCount}명</span>
           <span>업무일지 {logCount}건</span>
         </div>
         <DepartmentRowActions
           department={department}
+          organizations={organizations}
           memberCount={memberCount}
           logCount={logCount}
         />
@@ -44,9 +51,11 @@ export function DepartmentCard({
 
 export function DepartmentCardList({
   departments,
+  organizations,
   countMap,
 }: {
   departments: DepartmentCardData[];
+  organizations: Organization[];
   countMap: Map<string, { memberCount: number; logCount: number }>;
 }) {
   return (
@@ -60,6 +69,7 @@ export function DepartmentCardList({
           <DepartmentCard
             key={department.id}
             department={department}
+            organizations={organizations}
             memberCount={memberCount}
             logCount={logCount}
           />

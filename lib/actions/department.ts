@@ -39,6 +39,11 @@ async function toActionError(
   if (error.code === UNIQUE_VIOLATION) {
     return "이미 존재하는 부서명입니다.";
   }
+  // organization_id FK 위반(선택한 조직이 그 사이 삭제된 경합)은 departmentId가 있어도
+  // "부서원/업무일지가 있어 삭제 불가" 메시지와는 무관하므로 먼저 구분해서 처리한다.
+  if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("organization_id")) {
+    return "선택한 조직이 존재하지 않습니다. 다시 선택해주세요.";
+  }
   if (error.code === FOREIGN_KEY_VIOLATION && departmentId) {
     const [{ count: memberCount }, { count: logCount }] = await Promise.all([
       supabase
@@ -73,7 +78,10 @@ export async function createDepartmentAction(
   const auth = await requireLoggedIn(supabase);
   if ("error" in auth) return { success: false, error: auth.error };
 
-  const { error } = await supabase.from("departments").insert({ name: parsed.data.name });
+  const { error } = await supabase.from("departments").insert({
+    name: parsed.data.name,
+    organization_id: parsed.data.organization_id,
+  });
 
   if (error) {
     return {
@@ -104,7 +112,7 @@ export async function updateDepartmentAction(
 
   const { data: updated, error } = await supabase
     .from("departments")
-    .update({ name: parsed.data.name })
+    .update({ name: parsed.data.name, organization_id: parsed.data.organization_id })
     .eq("id", id)
     .select("id")
     .maybeSingle();
@@ -112,7 +120,7 @@ export async function updateDepartmentAction(
   if (error) {
     return {
       success: false,
-      error: await toActionError(supabase, error, id, "부서명 수정 중 오류가 발생했습니다."),
+      error: await toActionError(supabase, error, id, "부서 수정 중 오류가 발생했습니다."),
     };
   }
   // RLS(is_admin())가 관리자가 아닌 호출자의 행을 걸러내므로 존재하지 않거나 권한이

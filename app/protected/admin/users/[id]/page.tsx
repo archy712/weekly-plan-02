@@ -100,7 +100,7 @@ async function UserDetailContent({
   // 속한 사용자에게는 현재 값이 계속 보이도록 예외를 둔다(profile-form.tsx와 동일 관례).
   const { data: departmentRows } = await supabase
     .from("departments")
-    .select("id, name, created_at, archived_at")
+    .select("id, name, created_at, archived_at, organization_id")
     .order("name");
   const departments: Department[] = (departmentRows ?? []).filter(
     (department) => !department.archived_at || department.id === user.department_id,

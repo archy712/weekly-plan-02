@@ -16,47 +16,37 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { DepartmentFormDialog } from "@/components/department-form-dialog";
+import { OrganizationFormDialog } from "@/components/organization-form-dialog";
 import {
-  archiveDepartmentAction,
-  deleteDepartmentAction,
-  restoreDepartmentAction,
-} from "@/lib/actions/department";
-import type { Organization } from "@/lib/types";
+  archiveOrganizationAction,
+  deleteOrganizationAction,
+  restoreOrganizationAction,
+} from "@/lib/actions/organization";
 
-export function DepartmentRowActions({
-  department,
-  organizations,
-  memberCount,
-  logCount,
+export function OrganizationRowActions({
+  organization,
+  departmentCount,
 }: {
-  department: {
-    id: string;
-    name: string;
-    archived_at: string | null;
-    organization_id: string;
-  };
-  organizations: Organization[];
-  memberCount: number;
-  logCount: number;
+  organization: { id: string; name: string; archived_at: string | null };
+  departmentCount: number;
 }) {
   const router = useRouter();
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const isArchived = Boolean(department.archived_at);
-  const hasReferences = memberCount > 0 || logCount > 0;
+  const isArchived = Boolean(organization.archived_at);
+  const hasReferences = departmentCount > 0;
 
   const handleToggleArchive = async () => {
     setIsArchiving(true);
     try {
       const result = isArchived
-        ? await restoreDepartmentAction(department.id)
-        : await archiveDepartmentAction(department.id);
+        ? await restoreOrganizationAction(organization.id)
+        : await archiveOrganizationAction(organization.id);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      toast.success(isArchived ? "부서가 활성화되었습니다." : "부서가 비활성화되었습니다.");
+      toast.success(isArchived ? "조직이 활성화되었습니다." : "조직이 비활성화되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -68,12 +58,12 @@ export function DepartmentRowActions({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const result = await deleteDepartmentAction(department.id);
+      const result = await deleteOrganizationAction(organization.id);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      toast.success("부서가 삭제되었습니다.");
+      toast.success("조직이 삭제되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -84,14 +74,9 @@ export function DepartmentRowActions({
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <DepartmentFormDialog
+      <OrganizationFormDialog
         mode="edit"
-        department={{
-          id: department.id,
-          name: department.name,
-          organization_id: department.organization_id,
-        }}
-        organizations={organizations}
+        organization={{ id: organization.id, name: organization.name }}
         trigger={
           <Button variant="ghost" size="sm">
             수정
@@ -119,10 +104,9 @@ export function DepartmentRowActions({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{department.name} 부서를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogTitle>{organization.name} 조직을 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              이 작업은 되돌릴 수 없습니다. 부서원과 업무일지가 없는 경우에만 삭제할 수
-              있습니다.
+              이 작업은 되돌릴 수 없습니다. 소속 부서가 없는 경우에만 삭제할 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

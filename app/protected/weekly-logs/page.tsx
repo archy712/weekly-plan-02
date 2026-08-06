@@ -187,7 +187,7 @@ async function WeeklyLogsContent({
 
   const { data: departmentRows } = await supabase
     .from("departments")
-    .select("id, name, created_at, archived_at")
+    .select("id, name, created_at, archived_at, organization_id")
     .order("name");
   const departments: Department[] = departmentRows ?? [];
   const currentDepartmentName: string | null =
