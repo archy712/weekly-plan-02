@@ -13,7 +13,7 @@ v1 고도화는 MVP(`docs/roadmap/ROADMAP_mvp.md`, Task 001~024 완료)에서 "M
 - **[F023] 실시간 알림**: 멘션·댓글 발생 시 Supabase Realtime 기반으로 헤더에 즉시 알림 노출
 - **[F024] 통계/대시보드 차트**: 부서별·기간별·상태별 업무 현황을 차트로 시각화
 
-Phase 3 이후에는 원래 계획에 없던 ad hoc 요청 13건(F025~F030, F033, F034 포함)이 추가로 구현됐고(아래 "Phase 3 이후 ad hoc 확장" 4개 절), 여기에 **아직 착수하지 않은 신규 요구사항 2건**이 Phase 6으로 예약되어 있습니다:
+Phase 3 이후에는 원래 계획에 없던 ad hoc 요청 14건(F025~F030, F033~F035 포함)이 추가로 구현됐고(아래 "Phase 3 이후 ad hoc 확장" 5개 절), 여기에 **아직 착수하지 않은 신규 요구사항 2건**이 Phase 6으로 예약되어 있습니다:
 
 - **[F031] 주간업무일지 추천/비추천**: 개별 주간업무일지에 추천(좋아요)/비추천(싫어요)을 표시 — **미착수, 상세 스펙 미확정**
 - **[F032] 애플리케이션 전반 성능 개선**: 특정 기능이 아니라 MVP 포함 전체 애플리케이션을 대상으로 하는 성능 개선 이니셔티브 — **미착수, 상세 스펙 미확정**
@@ -420,6 +420,17 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ---
 
+### Phase 3 이후 ad hoc 확장 (5차, 계획에 없던 사용자 요청 1건, 신규 F035) ✅
+
+> F034 직후 들어온 UX 개선 요청 1건을 이어서 정리한다. 이번 5개 ad hoc 절 중 **DB 마이그레이션이 필요 없었던 유일한 사례**다.
+
+- **주간업무일지 목록의 부서 컬럼을 작성자 아바타+이름으로 대체 — 신규 F035** — 목록에서는 부서보다 "누가 작성했는지"가 한눈에 보이는 게 더 유용하다는 판단으로, `components/weekly-log-table.tsx`(데스크탑 테이블)·`components/weekly-log-card.tsx`(모바일 카드)의 부서 `Badge`를 아바타 프리셋(`lib/constants/avatars.ts`) + 작성자명(이름 우선, 없으면 이메일 폴백, 최종 폴백은 "알 수 없는 사용자") 조합으로 교체했다. `showDepartment` prop을 `showAuthor`로 리네이밍하고, `WeeklyLogTable`의 정렬 키도 `department_name`에서 `author_name`으로 교체(정렬 로직 자체는 기존 `sortable-table-head.tsx` 클라이언트 사이드 패턴 그대로 재사용, 서버 재조회 없음). `app/protected/weekly-logs/page.tsx`는 `weekly_logs` select에 `author_id`를 추가하고, **`profiles_select_own_or_admin` RLS 때문에 PostgREST embed로는 타인의 이름·아바타를 가져올 수 없어** 댓글 작성자 조회(F022)와 동일하게 조회된 로그들의 `author_id` 집합을 `get_profile_identities` RPC로 배치 조회한다(신규 RPC 없음, 기존 함수를 그대로 재사용). `lib/types/index.ts`의 `WeeklyLogListItem`에 `author_id`/`author_name`/`author_email`/`author_avatar_key` 4개 필드를 추가했다.
+- **DB 마이그레이션 없음** — `weekly_logs.author_id`(MVP부터 존재)와 `get_profile_identities` RPC(F022에서 신설)가 이미 있어 스키마 변경이 필요 없었다.
+- **관련 파일**: `app/protected/weekly-logs/page.tsx`, `components/weekly-log-table.tsx`, `components/weekly-log-card.tsx`, `components/weekly-log-list-view.tsx`, `lib/types/index.ts`.
+- **범위 밖 유지**: 실브라우저 회귀 테스트는 다음 통합 검증(Task 036)으로 미룸. 부서 정보 자체는 삭제되지 않고 상세 페이지·부서 필터·PDF/Excel 다운로드에는 계속 노출되므로 별도 데이터 백필은 필요 없음.
+
+---
+
 ### Phase 4: 실시간 알림 시스템
 
 > 목표: 멘션·댓글이 발생하면 상대방 화면에 새로고침 없이 알림이 뜨는 상태. **이 프로젝트 최초의 Supabase Realtime 도입**이라 인프라 리스크가 가장 큼.
@@ -597,6 +608,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F031 | 주간업무일지 추천/비추천 | Task 038 (미착수, 스펙 미확정) |
 | F032 | 애플리케이션 전반 성능 개선 | Task 039 (미착수, 스펙 미확정) |
 | F034 | 슈퍼관리자 대시보드/부서/업무타입/사용자 관리 전 조직 확장 | ad hoc(Phase 3 이후 4차, Task 번호 없음) |
+| F035 | 주간업무일지 목록 작성자 아바타 표시(부서 컬럼 대체) | ad hoc(Phase 3 이후 5차, Task 번호 없음) |
 | — | 통합 검증·마감 | Task 036, Task 037 |
 
 ## 데이터 모델 변경 요약 (MVP 대비)

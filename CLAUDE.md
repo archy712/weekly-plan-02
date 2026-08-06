@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
-MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3)까지 구현이 완료되었고, 실시간 알림(Phase 4)은 아직 구현 전입니다. Phase 3 이후에는 원래 계획에 없던 ad hoc 확장(`docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 절 참고)도 다수 추가됐습니다 — 업무 타입·업무 중요도 속성, Excel 다운로드, 조직(organizations) 계층 신설과 이를 반영한 **관리자 콘솔의 조직 범위 제한**(관리자는 자기 소속 조직만 관리), 업무 타입 관리 UI 등. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3)까지 구현이 완료되었고, 실시간 알림(Phase 4)은 아직 구현 전입니다. Phase 3 이후에는 원래 계획에 없던 ad hoc 확장(`docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 절 참고)도 다수 추가됐습니다 — 업무 타입·업무 중요도 속성, Excel 다운로드, 조직(organizations) 계층 신설과 이를 반영한 **관리자 콘솔의 조직 범위 제한**(관리자는 자기 소속 조직만 관리), 업무 타입 관리 UI, `admin` 위에 조직 생성·전 조직 관리가 가능한 **슈퍼관리자(superadmin) 등급**과 이를 관리자 콘솔 4개 탭(대시보드·부서·업무타입·사용자 관리)까지 확장한 전 조직 범위, 주간업무일지 목록의 부서 컬럼을 작성자 아바타+이름으로 대체한 것 등. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
 
 ## 명령어
 
@@ -170,6 +170,7 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **댓글 본문은 HTML을 전혀 허용하지 않습니다** — 업무일지 본문(`weekly_logs.content`)과 달리 `lib/sanitize-html.ts`의 `sanitizeCommentContent()`는 `ALLOWED_TAGS: []`로 모든 태그를 제거하고 plain text만 남깁니다(리치 텍스트 대비 공격면이 작다는 판단). 저장 시점(서버 액션)에서 한 번 sanitize하고 렌더링은 React의 자동 이스케이프로 이중 방어합니다.
 - 대댓글이 달린 댓글을 삭제하면 스레드가 끊기므로 **물리 삭제 대신 `deleted_at`을 채우는 소프트 삭제**를 씁니다. `deleteCommentAction`은 `deleted_at` UPDATE만 수행하며, 삭제된 댓글은 "삭제된 댓글입니다" placeholder로 자리만 유지한 채 렌더링됩니다(`components/weekly-log-comment-section.tsx`).
 - **목록 페이지의 댓글수 표시**(`app/protected/weekly-logs/page.tsx`)는 `weekly_logs` select에 join할 수 없어(별개 테이블) 조회된 로그 id들로 `weekly_log_comments`를 2차 조회해 Map으로 집계한 뒤 병합합니다. `deleted_at is null`인 행만 세므로(삭제된 댓글은 실제 내용이 없어 집계에서 제외), `components/weekly-log-table.tsx`/`components/weekly-log-card.tsx`는 `comment_count > 0`일 때만 제목 옆에 `(N)`을 표시합니다.
+- **목록의 부서 컬럼은 작성자 아바타+이름으로 대체되어 있습니다(ad hoc)** — 목록에서는 부서보다 담당자가 누구인지가 더 유용하다는 판단으로, `weekly-log-table.tsx`/`weekly-log-card.tsx`의 부서 `Badge`를 아바타 프리셋(`lib/constants/avatars.ts`) + 작성자명(없으면 이메일, 최종 폴백 "알 수 없는 사용자") 조합으로 바꿨습니다. `showDepartment` prop은 `showAuthor`로, 정렬 키는 `department_name`에서 `author_name`으로 이름이 바뀌었습니다. `app/protected/weekly-logs/page.tsx`가 조회된 로그들의 `author_id`를 위 댓글 작성자 조회와 동일하게 `get_profile_identities` RPC로 배치 조회해 `WeeklyLogListItem`에 `author_name`/`author_email`/`author_avatar_key`로 병합합니다(신규 RPC 없음, `profiles_select_own_or_admin` RLS 때문에 embed로는 타인 신원을 가져올 수 없어 기존 함수를 재사용). 부서 자체는 삭제되지 않고 상세 페이지·부서 필터·PDF/Excel에는 계속 노출됩니다.
 
 ## Claude Code 커스텀 설정
 
