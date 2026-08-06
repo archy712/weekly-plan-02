@@ -1,4 +1,4 @@
-import type { WeeklyLogStatus } from "@/lib/types";
+import type { NotificationListItem, WeeklyLogStatus } from "@/lib/types";
 
 export function formatDate(value: string | Date): string {
   if (value instanceof Date) {
@@ -54,6 +54,23 @@ export function formatRelativeTime(value: string): string {
   const diffDay = Math.floor(diffHour / 24);
   if (diffDay < 7) return `${diffDay}일 전`;
   return formatDate(value);
+}
+
+// 알림 드롭다운(components/notification-bell.tsx)에 표시할 문구. weekly_log_title은
+// 로그가 삭제돼 CASCADE로 알림까지 함께 정리되는 것이 정상 경로(Task 034)라 이론상
+// null이 되기 어렵지만, 방어적으로 폴백 문구를 둔다.
+export function formatNotificationMessage(notification: NotificationListItem): string {
+  const actor = notification.actor_name ?? notification.actor_email ?? "알 수 없는 사용자";
+  const logTitle = notification.weekly_log_title ?? "삭제된 업무일지";
+  switch (notification.type) {
+    case "mention":
+      return `${actor}님이 "${logTitle}"에서 회원님을 멘션했습니다.`;
+    case "reply":
+      return `${actor}님이 "${logTitle}"의 댓글에 답글을 남겼습니다.`;
+    case "comment":
+    default:
+      return `${actor}님이 "${logTitle}"에 댓글을 남겼습니다.`;
+  }
 }
 
 export function formatFileSize(bytes: number): string {

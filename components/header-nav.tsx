@@ -5,14 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/logout-button";
 import { MobileNav } from "@/components/mobile-nav";
+import { NotificationBell, NotificationsProvider } from "@/components/notification-bell";
 import { getAvatarPreset } from "@/lib/constants/avatars";
+import { getRecentNotifications, getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { createClient } from "@/lib/supabase/server";
-import type { UserRole } from "@/lib/types";
+import type { NotificationListItem, UserRole } from "@/lib/types";
 
 type NavUser = {
+  id: string;
   email: string;
   role: UserRole;
   avatarKey: string;
+  unreadCount: number;
+  notifications: NotificationListItem[];
 } | null;
 
 function getNavLinks(user: NavUser): { href: string; label: string }[] {
@@ -41,10 +46,21 @@ async function getNavUser(): Promise<NavUser> {
     .eq("id", claims.sub)
     .maybeSingle();
 
+  // 헤더 알림 벨(Task 035)의 초기 데이터를 SSR로 내려준다 — 클라이언트 훅
+  // (hooks/use-notifications.ts)은 이 값을 시드로 삼아 Realtime 증분만 얹으며,
+  // 마운트 시점에 목록 전체를 다시 조회하지 않는다.
+  const [unreadCount, notifications] = await Promise.all([
+    getUnreadNotificationCount(supabase, claims.sub),
+    getRecentNotifications(supabase, claims.sub, 10),
+  ]);
+
   return {
+    id: claims.sub,
     email: claims.email ?? "",
     role: (profile?.role as UserRole | undefined) ?? "user",
     avatarKey: profile?.avatar_key ?? "fox",
+    unreadCount,
+    notifications,
   };
 }
 
@@ -53,7 +69,11 @@ export async function HeaderNav() {
   const navLinks = getNavLinks(user);
 
   return (
-    <>
+    <NotificationsProvider
+      userId={user?.id ?? null}
+      initialUnreadCount={user?.unreadCount ?? 0}
+      initialNotifications={user?.notifications ?? []}
+    >
       <div className="hidden md:flex items-center gap-4">
         {user &&
           navLinks.map((link) => (
@@ -67,6 +87,7 @@ export async function HeaderNav() {
           ))}
         {user ? (
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <span className="flex items-center gap-1.5">
               <Avatar size="sm" className={getAvatarPreset(user.avatarKey).bgClass}>
                 <AvatarFallback className="bg-transparent text-xs">
@@ -99,6 +120,6 @@ export async function HeaderNav() {
       <div className="md:hidden">
         <MobileNav navLinks={user ? navLinks : []} user={user} />
       </div>
-    </>
+    </NotificationsProvider>
   );
 }

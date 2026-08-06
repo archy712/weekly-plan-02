@@ -91,3 +91,19 @@ update departments set name = '변경할이름' where id = '<department-id>';
 - [ ] 로그아웃 → 보호 페이지 접근 시 로그인으로 리다이렉트
 
 이 체크리스트는 실제 배포된 URL이 있어야 실행할 수 있습니다. 배포 후 도메인을 알려주시면 Playwright MCP로 함께 확인할 수 있습니다.
+
+## 7. 알림(notifications) 보존 정책
+
+멘션·댓글·대댓글 발생 시 `notifications` 테이블에 알림이 자동 생성됩니다(`docs/ROADMAP_v1.md` Task 034, DB 트리거로만 생성되고 클라이언트 직접 INSERT는 불가능). 활동량에 비례해 무한히 쌓이는 테이블이라 보존 정책이 필요하지만, 이 프로젝트는 아직 정기 실행 인프라(pg_cron 등)를 도입하지 않았으므로 **자동 정리는 구현하지 않고, 아래 절차를 수동/주기적으로 실행하는 것으로 정책만 확정**해둡니다.
+
+**정책**: `read_at`이 채워진(읽은) 알림 중 **90일이 지난 것만** 삭제합니다. **읽지 않은 알림은 아무리 오래돼도 삭제하지 않습니다** — 사용자가 아직 확인하지 못한 알림을 시간 경과만으로 지우면 알림 시스템의 목적(놓친 멘션·댓글을 알려주는 것) 자체가 훼손되기 때문입니다.
+
+```sql
+delete from notifications
+where read_at is not null
+  and read_at < now() - interval '90 days';
+```
+
+- 이 SQL은 Supabase 대시보드 SQL Editor 또는 `mcp__supabase__execute_sql`로 직접 실행합니다. `read_at`/`recipient_id`만 변경 가능한 컬럼 보호 트리거(`prevent_unauthorized_notification_update()`)는 UPDATE만 검사하고 DELETE는 막지 않으므로, 직접 DB 접속(`auth.uid()`가 없는 연결)에서는 별도 우회 없이 그대로 동작합니다.
+- 실행 주기는 매월 1회 정도를 권장합니다(트래픽이 많지 않은 초기 단계 기준, 필요시 조정). 향후 실행 빈도가 잦아지거나 수동 실행을 잊는 문제가 생기면 Supabase의 `pg_cron` 확장(`mcp__supabase__list_extensions`로 설치 여부 확인 가능)으로 이 DELETE 문을 스케줄링하는 것을 검토하세요 — 이번 Task 034 범위에서는 구현하지 않고 절차 문서화까지만 수행했습니다.
+- 삭제 대상 건수를 먼저 확인하고 싶다면 `delete` 대신 `select count(*) from notifications where read_at is not null and read_at < now() - interval '90 days';`로 미리 조회한 뒤 실행하세요.

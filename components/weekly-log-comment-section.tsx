@@ -174,7 +174,13 @@ function CommentItem({
   };
 
   return (
-    <li className={cn("flex flex-col gap-2", isReply && "ml-8 border-l pl-4 sm:ml-10")}>
+    // id는 알림(components/notification-bell.tsx) 클릭 시 이동하는
+    // /protected/weekly-logs/{id}#comment-{commentId} 해시가 실제로 스크롤할 대상이다
+    // (Task 035). 댓글·답글 모두 이 컴포넌트를 공유하므로 대댓글에도 동일하게 붙는다.
+    <li
+      id={`comment-${comment.id}`}
+      className={cn("flex flex-col gap-2 scroll-mt-4", isReply && "ml-8 border-l pl-4 sm:ml-10")}
+    >
       <div className="flex items-start gap-2">
         <Avatar size="sm" className={getAvatarPreset(comment.author_avatar_key).bgClass}>
           <AvatarFallback className="bg-transparent text-xs">

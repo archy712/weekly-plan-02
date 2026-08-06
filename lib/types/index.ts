@@ -151,3 +151,23 @@ export type WeeklyLogComment = Pick<
   author_avatar_key: string;
   mentions: WeeklyLogCommentMention[];
 };
+
+// 멘션·댓글·대댓글 발생 시 DB 트리거로만 생성되는 알림(Task 034). notifications 테이블은
+// weekly_logs 등 대부분의 테이블과 달리 "전 부서 공개"가 아니라 recipient_id 기준으로만
+// RLS가 걸려 있어(개인 데이터), 이 타입은 항상 "내 알림" 목록에만 쓰인다.
+export type NotificationType = "mention" | "comment" | "reply";
+
+export type Notification = Omit<Tables<"notifications">, "type"> & {
+  type: NotificationType;
+};
+
+// 헤더 알림 드롭다운(Task 035)에 표시할 알림 1건 — notifications 원본 행에 발신자(actor)
+// 신원과 대상 업무일지 제목을 덧붙인 화면 전용 타입. profiles_select_own_or_admin RLS
+// 때문에 actor 신원은 embed가 아니라 get_profile_identities RPC로 배치 조회해 채운다
+// (댓글 작성자 조회·목록 작성자 표시와 동일한 패턴, lib/queries/notifications.ts 참고).
+export type NotificationListItem = Notification & {
+  actor_name: string | null;
+  actor_email: string | null;
+  actor_avatar_key: string;
+  weekly_log_title: string | null;
+};
