@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Building2, CheckCircle2, Download, FileText } from "lucide-react";
 
-import { SiteHeader } from "@/components/site-header";
+import { LandingHeader } from "@/components/landing-header";
 import { SiteFooter } from "@/components/site-footer";
 import { HeroCta } from "@/components/hero-cta";
 import {
@@ -44,9 +44,11 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center">
       <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <SiteHeader />
-        <div className="flex-1 w-full max-w-5xl flex flex-col gap-16 p-5">
-          <section className="flex flex-col items-center gap-6 py-12 text-center">
+        <Suspense fallback={null}>
+          <LandingHeader />
+        </Suspense>
+        <div className="flex-1 w-full max-w-5xl flex flex-col gap-20 px-5 py-16 sm:py-20">
+          <section className="flex flex-col items-center gap-8 py-12 text-center">
             <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
               부서별 주간업무일지를
               <br />
@@ -56,7 +58,7 @@ export default function Home() {
               부서원은 주간 업무를 빠르게 기록하고, 관리자는 전체 부서의 업무
               현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
             </p>
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-4">
               <Suspense
                 fallback={
                   <>
