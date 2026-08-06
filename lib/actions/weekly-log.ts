@@ -36,7 +36,8 @@ function toWeeklyLogPayload(data: WeeklyLogFormData) {
     start_date: data.start_date,
     target_end_date: data.target_end_date,
     estimated_mm: data.estimated_mm ? Number(data.estimated_mm) : null,
-    estimated_cost: data.estimated_cost ? Number(data.estimated_cost) : null,
+    // 입력 필드에 표시용 콤마(3자리 구분)가 섞여 있으므로 숫자 변환 전에 제거한다.
+    estimated_cost: data.estimated_cost ? Number(data.estimated_cost.replace(/,/g, "")) : null,
     partner_company: data.partner_company?.trim() ? data.partner_company.trim() : null,
   };
 }

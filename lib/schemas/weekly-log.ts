@@ -32,10 +32,12 @@ export const weeklyLogSchema = z
       .refine((val) => !val || /^\d{1,4}(\.\d{1,2})?$/.test(val), {
         message: "예상 소요 M/M은 숫자로 입력해주세요 (예: 1.5)",
       }),
+    // 입력 중 3자리마다 콤마가 자동 삽입되므로(formatThousandsInput), 콤마 포함 형식을
+    // 그대로 검증한다 — 서버로 보낼 때(toWeeklyLogPayload)는 콤마를 제거하고 숫자로 변환한다.
     estimated_cost: z
       .string()
       .optional()
-      .refine((val) => !val || /^\d{1,15}$/.test(val), {
+      .refine((val) => !val || /^\d{1,3}(,\d{3})*$/.test(val), {
         message: "예상 소요 금액은 정수로 입력해주세요",
       }),
     partner_company: z

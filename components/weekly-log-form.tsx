@@ -29,6 +29,7 @@ import {
 import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogAttachment } from "@/lib/types";
+import { formatThousandsInput } from "@/lib/utils";
 
 export function WeeklyLogForm({
   defaultValues,
@@ -241,14 +242,14 @@ export function WeeklyLogForm({
             name="estimated_cost"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>예상 소요 금액</FormLabel>
+                <FormLabel>예상 소요 금액(단위:원)</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="예: 5000000"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="예: 5,000,000"
                     {...field}
+                    onChange={(e) => field.onChange(formatThousandsInput(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />

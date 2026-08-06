@@ -45,6 +45,7 @@ import {
 } from "@/lib/constants/importance";
 import { WORK_TYPE_OPTIONS } from "@/lib/constants/work-types";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
+import { formatThousandsInput } from "@/lib/utils";
 import type {
   WeeklyLogDetail,
   WeeklyLogImportance,
@@ -231,7 +232,8 @@ export function WeeklyLogDetailView({
             start_date: log.start_date,
             target_end_date: log.target_end_date,
             estimated_mm: log.estimated_mm != null ? String(log.estimated_mm) : "",
-            estimated_cost: log.estimated_cost != null ? String(log.estimated_cost) : "",
+            estimated_cost:
+              log.estimated_cost != null ? formatThousandsInput(String(log.estimated_cost)) : "",
             partner_company: log.partner_company ?? "",
           }}
           submitLabel="수정 완료"
@@ -310,7 +312,7 @@ export function WeeklyLogDetailView({
           )}
           {log.estimated_cost != null && (
             <div>
-              <span className="text-muted-foreground">예상 소요 금액</span>{" "}
+              <span className="text-muted-foreground">예상 소요 금액(단위:원)</span>{" "}
               <span className="font-medium">{formatCurrency(log.estimated_cost)}</span>
             </div>
           )}

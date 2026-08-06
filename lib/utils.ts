@@ -18,6 +18,14 @@ export function formatPhoneNumberInput(value: string): string {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
+// 숫자만 남기고 3자리마다 콤마(,)를 삽입한다 (예: 5000000 -> 5,000,000). 최대 15자리로 제한
+// (기존 예상 소요 금액 검증 규칙과 동일한 상한).
+export function formatThousandsInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 15);
+  if (!digits) return "";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 // 로컬 날짜(YYYY-MM-DD) 문자열로 변환한다. toISOString()은 UTC 기준이라 자정 근처에서
 // 하루 밀리는 문제가 있어 getFullYear/getMonth/getDate로 직접 조합한다.
 function toDateOnlyString(date: Date): string {
