@@ -52,8 +52,8 @@ const PAGE_SIZE = 20;
 
 type UserAdminSortKey = "email" | "name" | "department_name" | "role" | "created_at";
 
-// 역할은 가나다순이 아니라 "관리자를 먼저" 보는 편이 실무적으로 더 유용해 별도 순위표를 둔다.
-const ROLE_SORT_RANK: Record<UserRole, number> = { admin: 0, user: 1 };
+// 역할은 가나다순이 아니라 "높은 권한을 먼저" 보는 편이 실무적으로 더 유용해 별도 순위표를 둔다.
+const ROLE_SORT_RANK: Record<UserRole, number> = { superadmin: 0, admin: 1, user: 2 };
 
 // weekly-log-list-view.tsx와 동일한 앞/뒤/현재 주변 페이지 번호 + 생략(...) 처리.
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -207,6 +207,7 @@ export function UserAdminTable({
             <SelectItem value={ALL_ROLES_FILTER}>전체 역할</SelectItem>
             <SelectItem value="user">일반 사용자</SelectItem>
             <SelectItem value="admin">관리자</SelectItem>
+            <SelectItem value="superadmin">슈퍼관리자</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -301,7 +302,7 @@ export function UserAdminTable({
                           role={item.role}
                           disabled={isSelf}
                           disabledReason="본인 역할은 변경할 수 없습니다."
-                          className="w-28"
+                          className="w-36"
                         />
                       </TableCell>
                       <TableCell className="py-3 tabular-nums text-muted-foreground">

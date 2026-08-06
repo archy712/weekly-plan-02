@@ -47,6 +47,20 @@ returning id, email, role;
 - 관리자 권한은 다음 요청부터 즉시 반영됩니다(`profiles.role`을 매 요청 조회하는 구조, Task 010 참고). 별도 로그아웃/로그인이 필요 없습니다.
 - 해제할 때는 `role = 'user'`로 되돌리면 됩니다.
 
+### 4-1. 최초 슈퍼관리자 부트스트랩
+
+`role`을 `superadmin`으로 지정하는 UI(사용자 관리 화면의 역할 Select, `docs/ROADMAP_v1.md` F033)는 이미 있지만, **자기 자신의 역할은 앱에서 절대 변경할 수 없도록 서버 액션에 명시적으로 차단**되어 있어(`lib/actions/user-admin.ts`의 `userId === auth.callerId` 체크, 관리자 수와 무관하게 항상 적용) 시스템에 슈퍼관리자가 한 명도 없는 최초 상태에서는 **어떤 관리자도 UI로 자기 자신을 슈퍼관리자로 승격할 수 없습니다**(다른 관리자를 승격시키는 것은 UI로 가능). 이 경우 위 4절과 동일하게 직접 DB 접속으로 부트스트랩합니다:
+
+```sql
+update profiles
+set role = 'superadmin'
+where email = '슈퍼관리자로_지정할_이메일@example.com'
+returning id, email, role;
+```
+
+- 대상은 **이미 `role = 'admin'`이어야** 합니다 — `prevent_unauthorized_role_change()` 트리거가 `user → superadmin` 직접 승격은 직접 DB 접속에서도 차단합니다(`auth.uid()` 유무와 무관한 검사).
+- 이후 두 번째 이상의 슈퍼관리자·관리자 지정은 이 수동 절차 없이 사용자 관리 화면에서 처리하면 됩니다(이미 슈퍼관리자가 된 계정, 또는 다른 관리자가 대상을 승격).
+
 ## 5. 부서 seed 데이터 운영 반영 절차
 
 부서 관리 UI도 MVP 범위 밖입니다(v1에서 F019·Task 027로 대체될 예정, `docs/ROADMAP_v1.md` 참고). Task 008 마이그레이션으로 초기 부서를 시드했고 현재 운영 중인 부서는 3개(Commerce시스템팀/ERP시스템팀/IT기획팀, 2026-08-05 기준)이며, 이후 조직 개편으로 부서를 추가·변경해야 하면 SQL Editor에서 직접 처리합니다.

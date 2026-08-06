@@ -58,7 +58,8 @@ export type AdminProfile = CurrentProfile & { organizationId: string };
 export async function requireAdmin(): Promise<AdminProfile> {
   const profile = await requireDepartment();
 
-  if (profile.role !== "admin") {
+  // superadmin은 admin의 상위 집합이라 관리자 콘솔 진입 조건은 동일하게 취급한다.
+  if (profile.role !== "admin" && profile.role !== "superadmin") {
     redirect("/protected/weekly-logs");
   }
 

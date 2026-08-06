@@ -66,8 +66,10 @@ export function MobileNav({
                   </AvatarFallback>
                 </Avatar>
                 <span className="truncate">{user.email}</span>
-                {user.role === "admin" && (
-                  <Badge variant="secondary">관리자</Badge>
+                {(user.role === "admin" || user.role === "superadmin") && (
+                  <Badge variant="secondary">
+                    {user.role === "superadmin" ? "슈퍼관리자" : "관리자"}
+                  </Badge>
                 )}
               </div>
               <LogoutButton />

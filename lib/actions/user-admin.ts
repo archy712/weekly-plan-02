@@ -18,7 +18,9 @@ const RLS_VIOLATION = "42501";
 
 async function requireCallerAdmin(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<{ callerId: string; organizationId: string } | { error: string }> {
+): Promise<
+  { callerId: string; organizationId: string; isSuperAdmin: boolean } | { error: string }
+> {
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims) {
     return { error: "로그인이 필요합니다." };
@@ -35,7 +37,7 @@ async function requireCallerAdmin(
     .eq("id", callerId)
     .maybeSingle();
 
-  if (callerProfile?.role !== "admin") {
+  if (callerProfile?.role !== "admin" && callerProfile?.role !== "superadmin") {
     return { error: "권한이 없습니다." };
   }
 
@@ -44,7 +46,7 @@ async function requireCallerAdmin(
     return { error: "권한이 없습니다." };
   }
 
-  return { callerId, organizationId };
+  return { callerId, organizationId, isSuperAdmin: callerProfile.role === "superadmin" };
 }
 
 // 대상 부서가 호출자의 소속 조직에 속하는지 확인한다. 관리자 콘솔 화면은 이미 자기
@@ -64,6 +66,26 @@ async function isDepartmentInOrganization(
     .eq("organization_id", organizationId)
     .maybeSingle();
   return Boolean(data);
+}
+
+// F034: 슈퍼관리자는 조직 일치 검증을 건너뛰고 부서가 실제로 존재하는지(어느 조직이든)만
+// 확인한다 — 이 게이트를 통과한 대상에 한해 role/부서 변경을 전 조직 범위로 허용한다.
+// 일반 관리자는 기존과 동일하게 isDepartmentInOrganization으로 자기 조직만 허용.
+async function isDepartmentAccessible(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  departmentId: string | null,
+  auth: { organizationId: string; isSuperAdmin: boolean },
+): Promise<boolean> {
+  if (!departmentId) return false;
+  if (auth.isSuperAdmin) {
+    const { data } = await supabase
+      .from("departments")
+      .select("id")
+      .eq("id", departmentId)
+      .maybeSingle();
+    return Boolean(data);
+  }
+  return isDepartmentInOrganization(supabase, departmentId, auth.organizationId);
 }
 
 // 트리거(prevent_unauthorized_role_change)가 던지는 예외는 이미 자연스러운 한국어
@@ -88,7 +110,7 @@ export async function updateUserRoleAction(
   userId: string,
   role: UserRole,
 ): Promise<UserAdminActionResult> {
-  if (role !== "user" && role !== "admin") {
+  if (role !== "user" && role !== "admin" && role !== "superadmin") {
     return { success: false, error: "잘못된 역할 값입니다." };
   }
 
@@ -104,7 +126,7 @@ export async function updateUserRoleAction(
   }
 
   // 대상 사용자가 호출자와 같은 조직 소속인지 확인 — 다른 조직 사용자의 역할은
-  // 건드릴 수 없다.
+  // 건드릴 수 없다. 슈퍼관리자는 F034로 이 조직 일치 검증을 건너뛴다(전 조직 허용).
   const { data: targetProfile } = await supabase
     .from("profiles")
     .select("department_id")
@@ -113,7 +135,7 @@ export async function updateUserRoleAction(
 
   if (
     !targetProfile ||
-    !(await isDepartmentInOrganization(supabase, targetProfile.department_id, auth.organizationId))
+    !(await isDepartmentAccessible(supabase, targetProfile.department_id, auth))
   ) {
     return { success: false, error: "권한이 없습니다." };
   }
@@ -154,7 +176,8 @@ export async function updateUserDepartmentAction(
 
   // 대상 사용자의 현재 부서와, 새로 지정하려는 부서 양쪽 모두 호출자의 소속 조직에
   // 속해야 한다 — 다른 조직 사용자를 건드리는 것도, 다른 조직으로 이동시키는 것도
-  // 차단한다.
+  // 차단한다. 슈퍼관리자는 F034로 이 조직 일치 검증을 건너뛴다(전 조직 허용, 다른
+  // 조직으로의 부서 이동도 포함).
   const { data: targetProfile } = await supabase
     .from("profiles")
     .select("department_id")
@@ -162,13 +185,8 @@ export async function updateUserDepartmentAction(
     .maybeSingle();
 
   const currentDepartmentInOrg =
-    !!targetProfile &&
-    (await isDepartmentInOrganization(supabase, targetProfile.department_id, auth.organizationId));
-  const newDepartmentInOrg = await isDepartmentInOrganization(
-    supabase,
-    departmentId,
-    auth.organizationId,
-  );
+    !!targetProfile && (await isDepartmentAccessible(supabase, targetProfile.department_id, auth));
+  const newDepartmentInOrg = await isDepartmentAccessible(supabase, departmentId, auth);
 
   if (!currentDepartmentInOrg || !newDepartmentInOrg) {
     return { success: false, error: "권한이 없습니다." };

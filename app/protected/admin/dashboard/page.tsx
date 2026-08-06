@@ -11,7 +11,7 @@ import {
   getMonthlyTrend,
   getWorkloadSummary,
 } from "@/lib/queries/stats";
-import { DashboardFilters } from "@/components/dashboard-filters";
+import { DASHBOARD_ALL_ORGANIZATIONS, DashboardFilters } from "@/components/dashboard-filters";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
 import { DashboardDepartmentChart } from "@/components/dashboard-department-chart";
@@ -34,6 +34,7 @@ const dateParamSchema = z.string().date();
 const TREND_MONTHS = 6;
 
 type DashboardSearchParams = {
+  org?: string;
   department?: string;
   from?: string;
   to?: string;
@@ -50,13 +51,40 @@ async function DashboardContent({
   // 처리하지만, 이 페이지는 관리자 소속 조직으로 범위를 좁혀야 해서 organizationId를
   // 얻기 위해 다시 호출한다(약간의 중복 조회, CLAUDE.md의 페이지별 부서 게이트 반복
   // 관례와 동일한 트레이드오프).
-  const { organizationId } = await requireAdmin();
+  const { role, organizationId } = await requireAdmin();
+  const isSuperAdmin = role === "superadmin";
 
   const {
+    org: orgParam,
     department: departmentParam,
     from: fromParam,
     to: toParam,
   } = await searchParams;
+
+  // F034: 슈퍼관리자만 조직 선택기를 볼 수 있다 — organizations가 undefined면
+  // DashboardFilters가 선택기를 아예 렌더링하지 않는다. 일반 관리자는 항상 자기 소속
+  // 조직으로 고정(기존 동작 그대로).
+  let organizations: { id: string; name: string; archived_at: string | null }[] | undefined;
+  let selectedOrgId: string | undefined = organizationId;
+  if (isSuperAdmin) {
+    const { data: organizationRows } = await supabase
+      .from("organizations")
+      .select("id, name, archived_at")
+      .order("name");
+    organizations = organizationRows ?? [];
+
+    if (orgParam === DASHBOARD_ALL_ORGANIZATIONS) {
+      selectedOrgId = undefined;
+    } else if (orgParam && organizations.some((org) => org.id === orgParam)) {
+      selectedOrgId = orgParam;
+    } else if (!orgParam) {
+      // 파라미터가 없는 최초 진입은 관리자와 동일하게 "내 조직"을 기본값으로 둔다.
+      selectedOrgId = organizationId;
+    } else {
+      // 존재하지 않는 조직 id가 조작되어 들어온 경우 "전체 조직"으로 안전하게 폴백.
+      selectedOrgId = undefined;
+    }
+  }
 
   const selectedDepartment: DepartmentFilter = departmentParam || ALL_DEPARTMENTS_FILTER;
   const departmentId =
@@ -69,20 +97,25 @@ async function DashboardContent({
   }
   const range = { from: fromDate, to: toDate };
 
-  const { data: departmentRows } = await supabase
+  // 부서 드롭다운도 선택된 조직 범위를 따른다 — "전체 조직" 선택 시 전 조직의 부서를
+  // 모두 보여주고, 특정 조직 선택 시 그 조직의 부서만 보여준다.
+  let departmentQuery = supabase
     .from("departments")
     .select("id, name, created_at, archived_at, organization_id")
-    .eq("organization_id", organizationId)
     .order("name");
+  if (selectedOrgId) {
+    departmentQuery = departmentQuery.eq("organization_id", selectedOrgId);
+  }
+  const { data: departmentRows } = await departmentQuery;
   const departments: Department[] = departmentRows ?? [];
 
   const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend] =
     await Promise.all([
-      getLogsByDepartment(range, organizationId),
-      getLogsByStatus(range, departmentId, organizationId),
-      getLogsByWorkType(range, departmentId, organizationId),
-      getLogsByImportance(range, departmentId, organizationId),
-      getMonthlyTrend(TREND_MONTHS, departmentId, organizationId),
+      getLogsByDepartment(range, selectedOrgId),
+      getLogsByStatus(range, departmentId, selectedOrgId),
+      getLogsByWorkType(range, departmentId, selectedOrgId),
+      getLogsByImportance(range, departmentId, selectedOrgId),
+      getMonthlyTrend(TREND_MONTHS, departmentId, selectedOrgId),
     ]);
 
   // stats_workload_summary는 부서별 그룹화 없이 단일 행 요약만 반환하므로(Task 030),
@@ -91,7 +124,7 @@ async function DashboardContent({
   // 0건짜리 빈 막대를 피한다.
   const workloadRows = await Promise.all(
     departmentStats.map(async (dept) => {
-      const [summary] = await getWorkloadSummary(range, dept.department_id, organizationId);
+      const [summary] = await getWorkloadSummary(range, dept.department_id, selectedOrgId);
       return {
         department_id: dept.department_id,
         department_name: dept.department_name,
@@ -110,6 +143,8 @@ async function DashboardContent({
         currentDepartmentId={selectedDepartment}
         currentFrom={fromDate}
         currentTo={toDate}
+        organizations={organizations}
+        currentOrgId={selectedOrgId}
       />
       <DashboardSummaryCards statusStats={statusStats} monthlyTrend={monthlyTrend} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

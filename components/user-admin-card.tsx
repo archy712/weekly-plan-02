@@ -48,7 +48,7 @@ export function UserAdminCard({
             role={item.role}
             disabled={isSelf}
             disabledReason="본인 역할은 변경할 수 없습니다."
-            className="w-28"
+            className="w-36"
           />
           <Button asChild variant="ghost" size="sm">
             <Link href={`/protected/admin/users/${item.id}`}>상세 보기</Link>

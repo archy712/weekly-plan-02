@@ -13,7 +13,7 @@ v1 고도화는 MVP(`docs/roadmap/ROADMAP_mvp.md`, Task 001~024 완료)에서 "M
 - **[F023] 실시간 알림**: 멘션·댓글 발생 시 Supabase Realtime 기반으로 헤더에 즉시 알림 노출
 - **[F024] 통계/대시보드 차트**: 부서별·기간별·상태별 업무 현황을 차트로 시각화
 
-Phase 3 이후에는 원래 계획에 없던 ad hoc 요청 11건(F025~F030 포함)이 추가로 구현됐고(아래 "Phase 3 이후 ad hoc 확장" 2개 절), 여기에 **아직 착수하지 않은 신규 요구사항 2건**이 Phase 6으로 예약되어 있습니다:
+Phase 3 이후에는 원래 계획에 없던 ad hoc 요청 13건(F025~F030, F033, F034 포함)이 추가로 구현됐고(아래 "Phase 3 이후 ad hoc 확장" 4개 절), 여기에 **아직 착수하지 않은 신규 요구사항 2건**이 Phase 6으로 예약되어 있습니다:
 
 - **[F031] 주간업무일지 추천/비추천**: 개별 주간업무일지에 추천(좋아요)/비추천(싫어요)을 표시 — **미착수, 상세 스펙 미확정**
 - **[F032] 애플리케이션 전반 성능 개선**: 특정 기능이 아니라 MVP 포함 전체 애플리케이션을 대상으로 하는 성능 개선 이니셔티브 — **미착수, 상세 스펙 미확정**
@@ -395,6 +395,31 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ---
 
+### Phase 3 이후 ad hoc 확장 (3차, 계획에 없던 사용자 요청 1건, 신규 F033) ✅
+
+> 위 F030으로 "관리자는 자기 소속 조직만 관리한다"는 경계가 정착된 뒤, 조직을 여러 개 넘나들며 신설·관리할 수 있는 상위 등급이 필요하다는 요청이 들어와 이어서 정리한다.
+
+- **"슈퍼관리자" 등급 신설 — 신규 F033** — `profiles.role` CHECK 제약을 `user`/`admin`/`superadmin` 3단계로 확장(F030에서 "별도의 전체 관리자 등급은 두지 않기로 결정"했던 것을 이번에 뒤집음). 슈퍼관리자는 admin의 상위 집합으로 설계해 `is_admin()` DB 함수가 `role in ('admin', 'superadmin')`을 반환하도록 수정 — 이 함수를 참조하는 기존 RLS(부서/업무타입 쓰기, `weekly_logs`/댓글 관리 등) 전체가 자동으로 슈퍼관리자에게도 열린다. 슈퍼관리자에게만 추가로 열리는 것은 **조직(organizations) 생성과 전 조직 범위의 수정/닫기(비활성화)** 뿐이며, 이를 위해 별도의 `is_superadmin()` 함수(동일한 `SECURITY DEFINER STABLE` + `anon` EXECUTE 회수 컨벤션)를 신설해 `organizations`의 신규 INSERT 정책과 기존 UPDATE 정책(`is_superadmin() OR (is_admin() AND id = current_organization_id())`)에 사용했다.
+  - **승격 규칙**: `prevent_unauthorized_role_change()` 트리거(F026 이전부터 있던 자기상승 방지 트리거)에 두 규칙을 추가. (1) `superadmin`으로의 승격은 대상이 **이미 `admin`인 경우만** 허용(`user` → `superadmin` 직접 승격은 거부) — `components/user-role-select.tsx`도 대상의 현재 role이 `user`이면 아예 "슈퍼관리자" 선택지를 감춰 트리거 예외를 사전에 방지한다. (2) 기존 "마지막 관리자 강등 방지" 규칙을 `role = 'admin'` 리터럴에서 **관리자 권한 집합(`admin` ∪ `superadmin`) 기준**으로 일반화 — 이 둘을 합쳐 마지막 1명을 `user`로 강등하는 것만 막고, `admin` ↔ `superadmin` 간 이동은 관리자 권한을 유지하므로 막지 않는다. 승격 UI는 기존 사용자 관리 화면의 역할 Select에 옵션만 추가(신규 화면 없음).
+  - **조직 관리 화면 범위**: F030에서 "관리자 소속 조직 1건짜리 단일 카드"로 재작성됐던 `app/protected/admin/organizations/page.tsx`를 역할 분기로 재구성 — 일반 관리자는 기존과 동일한 단일 카드, 슈퍼관리자는 **시스템의 모든 조직을 나열하는 목록 + 새 조직 생성 버튼**(`components/organization-form-dialog.tsx`를 생성/수정 겸용으로 확장, `lib/actions/organization.ts`에 `createOrganizationAction` 신규)으로 전환된다.
+  - **범위 밖 유지 (의도적)**: 대시보드·부서 관리·업무타입 관리·사용자 관리 4개 탭은 슈퍼관리자에게도 **여전히 자기 소속 조직으로만 범위가 제한**된다 — 이번 요청은 조직(organizations) 자체의 생성/수정/닫기만 전 조직으로 확장하는 것이고, 나머지 4개 탭을 전 조직 범위로 넓히는 것은 **명시적으로 이번 범위 밖**이며 아직 미확정 요구사항으로 남아있다. 착수 시 최소한 다음을 먼저 결정해야 한다: (1) 전 조직 대시보드가 조직별 분리 집계인지 합산 집계인지, (2) 슈퍼관리자가 다른 조직의 부서/업무타입을 CRUD할 때 그 조직 소속이 아니어도 되는지(현재 `department-form-dialog.tsx`/`work-type-form-dialog.tsx`는 호출부가 "관리자 소속 조직 1건짜리 배열"만 넘기는 구조라 다중 조직 선택 UI로 바꿔야 함), (3) 슈퍼관리자가 다른 조직 사용자의 role·소속 부서를 변경할 수 있어야 하는지(`lib/actions/user-admin.ts`의 조직 범위 검증 로직을 조건부로 완화해야 함).
+  - **DB 검증**: 실제 관리자 계정(`archy712@gmail.com`)의 uid로 `request.jwt.claim.sub`를 설정해 impersonate한 뒤 `role`을 임시로 `superadmin`으로 바꿔(트랜잭션 `ROLLBACK`) 조직 생성·타 조직 수정·닫기가 허용됨을 확인. 이어서 `role='user'`인 별도 프로필을 대상으로 `user → superadmin` 직접 승격 시도 시 트리거가 거부하는지, `admin`이 2명뿐인 상태에서 그중 1명을 `admin`→`user`로 강등하면 허용되지만(다른 1명이 여전히 관리자 권한 보유) 마지막 1명을 강등하려 하면 거부되는지도 함께 확인.
+  - **관련 파일**: DB 변경(CHECK 제약·`is_admin()`/`is_superadmin()`/트리거·`organizations` RLS)은 Supabase MCP `apply_migration`으로 적용(마이그레이션명 `add_superadmin_role`). `lib/types/index.ts`(`UserRole`), `lib/auth/require-admin.ts`, `components/user-role-select.tsx`, `lib/actions/user-admin.ts`, `app/protected/admin/users/page.tsx`, `components/user-admin-table.tsx`, `components/user-admin-detail.tsx`, `components/header-nav.tsx`, `components/mobile-nav.tsx`, `app/protected/admin/organizations/page.tsx`, `components/organization-form-dialog.tsx`, `lib/actions/organization.ts`.
+
+---
+
+### Phase 3 이후 ad hoc 확장 (4차, 계획에 없던 사용자 요청 1건, 신규 F034) ✅
+
+> F033이 "범위 밖 유지"로 미뤄뒀던 대시보드·부서 관리·업무타입 관리·사용자 관리 4개 탭의 전 조직 확장을 이어서 구현. 착수 전 미확정 상태였던 3개 결정 항목(집계 방식·부서·업무타입 CRUD 범위·사용자 관리 범위)을 사용자에게 직접 확인받은 뒤 진행했다.
+
+- **대시보드 전 조직 집계 — 조직 선택 드롭다운(전체 합산 + 개별 조직) — F034** — `stats_*` RPC 6종은 애초부터 `org_id uuid DEFAULT NULL`이고 `org_id is null or ... = org_id` 조건으로 짜여 있어 **NULL이면 이미 "전 조직 합산"을 지원하고 있었다** — DB 변경 없이 페이지 단에서만 처리 가능했던 이유. `components/dashboard-filters.tsx`에 슈퍼관리자에게만 렌더링되는 조직 Select(`DASHBOARD_ALL_ORGANIZATIONS = "all"` 선택 시 org_id를 undefined로 넘겨 합산, 특정 조직 선택 시 그 조직으로 필터)를 추가하고, `app/protected/admin/dashboard/page.tsx`가 `?org=` 쿼리 파라미터로 상태를 관리한다(목록/사용자 관리와 동일한 URL 기반 필터 컨벤션). 조직을 바꾸면 이전 조직 기준으로 고른 부서 필터가 무효해질 수 있어 "전체 부서"로 자동 리셋. 일반 관리자는 `organizations` prop 자체를 받지 않아 선택기가 렌더링되지 않고 기존과 동일하게 자기 조직에 고정된다.
+- **부서·업무타입 관리 전 조직 CRUD — F034** — RLS만 확장하면 끝나는 구조였다: `departments_insert_admin`/`update_admin`/`delete_admin`, `work_types`의 동일 3개 정책에 `ALTER POLICY`로 `is_superadmin() OR` 조건을 추가(`organizations_update_admin`과 동일 패턴, 마이그레이션명 `extend_superadmin_departments_work_types_rls`). `department-form-dialog.tsx`/`work-type-form-dialog.tsx`는 F030 때부터 이미 `organizations: Organization[]` prop을 받아 여러 조직 중 하나를 고르는 `Select`를 갖고 있었으므로(그동안 호출부가 1건짜리 배열만 넘겨 사실상 선택지가 하나였을 뿐) **컴포넌트 변경이 전혀 필요 없었다** — `app/protected/admin/departments/page.tsx`·`work-types/page.tsx`가 슈퍼관리자일 때만 조직 필터(`.eq("organization_id", ...)`)를 생략해 전 조직의 부서·업무타입을 한 테이블에 나열하도록 바꾼 것이 전부다. 두 테이블 모두 F029/F030 때 이미 "소속 조직" 컬럼을 갖고 있어 여러 조직이 섞여도 행을 구분할 수 있다.
+- **사용자 관리 전 조직 조회+수정 — F034** — `profiles` 테이블에는 조직 컬럼이 없고 RLS도 건드리지 않기로 한 결정(F030)이 유지되므로, 이번에도 **서버 액션 레벨에서만** 확장했다. `lib/actions/user-admin.ts`에 `isDepartmentAccessible()` 헬퍼를 신설 — 호출자가 슈퍼관리자면 대상 부서가 "어느 조직이든 존재하기만" 하면 통과시키고, 일반 관리자면 기존 `isDepartmentInOrganization()`(자기 조직 일치)을 그대로 적용한다. `updateUserRoleAction`/`updateUserDepartmentAction` 양쪽의 조직 일치 검증을 이 헬퍼로 교체한 것이 유일한 로직 변경이며, **자기 자신 강등 방지·마지막 관리자 강등 방지(DB 트리거)는 조직과 무관하게 이미 전역으로 동작하고 있어 손대지 않았다**. `app/protected/admin/users/page.tsx`의 부서 조회도 슈퍼관리자면 `organization_id` 필터를 생략해 부서 드롭다운·사용자 목록이 전 조직을 포함하도록 확장했다. 상세 페이지(`users/[id]/page.tsx`)의 소속 부서 변경 select는 **원래부터 조직 필터가 없었다**(F030 당시의 범위 누락으로 보이며, 서버 액션이 최종 방어선이라 보안 구멍은 아니었음) — 이번 변경으로 그 select가 슈퍼관리자에게는 의도한 대로, 일반 관리자에게는 여전히 UI엔 보이지만 제출 시 서버 액션이 거부하는 기존 동작 그대로 남는다(이번 범위에서 별도로 고치지 않음).
+- **DB 검증**: impersonation으로 (1) 일반 admin은 임시로 만든 두 번째 조직에 부서·업무타입을 생성/수정할 수 없고(RLS 위반), 자기 조직에는 여전히 생성 가능함(회귀 없음), (2) `archy712@gmail.com`을 임시로 `superadmin`으로 바꾼 뒤에는 두 번째 조직에 부서·업무타입 생성 및 그 부서의 UPDATE(비활성화)까지 전부 성공함을 트랜잭션 `ROLLBACK`으로 확인. 사용자 관리 액션은 순수 서버 액션 로직(RLS가 아님)이라 SQL impersonation 대상이 아니므로 코드 검토와 `npx tsc --noEmit`으로 검증을 갈음했다.
+- **관련 파일**: DB 마이그레이션 `extend_superadmin_departments_work_types_rls`(Supabase MCP `apply_migration`). `components/dashboard-filters.tsx`, `app/protected/admin/dashboard/page.tsx`, `app/protected/admin/departments/page.tsx`, `app/protected/admin/work-types/page.tsx`, `app/protected/admin/users/page.tsx`, `lib/actions/user-admin.ts`.
+
+---
+
 ### Phase 4: 실시간 알림 시스템
 
 > 목표: 멘션·댓글이 발생하면 상대방 화면에 새로고침 없이 알림이 뜨는 상태. **이 프로젝트 최초의 Supabase Realtime 도입**이라 인프라 리스크가 가장 큼.
@@ -568,18 +593,20 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F028 | 주간업무일지 목록 Excel 다운로드 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F029 | 업무 타입 관리 UI | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F030 | 관리자 콘솔 조직 범위 제한 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
+| F033 | 슈퍼관리자 등급(조직 생성·전 조직 수정/닫기) | ad hoc(Phase 3 이후 3차, Task 번호 없음) |
 | F031 | 주간업무일지 추천/비추천 | Task 038 (미착수, 스펙 미확정) |
 | F032 | 애플리케이션 전반 성능 개선 | Task 039 (미착수, 스펙 미확정) |
+| F034 | 슈퍼관리자 대시보드/부서/업무타입/사용자 관리 전 조직 확장 | ad hoc(Phase 3 이후 4차, Task 번호 없음) |
 | — | 통합 검증·마감 | Task 036, Task 037 |
 
 ## 데이터 모델 변경 요약 (MVP 대비)
 
 | 테이블 | 변경 | Task |
 |--------|------|------|
-| `organizations` | 신규 (조직 계층, `id`/`name`(unique)/`archived_at`/`created_at`) | ad hoc(F027) |
+| `organizations` | 신규 (조직 계층, `id`/`name`(unique)/`archived_at`/`created_at`, 이후 슈퍼관리자 전용 INSERT 정책 추가 + UPDATE 정책에 `is_superadmin()` 분기 추가) | ad hoc(F027, F033) |
 | `departments` | `archived_at`(또는 `is_active`) 컬럼 추가, admin 전용 INSERT/UPDATE/DELETE 정책 3종 신규(이후 `organization_id` NOT NULL FK 추가·정책에 조직 조건 추가) | 026, ad hoc(F027·F030) |
 | `work_types` | 신규 (업무 타입, `id`/`name`/`organization_id`/`archived_at`/`created_at`, `(organization_id, name)` 복합 unique, admin 전용 INSERT/UPDATE/DELETE 정책 3종) | ad hoc(F029·F030) |
-| `profiles` | UPDATE 정책을 `own_or_admin`으로 통합, `role` 변경 차단 트리거 신규 | 026 |
+| `profiles` | UPDATE 정책을 `own_or_admin`으로 통합, `role` 변경 차단 트리거 신규(이후 `role` CHECK를 `user`/`admin`/`superadmin` 3단계로 확장하고 트리거에 승격·강등 규칙 추가) | 026, ad hoc(F033) |
 | `weekly_logs` | `work_type text[]` 컬럼 추가(처음엔 CHECK 제약, 이후 `work_types` 테이블 참조 트리거로 대체) + `importance smallint` 컬럼 추가(1~5 CHECK) + 신규 `stats_logs_by_work_type`/`stats_logs_by_importance` RPC | ad hoc(F025, F026, F029) |
 | `weekly_log_attachments` | **변경 없음** | — |
 | `weekly_log_comments` | 신규 (소프트 삭제·1단계 대댓글 지원) | 032 |
@@ -612,3 +639,6 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | **🆕 F032 목표 지표 유무** | 수치 목표(예: 목록 페이지 로딩 N초 이하)를 세우는지, 목표 없이 일반 점검·정리로 두는지에 따라 **Task의 완료 조건 자체가 달라짐** | Task 039 착수 전 |
 | **🆕 F032 우선순위 영역** | DB 쿼리·인덱스 / 클라이언트 번들 / 캐싱(`cacheComponents`) 중 어디부터 손댈지. 전부 동시에 바꾸면 개선 효과의 원인 분리가 불가능하므로 영역을 순차로 진행할 것 | Task 039 착수 전 |
 | **🆕 F032와 Task 037의 중복** | Task 037은 v1 신규 테이블 4종 한정 배포 전 점검, Task 039는 MVP 포함 전체 대상 별도 이니셔티브 → 같은 항목을 두 번 손대지 않도록 착수 시 경계 재확인 | Task 037·039 |
+| ✅ **F034 전 조직 대시보드 집계 방식 (해결)** | "조직 선택 드롭다운(전체 합산 + 개별 조직)"으로 결정. `stats_*` RPC가 이미 `org_id=NULL`로 전체 합산을 지원하고 있어 DB 변경 없이 페이지 단(`dashboard-filters.tsx`)에서만 구현 | Phase 3 이후 4차(F034) |
+| ✅ **F034 부서/업무타입 CRUD의 조직 선택 (해결)** | "전 조직 CRUD 허용"으로 결정. `department-form-dialog.tsx`/`work-type-form-dialog.tsx`는 이미 다중 조직 선택 `Select`를 갖고 있어 컴포넌트 변경 없이 RLS(`ALTER POLICY`로 `is_superadmin() OR` 추가)와 페이지의 조직 필터 생략만으로 해결 | Phase 3 이후 4차(F034) |
+| ✅ **F034 사용자 관리 조직 범위 완화 (해결)** | "전 조직 조회+수정 모두 허용"으로 결정. `lib/actions/user-admin.ts`에 `isDepartmentAccessible()` 헬퍼를 추가해 슈퍼관리자에 한해 조직 일치 검증을 건너뛰도록 완화(자기 강등 방지·마지막 관리자 방지 트리거는 조직 무관 전역이라 그대로 유지) | Phase 3 이후 4차(F034) |

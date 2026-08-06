@@ -29,12 +29,13 @@ async function UsersContent({
   // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
   // 처리하지만, 이 페이지는 관리자 소속 조직으로 범위를 좁혀야 해서 organizationId·본인
   // id(자기 자신 강등 방지 UI에 필요)를 얻기 위해 다시 호출한다.
-  const { id: currentUserId, organizationId } = await requireAdmin();
+  const { id: currentUserId, organizationId, role: callerRole } = await requireAdmin();
+  const isSuperAdmin = callerRole === "superadmin";
 
   const { department: departmentParam, role: roleParam, q: rawQuery } = await searchParams;
 
   const selectedDepartment: DepartmentFilter = departmentParam || ALL_DEPARTMENTS_FILTER;
-  const VALID_ROLES: UserRole[] = ["user", "admin"];
+  const VALID_ROLES: UserRole[] = ["user", "admin", "superadmin"];
   const selectedRole: RoleFilter =
     roleParam && VALID_ROLES.includes(roleParam as UserRole)
       ? (roleParam as UserRole)
@@ -42,11 +43,17 @@ async function UsersContent({
   const searchQuery = rawQuery?.trim() ?? "";
 
   // 관리자 소속 조직의 부서만 필터 드롭다운과 사용자 목록 범위를 동시에 결정한다.
-  const { data: departmentRows } = await supabase
+  // F034: 슈퍼관리자는 조직 필터 없이 전 조직의 부서를 가져와 전 조직 사용자를 다룰 수
+  // 있게 한다(lib/actions/user-admin.ts의 서버 액션도 슈퍼관리자에 한해 조직 일치
+  // 검증을 건너뛰도록 함께 완화되어 있음).
+  let departmentQuery = supabase
     .from("departments")
     .select("id, name, created_at, archived_at, organization_id")
-    .eq("organization_id", organizationId)
     .order("name");
+  if (!isSuperAdmin) {
+    departmentQuery = departmentQuery.eq("organization_id", organizationId);
+  }
+  const { data: departmentRows } = await departmentQuery;
   const departments: Department[] = departmentRows ?? [];
   const departmentIds = departments.map((department) => department.id);
 

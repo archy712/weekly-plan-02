@@ -24,14 +24,21 @@ async function WorkTypesContent() {
   // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
   // 처리하지만, 이 페이지는 관리자 소속 조직으로 범위를 좁혀야 해서 organizationId를
   // 얻기 위해 다시 호출한다.
-  const { organizationId } = await requireAdmin();
+  const { role, organizationId } = await requireAdmin();
+  const isSuperAdmin = role === "superadmin";
 
-  // 조직은 관리자 소속 조직 1건뿐이다(폼 선택지에 필요해 업무 타입 조회와 별도로
-  // 가져온다) — 여러 조직을 넘나드는 선택/필터는 더 이상 불가능하다.
-  const { data: organizationRows, error: organizationsError } = await supabase
+  // 일반 관리자는 자기 소속 조직 1건만(폼 선택지에 필요해 업무 타입 조회와 별도로
+  // 가져온다). 슈퍼관리자는 F034로 전 조직을 다룰 수 있어 조직 필터 없이 전체를
+  // 가져온다 — 테이블의 "소속 조직" 컬럼이 이미 각 행을 구분해 보여준다.
+  let organizationsQuery = supabase
     .from("organizations")
-    .select("id, name, created_at, archived_at")
-    .eq("id", organizationId);
+    .select("id, name, created_at, archived_at");
+  if (!isSuperAdmin) {
+    organizationsQuery = organizationsQuery.eq("id", organizationId);
+  }
+  const { data: organizationRows, error: organizationsError } = await organizationsQuery.order(
+    "name",
+  );
 
   if (organizationsError) {
     throw organizationsError;
@@ -39,11 +46,14 @@ async function WorkTypesContent() {
 
   const organizations = organizationRows ?? [];
 
-  const { data: workTypeRows, error: workTypesError } = await supabase
+  let workTypesQuery = supabase
     .from("work_types")
     .select("id, name, created_at, archived_at, organization_id, organizations(name)")
-    .eq("organization_id", organizationId)
     .order("name");
+  if (!isSuperAdmin) {
+    workTypesQuery = workTypesQuery.eq("organization_id", organizationId);
+  }
+  const { data: workTypeRows, error: workTypesError } = await workTypesQuery;
 
   if (workTypesError) {
     throw workTypesError;

@@ -378,6 +378,7 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_superadmin: { Args: never; Returns: boolean }
       search_mentionable_profiles: {
         Args: { max_results?: number; search_query: string }
         Returns: {

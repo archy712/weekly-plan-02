@@ -115,8 +115,12 @@ export function UserAdminDetail({
               <CardDescription>가입일 {formatDate(user.created_at)}</CardDescription>
             </div>
           </div>
-          <Badge variant={user.role === "admin" ? "success" : "secondary"}>
-            {user.role === "admin" ? "관리자" : "일반 사용자"}
+          <Badge variant={user.role === "user" ? "secondary" : "success"}>
+            {user.role === "superadmin"
+              ? "슈퍼관리자"
+              : user.role === "admin"
+                ? "관리자"
+                : "일반 사용자"}
           </Badge>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -201,7 +205,7 @@ export function UserAdminDetail({
               role={user.role}
               disabled={isSelf}
               disabledReason="본인 역할은 변경할 수 없습니다."
-              className="w-40"
+              className="w-44"
             />
             {isSelf && (
               <p className="text-xs text-muted-foreground">본인 역할은 변경할 수 없습니다.</p>

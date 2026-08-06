@@ -1,7 +1,11 @@
 import type { Tables } from "@/lib/supabase/database.types";
 import type { WeeklyLogImportance } from "@/lib/constants/importance";
 
-export type UserRole = "user" | "admin";
+// superadmin은 admin의 상위 집합이다 — is_admin() DB 함수가 admin/superadmin 모두를
+// 관리자 권한으로 인정하므로, 대시보드/부서/업무타입/사용자 관리 화면은 두 역할을
+// 동일하게 취급한다(여전히 자기 소속 조직으로만 범위 제한). superadmin에게만 추가로
+// 열리는 것은 조직(organizations) 생성과 전 조직 범위의 수정/닫기뿐이다.
+export type UserRole = "user" | "admin" | "superadmin";
 
 export type Department = Tables<"departments">;
 

@@ -20,7 +20,7 @@ function getNavLinks(user: NavUser): { href: string; label: string }[] {
     return [];
   }
   const links: { href: string; label: string }[] = [];
-  if (user.role === "admin") {
+  if (user.role === "admin" || user.role === "superadmin") {
     links.push({ href: "/protected/admin", label: "관리자 콘솔" });
   }
   return links;
@@ -74,8 +74,10 @@ export async function HeaderNav() {
                 </AvatarFallback>
               </Avatar>
               {user.email}
-              {user.role === "admin" && (
-                <Badge variant="secondary">관리자</Badge>
+              {(user.role === "admin" || user.role === "superadmin") && (
+                <Badge variant="secondary">
+                  {user.role === "superadmin" ? "슈퍼관리자" : "관리자"}
+                </Badge>
               )}
             </span>
             <Button asChild size="sm" variant="outline">
