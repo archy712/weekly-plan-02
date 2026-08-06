@@ -368,6 +368,25 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ---
 
+### Phase 3 이후 ad hoc 확장 (2차, 계획에 없던 사용자 요청 7건, 신규 F026~F030) ✅
+
+> 위 1차 ad hoc 확장 이후에도 Phase 4(실시간 알림) 착수 전 시점에 계획에 없던 요청이 계속 들어와, 같은 원칙(별도 Task 번호 없이 이 섹션에 일괄 기록)으로 이어서 정리한다. 이번에도 로그인 테스트 계정이 세션에 없어 `npx tsc --noEmit`/`npm run lint`/`npm run build`/Supabase MCP `execute_sql` 검증(RLS는 `set local role authenticated` + `request.jwt.claim.sub` impersonation, 전부 `ROLLBACK`)까지만 수행하고 Playwright 실브라우저 검증은 다음 통합 검증(Task 036)으로 미룬다.
+
+- **예상 소요 금액 콤마 구분자·단위 라벨 표시** — 등록·수정·상세 화면의 "예상 소요 금액" 라벨을 "(단위:원)"으로 명시하고, 입력 중 `lib/utils.ts`의 신규 `formatThousandsInput()`으로 3자리마다 콤마를 자동 삽입. 서버로 보낼 때(`toWeeklyLogPayload`)는 콤마를 제거하고 숫자로 변환.
+- **업무 중요도(1~5단계) 슬라이더 속성 신설 — 신규 F026** — `weekly_logs.importance smallint`(1~5 CHECK 제약, 기본값 3) 컬럼을 추가. 허용 범위·라벨은 `lib/constants/importance.ts`(`IMPORTANCE_MIN`/`MAX`/`LABELS`, `formatImportanceLabel()`)가 유일한 소스. 입력 UI는 체크박스가 아니라 신규 설치한 `ui/slider`(shadcn)이며, 상세 페이지는 업무 타입과 동일하게 별도 "수정" 모드 없이 슬라이더 조작만으로 즉시 저장하되 **드래그 중에는 로컬 상태만 갱신(`onValueChange`)하고 손을 뗄 때(`onValueCommit`)만 서버에 저장**해 과도한 요청을 피함(`updateWeeklyLogImportanceAction` 신규, 낙관적 업데이트 + 실패 시 롤백은 기존 진행상태 변경과 동일 패턴). 관리자 대시보드에 6번째 차트로 레이더 차트(`components/dashboard-importance-chart.tsx`, `stats_logs_by_importance` RPC 신규)를 추가해 1~5단계 분포를 시각화(다른 `stats_*`와 동일하게 0건 단계도 항상 5개 축으로 반환). 기존 더미 데이터 317건도 중요도 값으로 백필.
+- **관리자 콘솔 모바일 반응형 카드 레이아웃 확장** — 부서 관리(`app/protected/admin/departments/page.tsx`, `components/department-card.tsx` 신규)와 사용자 관리(`components/user-admin-card.tsx` 신규)의 테이블이 모바일에서 가로 스크롤을 유발하던 문제를, 주간업무일지 목록에 이미 적용돼 있던 "md 미만은 카드, md 이상은 테이블" 반응형 전환 패턴으로 동일하게 확장.
+- **조직(organizations) 계층 신설 및 관리 기능 — 신규 F027** — `departments.organization_id`(NOT NULL FK → 신규 `organizations` 테이블, `id`/`name`(unique)/`archived_at`/`created_at`)를 추가해 모든 부서가 반드시 하나의 조직에 속하도록 변경. 관리자 콘솔에 조직 관리 탭(`app/protected/admin/organizations/page.tsx`, `lib/actions/organization.ts`, `lib/schemas/organization.ts` 전부 신규)을 신설해 부서 관리와 동일한 CRUD+소프트 삭제 패턴(당시엔 여러 조직을 나열하는 목록이었으나, 이후 ad hoc으로 조직 범위 제한이 들어오며 단일 카드로 재작성됨 — 아래 항목 참고)을 제공. 헤더 왼쪽 타이틀(`components/site-header-title.tsx` 신규)과 로그인 상태의 랜딩 CTA(`components/hero-cta.tsx`)가 `profiles.department_id → departments.organization_id → organizations.name` 중첩 PostgREST embed로 로그인한 사용자의 소속 조직명을 동적으로 표시(예: "IT부문 주간업무"). 부서 추가/수정 다이얼로그(`department-form-dialog.tsx`)에 소속 조직 선택 `Select`를 추가.
+- **비로그인 시 랜딩 페이지 헤더 제거 및 여백 개선** — 로그인 전 방문자에게는 헤더(히어로 섹션의 로그인/회원가입 CTA와 중복)를 숨기는 `components/landing-header.tsx` 신규(env var 미설정 상태는 경고 노출을 위해 항상 헤더 표시). 로그인한 사용자가 `/`로 돌아왔을 때는 기존처럼 `SiteHeader`를 그대로 노출. 본문 텍스트 단락·섹션 간격을 넓혀 가독성 개선.
+- **주간업무목록 Excel 다운로드 기능 추가 — 신규 F028** — 기존 PDF 전용 다운로드 버튼을 드롭다운으로 바꿔 PDF/Excel 중 선택 가능하게 하고, `exceljs`(신규 의존성) + `lib/excel/weekly-log-excel.ts`(신규)로 업무타입·중요도·예상소요기간/금액·협력업체·내용까지 포함한 Excel(.xlsx)을 클라이언트 사이드에서 생성. `weekly_logs.content`(sanitize된 HTML)는 `DOMParser`로 plain text만 추출해 셀에 기록. 화면에 적용된 필터·기간 조건과 항상 일치하도록 PDF와 동일한 데이터 소스를 재사용. 행 높이 25 고정 + 세로 가운데 정렬 적용.
+- **업무 타입을 관리자가 관리하는 기능으로 전환 — 신규 F029, 조직별 소속 — F027 확장** — 원래 `lib/constants/work-types.ts`에 하드코딩돼 있던 업무 타입 10종을 신규 `work_types` 테이블(`id`/`name`/`organization_id`/`archived_at`/`created_at`)로 옮기고, 관리자 콘솔에 업무타입 관리 탭(`app/protected/admin/work-types/page.tsx`, `lib/actions/work-type.ts`, `lib/schemas/work-type.ts` 신규)을 부서 관리와 동일한 패턴으로 추가. **CHECK 제약은 다른 테이블을 참조할 수 없어** 기존 `weekly_logs_work_type_check`를 `validate_weekly_log_work_type()` `BEFORE INSERT OR UPDATE OF work_type` 트리거로 대체(cardinality > 0 + 각 값이 로그 작성 부서의 조직에 속한 `work_types.name`에 실존하는지 검증). `work_types.name`은 전역이 아니라 **`(organization_id, name)` 복합 unique**로 설계해 서로 다른 조직이 같은 이름을 각자 등록할 수 있게 함(전역 unique였다면 `stats_logs_by_work_type`의 `group by name`이 조직 간 카운트를 잘못 합산할 위험이 있어 `group by wt.id, wt.name`으로도 함께 수정). 작성/수정 폼과 상세 페이지의 체크박스는 이제 정적 배열이 아니라 서버가 조회해 내려주는 `workTypeOptions` prop이며, 부서 select의 "비활성 라벨링" 패턴을 그대로 다중 선택으로 옮겨 활성 타입은 항상 노출하고 비활성·타 조직 타입은 이미 선택된 로그에서만 "(비활성)" 라벨로 유지.
+- **관리자 콘솔을 소속 조직 범위로 제한 — 신규 F030** — 위 F027·F029로 조직이 여러 개 존재할 수 있게 되면서, "관리자는 자기 소속 조직만 관리한다"는 경계를 명확히 함(별도의 "전체 관리자" 등급은 두지 않기로 결정 — `profiles.role`은 여전히 `user`/`admin` 2단계). `current_department_id()`와 동일한 컨벤션(`SECURITY DEFINER STABLE`, `anon` EXECUTE 명시적 회수)으로 `current_organization_id()` 함수를 신설하고, `departments`/`work_types`의 INSERT/UPDATE/DELETE 정책과 `organizations`의 UPDATE 정책에 기존 `is_admin()` 조건과 AND로 `organization_id = current_organization_id()`(조직 자체는 `id = ...`)를 추가. `organizations`의 INSERT/DELETE 정책은 아예 제거(앱에 조직 생성·삭제 경로 없음). 대시보드·부서 관리·업무타입 관리·사용자 관리 4개 페이지가 각자 `requireAdmin()`을 호출해 `organizationId`를 얻어 조회 쿼리를 좁히고(`lib/auth/require-admin.ts`의 `CurrentProfile`에 `organizationId` 필드 추가), 통계 RPC 6개(`stats_logs_by_department`는 이때 처음으로 부서 단일값이 아닌 조직 필터가 필요해짐) 전부에 `org_id` 파라미터를 추가해 "전체 부서" 조회를 선택해도 다른 조직 데이터가 섞이지 않게 함. `profiles`에는 조직 컬럼이 없고 관련 RLS·트리거(`prevent_unauthorized_role_change`)는 과거 회귀 이력이 있어 건드리지 않기로 결정했으므로, 사용자 관리의 조직 범위 검증은 `lib/actions/user-admin.ts`의 서버 액션 레벨에서(대상 사용자의 현재/신규 부서가 호출자와 같은 조직인지 매번 재조회) 수행 — 자기 자신 강등 방지가 트리거보다 넓은 조건을 액션에서 추가로 거는 것과 동일한 선례를 따름. 조직 관리 탭은 여러 조직을 나열하던 목록에서 **관리자 소속 조직 1건짜리 단일 카드**(이름 수정·비활성화만, 생성·삭제 UI 없음)로 재작성됐고, 지난 F029에서 만든 업무타입의 "전체 조직/특정 조직" 필터 드롭다운은 관리자가 항상 자기 조직 하나만 보게 되어 의미가 없어져 제거함(`components/work-type-filters.tsx` 삭제, `lib/types/index.ts`의 `ALL_ORGANIZATIONS_FILTER`/`OrganizationFilter`도 함께 제거).
+  - **DB 검증**: 실제 관리자 계정(`archy712@gmail.com`, IT부문 소속)의 uid로 `request.jwt.claim.sub`를 설정해 impersonate한 뒤, 임시로 두 번째 조직·부서를 만들어(트랜잭션 `ROLLBACK`) 자기 조직 부서 생성/조직 이름 수정은 허용되고 **다른 조직**의 부서 생성·조직 이름 수정 시도는 `insufficient_privilege`로 명시 거부됨을 확인. 서로 다른 조직에 동일 이름(`보안`) 업무 타입을 각자 등록할 수 있음과, `stats_logs_by_work_type`가 조직이 다른 동명 타입을 별도 행으로 정확히 분리 집계함(합산 안 됨)도 함께 확인.
+  - **어드바이저 회귀**: `current_organization_id()`를 처음 만들 때 `revoke ... from anon`만 실행했다가 `anon`이 여전히 실행 가능한 것을 어드바이저로 발견 — Postgres가 함수 생성 시 기본으로 `PUBLIC`에 EXECUTE를 부여하므로 특정 역할만 회수해서는 `PUBLIC` 경유 권한이 남는다는 점을 놓친 것(Task 030에서 이미 한 번 겪었던 것과 동일한 함정). `revoke ... from public`을 추가해 해소, `is_admin()`/`current_department_id()`와 동일하게 `anon`은 실행 불가·`authenticated`만 가능한 상태로 재확인.
+- **관련 파일**: 위 각 항목 참고. `database.types.ts`는 매 항목마다 재생성했으며, `stats_logs_by_department` 등 4개 RPC는 파라미터 시그니처가 바뀌면서 예전 오버로드가 `create or replace`로 대체되지 않고 별도 함수로 남는 문제를 실측해 `drop function`으로 정리 후 재생성한 이력이 있음(Postgres는 파라미터 목록이 다르면 별개 함수로 취급).
+- **범위 밖 유지**: 이 7건의 실브라우저 회귀 테스트도 위 1차 ad hoc 확장과 함께 다음 통합 검증(Task 036)으로 미룸. 여러 조직이 실제로 2개 이상 존재하는 상태에서의 교차 검증(현재는 조직이 1개뿐이라 RLS 회귀만으로 검증)도 마찬가지.
+
+---
+
 ### Phase 4: 실시간 알림 시스템
 
 > 목표: 멘션·댓글이 발생하면 상대방 화면에 새로고침 없이 알림이 뜨는 상태. **이 프로젝트 최초의 Supabase Realtime 도입**이라 인프라 리스크가 가장 큼.
@@ -473,16 +492,23 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F022 | 댓글·멘션 협업 | Task 032(스키마·액션), Task 033(UI) |
 | F023 | 실시간 알림 | Task 034(스키마·Realtime 인프라), Task 035(UI·구독) |
 | F024 | 통계/대시보드 차트 | Task 030(집계 RPC), Task 031(차트 UI) |
-| F025 | 업무 타입(다중 선택) 분류 | ad hoc(Phase 3 이후, Task 번호 없음) |
+| F025 | 업무 타입(다중 선택) 분류 | ad hoc(Phase 3 이후 1차, Task 번호 없음) |
+| F026 | 업무 중요도(1~5단계) 속성 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
+| F027 | 조직(organizations) 계층 및 조직 관리 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
+| F028 | 주간업무일지 목록 Excel 다운로드 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
+| F029 | 업무 타입 관리 UI | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
+| F030 | 관리자 콘솔 조직 범위 제한 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | — | 통합 검증·마감 | Task 036, Task 037 |
 
 ## 데이터 모델 변경 요약 (MVP 대비)
 
 | 테이블 | 변경 | Task |
 |--------|------|------|
-| `departments` | `archived_at`(또는 `is_active`) 컬럼 추가, admin 전용 INSERT/UPDATE/DELETE 정책 3종 신규 | 026 |
+| `organizations` | 신규 (조직 계층, `id`/`name`(unique)/`archived_at`/`created_at`) | ad hoc(F027) |
+| `departments` | `archived_at`(또는 `is_active`) 컬럼 추가, admin 전용 INSERT/UPDATE/DELETE 정책 3종 신규(이후 `organization_id` NOT NULL FK 추가·정책에 조직 조건 추가) | 026, ad hoc(F027·F030) |
+| `work_types` | 신규 (업무 타입, `id`/`name`/`organization_id`/`archived_at`/`created_at`, `(organization_id, name)` 복합 unique, admin 전용 INSERT/UPDATE/DELETE 정책 3종) | ad hoc(F029·F030) |
 | `profiles` | UPDATE 정책을 `own_or_admin`으로 통합, `role` 변경 차단 트리거 신규 | 026 |
-| `weekly_logs` | `work_type text[]` 컬럼 추가(CHECK 제약, 신규 `stats_logs_by_work_type` RPC) | ad hoc |
+| `weekly_logs` | `work_type text[]` 컬럼 추가(처음엔 CHECK 제약, 이후 `work_types` 테이블 참조 트리거로 대체) + `importance smallint` 컬럼 추가(1~5 CHECK) + 신규 `stats_logs_by_work_type`/`stats_logs_by_importance` RPC | ad hoc(F025, F026, F029) |
 | `weekly_log_attachments` | **변경 없음** | — |
 | `weekly_log_comments` | 신규 (소프트 삭제·1단계 대댓글 지원) | 032 |
 | `weekly_log_comment_mentions` | 신규 (멘션 정규화) | 032 |

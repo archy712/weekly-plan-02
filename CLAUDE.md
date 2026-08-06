@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
-MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3)까지 구현이 완료되었고, 실시간 알림(Phase 4)은 아직 구현 전입니다. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3)까지 구현이 완료되었고, 실시간 알림(Phase 4)은 아직 구현 전입니다. Phase 3 이후에는 원래 계획에 없던 ad hoc 확장(`docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 절 참고)도 다수 추가됐습니다 — 업무 타입·업무 중요도 속성, Excel 다운로드, 조직(organizations) 계층 신설과 이를 반영한 **관리자 콘솔의 조직 범위 제한**(관리자는 자기 소속 조직만 관리), 업무 타입 관리 UI 등. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
 
 ## 명령어
 
@@ -54,6 +54,16 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 - 목록 페이지의 부서 필터 **기본값**은 `department` 쿼리 파라미터가 없을 때만 role로 분기합니다(관리자는 전체, 일반 사용자는 소속 부서). 파라미터가 있으면 role과 무관하게 그대로 사용합니다.
 - **`profiles.role`에는 자기 상승을 막는 `BEFORE UPDATE` 트리거(`prevent_unauthorized_role_change()`, `SECURITY DEFINER`)가 이미 적용되어 있습니다.** `profiles_update_own` 정책이 행 단위 제한만 걸려 있어(컬럼 제한 없음) 원래는 로그인한 누구나 자신의 `role`을 `admin`으로 바꿀 수 있었던 결함을 막은 것입니다 — `NEW.role`이 `OLD.role`과 다르고 **`(select auth.uid())`가 NULL이 아닌데(=PostgREST를 통한 인증된 앱 요청)** 호출자가 `is_admin()`이 아니면 예외를 던집니다. `auth.uid()`가 NULL인 연결(SQL Editor, `mcp__supabase__execute_sql` 등 직접 DB 접속)은 검사 대상이 아니므로 `docs/guides/deployment-ops.md` 4절의 수동 관리자 지정 절차는 그대로 동작합니다 — 처음 이 트리거를 `auth.uid()` 조건 없이(호출자가 `is_admin()`이 아니면 무조건 차단) 작성했다가 그 절차 자체가 막히는 회귀를 실측으로 발견해 수정한 이력이 있으니, 이 트리거를 다시 손볼 때 `auth.uid() IS NOT NULL` 조건을 빠뜨리지 말 것. 이 트리거는 마이그레이션 파일이 아니라 Supabase MCP(`apply_migration`)로 직접 적용되어 있어 로컬 `supabase/migrations/` 디렉터리에는 보이지 않으니, 스키마 확인 시 `mcp__supabase__list_migrations`나 `execute_sql`로 실측할 것. v1 고도화(`docs/ROADMAP_v1.md` Task 026~028)에서 `profiles`의 UPDATE 정책을 `own_or_admin`으로 넓히더라도 **이 트리거는 그대로 유지**해야 관리자 지정 UI가 생긴 뒤에도 자기 상승 경로가 막힌 채 유지됩니다.
 
+### 조직(organizations) 계층과 관리자 콘솔의 조직 범위 제한 (ad hoc)
+
+- `departments.organization_id`(NOT NULL FK → `organizations.id`)로 부서는 반드시 하나의 조직에 속합니다(`organizations`는 `id`/`name`(unique)/`archived_at`/`created_at`만 있는 단순 테이블, `departments`와 동일한 소프트 삭제 관례). `work_types.organization_id`도 동일한 FK를 가지며, `name`은 전역이 아니라 **`(organization_id, name)` 복합 unique**라 서로 다른 조직이 같은 이름의 업무 타입을 각자 등록할 수 있습니다.
+- **관리자는 별도의 "전체 관리자" 등급 없이 전부 자기 소속 조직으로만 범위가 제한됩니다** — `profiles.role`은 여전히 `user`/`admin` 2단계뿐이고, 조직 범위는 `profiles.department_id → departments.organization_id`로 매 요청 동적으로 결정됩니다. `current_organization_id()`(`current_department_id()`와 동일한 `SECURITY DEFINER STABLE` 컨벤션, `anon` EXECUTE 회수 포함)가 호출자의 소속 조직을 반환하며, `departments`/`work_types`의 INSERT/UPDATE/DELETE 정책과 `organizations`의 UPDATE 정책이 기존 `is_admin()` 조건에 `organization_id = current_organization_id()`(조직 자체는 `id = current_organization_id()`)를 AND로 추가해 **다른 조직의 부서·업무 타입·조직 정보를 절대 쓸 수 없게** 막습니다. `organizations`의 INSERT/DELETE 정책은 아예 없습니다(앱에 조직 생성·삭제 UI 자체가 없음 — 새 조직이 필요하면 `docs/guides/deployment-ops.md`의 수동 관리자 지정과 같은 방식으로 direct DB 접속으로 만들 것).
+- **SELECT는 세 테이블 모두 건드리지 않았습니다** — 부서/업무 타입/조직 이름은 여전히 전 로그인 사용자에게 공개됩니다(`weekly_logs`의 "전 부서 공개" 원칙과 동일선상). 범위 제한은 **관리자 콘솔 화면의 조회 쿼리 자체**(`.eq("organization_id", organizationId)`)와 **쓰기 액션**에만 적용되며, 일반 사용자가 보는 목록/필터/회원가입 부서 선택 등은 영향받지 않습니다.
+- `lib/auth/require-admin.ts`의 `requireAdmin()`이 `organizationId: string`(non-null 보장)을 반환하도록 확장되어 있습니다. 이전에는 관리자 콘솔 페이지들이 레이아웃의 `requireAdmin()` 가드만 믿고 페이지에서 재조회하지 않았지만(위 "관리자 콘솔" 절 참고), 이제 **대시보드·부서 관리·사용자 관리·업무 타입 관리 페이지 전부가 각자 `requireAdmin()`을 다시 호출**해 `organizationId`를 얻어 쿼리를 좁힙니다. 새 관리자 콘솔 페이지를 추가할 때 이 조회를 빠뜨리면 다른 조직 데이터가 그대로 노출됩니다.
+- **사용자 관리(`lib/actions/user-admin.ts`)는 RLS가 아니라 서버 액션 레벨에서 조직 범위를 재검증**합니다 — `profiles` 테이블 자체에는 `organization_id` 컬럼이 없어(부서를 통한 간접 소속이라) RLS로 직접 제한하기 어렵고, `profiles`/`prevent_unauthorized_role_change()` 트리거는 과거 회귀 이력이 있어 이번 변경에서 건드리지 않기로 결정했습니다(위 자기 상승 방지 트리거 문단 참고). 대신 `updateUserRoleAction`/`updateUserDepartmentAction`이 대상 사용자의 (현재 그리고, 부서 변경 시 새로 지정하려는) 부서가 호출자와 같은 조직인지 매번 조회해 확인합니다 — 자기 자신 강등 방지가 트리거보다 넓은 조건을 서버 액션에서 추가로 거는 것과 동일한 패턴입니다.
+- 부서(`department-form-dialog.tsx`)·업무 타입(`work-type-form-dialog.tsx`) 추가/수정 다이얼로그는 여러 조직 중 하나를 고르는 `Select`를 컴포넌트 자체는 그대로 유지하되(범용성을 위해 `organizations: Organization[]` prop을 받는 구조는 바꾸지 않음), **호출하는 관리자 콘솔 페이지가 관리자 소속 조직 1건짜리 배열만 넘겨** 실질적으로 선택지가 하나뿐이게 만듭니다 — 컴포넌트를 조직 무관 버전으로 따로 만들지 말고 이 패턴을 재사용할 것.
+- 조직 관리 탭(`app/protected/admin/organizations/page.tsx`)은 여러 조직을 나열하는 목록이 아니라 **관리자 소속 조직 1건짜리 카드**입니다(이름 수정·비활성화/활성화만 가능, 생성·삭제 UI 없음) — 관리자가 자기 조직만 볼 수 있게 되면서 여러 조직을 나열할 이유가 없어졌기 때문입니다.
+
 ### 검색 필터 작성 시 주의사항
 
 `supabase-js`의 `.or()`는 PostgREST raw 문법을 그대로 넘기므로, 검색어에 콤마·괄호가 섞이면 필터 구조가 깨질 수 있습니다(공식 문서도 "직접 sanitize 필요"라고 명시). 여러 컬럼에 대한 OR 키워드 검색이 필요하면 `.or()` 대신 컬럼별로 `.ilike()` 쿼리를 따로 실행해 병합하세요(`app/protected/weekly-logs/page.tsx`의 제목/내용 검색 참고). `ilike` 패턴에 `%`/`_`가 섞인 사용자 입력을 쓸 때는 `lib/utils.ts`의 `escapeLikePattern()`으로 이스케이프할 것.
@@ -80,9 +90,10 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의, 에러 표시, 서버 에러 매핑 등)은 `docs/guides/forms-react-hook-form.md`를 참고하세요.
 
-### PDF 생성
+### PDF·Excel 생성
 
-`lib/pdf/weekly-log-pdf.ts`가 jsPDF + jspdf-autotable로 **클라이언트 사이드**에서 PDF를 생성합니다. jsPDF 기본 폰트가 한글을 지원하지 않아 `/public/fonts/NotoSansKR-Regular.ttf`를 런타임에 fetch해 base64로 임베딩하며, 폰트 용량(~2.5MB) 때문에 `String.fromCharCode`를 청크 단위로 호출해 콜스택 초과를 피합니다. 이 변환 로직은 그대로 유지할 것.
+- `lib/pdf/weekly-log-pdf.ts`가 jsPDF + jspdf-autotable로 **클라이언트 사이드**에서 PDF를 생성합니다. jsPDF 기본 폰트가 한글을 지원하지 않아 `/public/fonts/NotoSansKR-Regular.ttf`를 런타임에 fetch해 base64로 임베딩하며, 폰트 용량(~2.5MB) 때문에 `String.fromCharCode`를 청크 단위로 호출해 콜스택 초과를 피합니다. 이 변환 로직은 그대로 유지할 것.
+- `lib/excel/weekly-log-excel.ts`가 `exceljs`로 동일하게 **클라이언트 사이드**에서 Excel(.xlsx)을 생성합니다(제목/부서/시작일/목표종료일/진행상태/업무타입/중요도/예상소요기간·금액/협력업체/내용 컬럼). `weekly_logs.content`는 sanitize된 HTML 문자열이라 `DOMParser`(브라우저 전용 API)로 plain text만 추출해 셀에 넣습니다. `components/weekly-log-list-view.tsx`의 다운로드 버튼이 드롭다운으로 바뀌어 PDF/Excel 중 선택할 수 있습니다. `exceljs`는 번들 크기가 있어 PDF와 마찬가지로 클릭 시점에 `await import("exceljs")`로 동적 로딩합니다.
 
 ### 리치 텍스트 에디터 (주간업무일지 상세 내용)
 
@@ -103,13 +114,21 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - 핵심 파일: `lib/storage/weekly-log-attachments.ts`(경로 생성·업로드·다운로드 URL 발급), `lib/actions/weekly-log-attachments.ts`(메타데이터 insert/delete 서버 액션), `hooks/use-weekly-log-attachments.ts`(pending files·진행률·기존 첨부파일 상태 관리), `components/weekly-log-attachment-field.tsx`(작성/수정 폼과 읽기 전용 상세 화면이 공유하는 UI, `onAddFiles`/`onRemoveAttachment` 등 prop이 없으면 자동으로 읽기 전용으로 렌더링됨).
 - 다운로드는 버킷이 private이므로 항상 `createSignedUrl`(짧은 만료 시간)로 서명된 URL을 새로 발급받아 사용합니다. 공개 URL(`getPublicUrl`)은 사용하지 않습니다.
 
-### 업무 타입(work_type) 다중 선택 속성 (주간업무일지, ad hoc)
+### 업무 타입(work_type) 다중 선택 속성 (주간업무일지, ad hoc → 관리자 관리형으로 전환)
 
-- `weekly_logs.work_type`은 `text[]` 컬럼입니다(v1 원래 계획에 없던 항목, `docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 참고). 네트워크·데이터 추출·보고서 작성·보안·사업계획수립·솔루션 도입·시스템 개발·시스템 검토·클라우드·프로젝트 개발 10개 값만 허용하는 CHECK 제약과 `cardinality > 0`(최소 1개 필수) 제약이 걸려 있습니다.
-- **허용 목록은 `lib/constants/work-types.ts`의 `WORK_TYPE_OPTIONS`(가나다순 정렬)가 유일한 소스**이며, (1) 작성/수정 폼의 체크박스 선택지(`components/weekly-log-form.tsx`), (2) `lib/schemas/weekly-log.ts`의 Zod enum 검증, (3) DB `weekly_logs_work_type_check` CHECK 제약, (4) `stats_logs_by_work_type` RPC의 고정 카테고리 목록, 이 4곳이 이 배열을 공유합니다. 항목을 추가/제거하면 (1)은 자동으로 반영되지만 (3)·(4)는 마이그레이션으로 함께 수정해야 합니다(아바타 프리셋과 동일한 동기화 관례).
+- `weekly_logs.work_type`은 `text[]` 컬럼입니다(v1 원래 계획에 없던 항목, `docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 참고). **처음엔 고정 10개 값만 허용하는 CHECK 제약이었지만, 관리자가 업무 타입을 직접 추가/이름수정/비활성화/삭제할 수 있는 `work_types` 테이블(조직별 관리, 위 "조직(organizations) 계층" 절 참고)로 옮겨졌습니다** — `lib/constants/work-types.ts`는 삭제되었으니 다시 만들지 말 것.
+- **CHECK 제약은 다른 테이블을 참조할 수 없어서** `weekly_logs_work_type_check`(하드코딩 배열) 대신 `validate_weekly_log_work_type()` `BEFORE INSERT OR UPDATE OF work_type` 트리거로 대체했습니다 — `cardinality(work_type) > 0`과, 배열의 각 값이 **로그 작성 부서가 속한 조직**의 `work_types.name`에 실존하는지(다른 조직의 동명 업무 타입은 거부) 검사합니다. `work_types` 테이블을 다시 손볼 때 이 트리거도 함께 고려할 것.
+- **작성/수정 폼과 상세 페이지의 체크박스 선택지는 더 이상 정적 배열이 아니라 서버 컴포넌트가 조회해 내려주는 `workTypeOptions: { name: string; archived: boolean }[]` prop**입니다(`app/protected/weekly-logs/new/page.tsx`, `weekly-logs/[id]/page.tsx`가 조회). 부서 select의 "비활성 라벨링" 패턴(`app/protected/profile/page.tsx`)과 동일하게, 작성자(또는 로그) 소속 부서의 조직에 속한 **활성** 타입만 새로 선택 가능하고, 비활성이거나 다른 조직 소속인 타입은 **이미 선택되어 있던 로그에서만** "(비활성)" 라벨로 계속 노출됩니다. `lib/schemas/weekly-log.ts`/`lib/actions/weekly-log.ts`의 Zod 검증은 이제 `z.array(z.string().min(1))`로 형태만 확인하고, 실제 유효성은 위 트리거가 최종 방어선입니다.
+- **관리자 콘솔의 업무 타입 관리 탭**(`app/protected/admin/work-types/page.tsx`, `lib/actions/work-type.ts`)이 부서 관리와 동일한 CRUD 패턴(추가/이름수정/비활성화-활성화, 삭제는 참조하는 `weekly_logs`가 0건일 때만)을 제공합니다. `work_type`은 FK가 아니라 배열 포함이라 삭제 전 참조 확인은 `.contains("work_type", [name])` count로 수행합니다(부서의 FK RESTRICT와 달리 DB가 대신 막아주지 않으므로 액션이 직접 세야 함).
 - **선택 UI는 프리셋 아바타와 마찬가지로 체크박스 다중 선택**입니다 — 하나의 업무일지가 여러 타입에 속할 수 있어, 대시보드 차트의 비율 합계가 100%를 넘을 수 있음을 캡션에 명시해두었습니다.
 - **상세 페이지에서는 진행상태(status)와 동일한 패턴으로 인라인 편집**됩니다 — 별도 "수정" 모드에 들어가지 않고 상세 화면에 항상 노출되는 체크박스에서 바로 체크/해제하면 `updateWeeklyLogWorkTypeAction`(`lib/actions/weekly-log.ts`)이 즉시 저장하고, 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴은 `handleStatusChange`와 동일합니다(`components/weekly-log-detail-view.tsx`). 마지막 1개를 해제하려는 시도는 서버 호출 없이 클라이언트에서 즉시 에러 토스트로 막습니다. 전체 편집 폼("수정" 버튼)에도 동일한 체크박스가 남아 있어 두 경로 모두 편집 가능하지만, `defaultValues.work_type`이 항상 최신 상태를 참조하므로 값이 어긋나지 않습니다.
-- **대시보드 차트**(`components/dashboard-worktype-chart.tsx`)는 10개 카테고리가 `--chart-1`~`--chart-5`(5색) 팔레트보다 많아, `WORK_TYPE_CHART_COLORS`(`lib/constants/chart-colors.ts`)로 5색을 순환시켜 `Cell`로 막대마다 다른 색을 부여합니다. 막대 안쪽 라벨은 "N건, NN.N%" 형식(천 단위 콤마 + 소수점 1자리 퍼센트)입니다.
+- **대시보드 차트**(`components/dashboard-worktype-chart.tsx`)는 카테고리 수가 가변적이라 `--chart-1`~`--chart-5`(5색) 팔레트보다 많아질 수 있어, `WORK_TYPE_CHART_COLORS`(`lib/constants/chart-colors.ts`)로 5색을 순환시켜 `Cell`로 막대마다 다른 색을 부여합니다. 막대 안쪽 라벨은 "N건, NN.N%" 형식(천 단위 콤마 + 소수점 1자리 퍼센트)입니다. `stats_logs_by_work_type` RPC도 이제 하드코딩된 `VALUES` 목록이 아니라 `work_types` 테이블(활성만) 기반으로 카테고리를 만듭니다.
+
+### 업무 중요도(importance) 속성 (주간업무일지, ad hoc)
+
+- `weekly_logs.importance`는 `smallint`(1~5, CHECK 제약, 기본값 3)입니다. 허용 범위·라벨은 `lib/constants/importance.ts`(`IMPORTANCE_MIN`/`IMPORTANCE_MAX`/`IMPORTANCE_LABELS`)가 유일한 소스이며, 값을 바꾸면 DB CHECK 제약과 `stats_logs_by_importance` RPC의 `levels` 목록도 함께 수정해야 합니다(work_type과 달리 이 속성은 DB 관리형이 아니라 정적 상수라 CHECK 제약을 그대로 유지).
+- **입력 UI는 체크박스가 아니라 `ui/slider`**(shadcn 신규 설치)입니다 — 작성/수정 폼(`components/weekly-log-form.tsx`)과 상세 페이지 인라인 편집(`components/weekly-log-detail-view.tsx`) 모두 `formatImportanceLabel()`("매우 낮음 (1)" 형식)로 라벨을 표시합니다. 상세 페이지는 업무 타입과 마찬가지로 별도 "수정" 모드 없이 슬라이더를 움직이면 즉시 저장되지만, **드래그 중에는 화면에만 반영하고 손을 뗄 때만 서버에 저장**합니다(`onValueChange`로 로컬 상태만 갱신, `onValueCommit`에서 `updateWeeklyLogImportanceAction` 호출) — 드래그마다 매번 요청을 보내면 과도한 서버 호출이 발생하기 때문입니다.
+- **대시보드에는 레이더 차트**(`components/dashboard-importance-chart.tsx`)로 분포를 시각화합니다 — 1~5단계가 순서가 있는 척도라 항상 오름차순으로 그리고, `stats_logs_by_importance` RPC는 다른 `stats_*` 함수와 동일하게 데이터가 0건인 단계도 항상 5개 축으로 반환해 필터 조건에 따라 축 모양이 흔들리지 않게 합니다.
 
 ### 프로필 상세 정보 (이름·전화번호·아바타·자기소개)
 
@@ -122,12 +141,14 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **헤더에도 아바타가 노출**됩니다 — `components/header-nav.tsx`(데스크탑)와 `components/mobile-nav.tsx`(모바일 시트)가 `profiles.avatar_key`를 함께 조회해 이메일 앞에 `ui/avatar`(`AvatarFallback`)로 렌더링합니다. 이 헤더는 `components/site-header.tsx`를 통해 전 페이지에서 공유되므로, 별도 처리 없이 모든 보호된 페이지에 자동 반영됩니다.
 - `app/auth/login/page.tsx`/`app/auth/sign-up/page.tsx`의 카드 폭은 사용자 요청으로 반응형 확장을 시도했다가(`max-w-sm sm:max-w-md md:max-w-lg` → `max-w-5xl`) 다시 원래의 고정 `max-w-sm`으로 되돌렸습니다 — 이 두 페이지는 프로필 화면과 달리 좁고 짧은 로그인/회원가입 폼이라는 피드백에 따른 결정이므로, 임의로 다시 넓히지 말 것.
 
-### 관리자 콘솔 (대시보드·부서 관리·사용자 관리)
+### 관리자 콘솔 (대시보드·조직 관리·부서 관리·업무 타입 관리·사용자 관리)
 
-- `/protected/admin/*`는 `app/protected/admin/layout.tsx`가 `lib/auth/require-admin.ts`의 `requireAdmin()`으로 가드합니다(부서 게이트 → `profiles.role === 'admin'` 확인 순서). `proxy.ts`가 아니라 **레이아웃 레벨**에서 처리하는 이유는 요청당 `profiles` 조회가 이미 있어 proxy에서 중복 조회할 필요가 없기 때문입니다. `cacheComponents: true` 하에서 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 콘솔 에러가 나므로, `AdminLayout`은 얇은 동기 컴포넌트로 두고 내부의 `<Suspense>`로 감싼 비동기 가드 컴포넌트에서 호출합니다. `components/admin-tab-nav.tsx`의 `TABS`가 대시보드/부서 관리/사용자 관리 3개 탭을 정의하고, `app/protected/admin/page.tsx`(`/protected/admin` 인덱스)는 대시보드 탭으로 리다이렉트합니다.
-- **대시보드**(`app/protected/admin/dashboard/page.tsx`, `lib/queries/stats.ts`) — 원래 `/protected/dashboard`에서 전 사용자 공개로 구현됐다가, 진입점이 헤더와 목록 페이지에 흩어져 있다는 피드백에 따라 **관리자 전용으로 전환**되어 이 경로로 이전했습니다. `AdminLayout`의 `requireAdmin()` 가드가 이미 이 라우트를 관리자 전용으로 막고 있어 페이지 자체에는 별도 가드나 부서 게이트 코드가 없습니다(있었다면 중복). 부서별·기간별·상태별 집계는 `stats_*` RPC 함수(`SECURITY INVOKER`, `weekly_logs`의 전 부서 공개 SELECT RLS를 그대로 적용받음)를 통해 서버에서 조회합니다.
+- `/protected/admin/*`는 `app/protected/admin/layout.tsx`가 `lib/auth/require-admin.ts`의 `requireAdmin()`으로 가드합니다(부서 게이트 → `profiles.role === 'admin'` 확인 순서). `proxy.ts`가 아니라 **레이아웃 레벨**에서 처리하는 이유는 요청당 `profiles` 조회가 이미 있어 proxy에서 중복 조회할 필요가 없기 때문입니다. `cacheComponents: true` 하에서 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 콘솔 에러가 나므로, `AdminLayout`은 얇은 동기 컴포넌트로 두고 내부의 `<Suspense>`로 감싼 비동기 가드 컴포넌트에서 호출합니다. `components/admin-tab-nav.tsx`의 `TABS`가 대시보드/조직 관리/부서 관리/업무타입 관리/사용자 관리 5개 탭을 정의하고, `app/protected/admin/page.tsx`(`/protected/admin` 인덱스)는 대시보드 탭으로 리다이렉트합니다. **모든 탭의 조회·쓰기는 관리자 소속 조직으로 범위가 제한**됩니다 — 자세한 내용과 근거는 위 "조직(organizations) 계층과 관리자 콘솔의 조직 범위 제한" 절 참고.
+- **대시보드**(`app/protected/admin/dashboard/page.tsx`, `lib/queries/stats.ts`) — 원래 `/protected/dashboard`에서 전 사용자 공개로 구현됐다가, 진입점이 헤더와 목록 페이지에 흩어져 있다는 피드백에 따라 **관리자 전용으로 전환**되어 이 경로로 이전했습니다. `AdminLayout`의 `requireAdmin()` 가드가 이미 이 라우트를 관리자 전용으로 막고 있어 페이지 자체에는 별도 가드나 부서 게이트 코드가 없습니다(있었다면 중복). 부서별·기간별·상태별·업무타입별·중요도별 집계는 `stats_*` RPC 함수(`SECURITY INVOKER`, `weekly_logs`의 전 부서 공개 SELECT RLS를 그대로 적용받음)를 통해 서버에서 조회하며, 전부 `org_id` 파라미터를 받아 "전체 부서" 조회를 선택해도 관리자 소속 조직 밖 데이터가 섞이지 않게 합니다.
+- **조직 관리**(`app/protected/admin/organizations/page.tsx`, `lib/actions/organization.ts`) — 관리자 소속 조직 1건만 보여주는 단일 카드이며, 이름 수정과 비활성화/활성화만 가능합니다(생성·삭제 UI 없음, 위 조직 범위 제한 절 참고).
 - **부서 관리**(`app/protected/admin/departments/page.tsx`, `lib/actions/department.ts`) — 기본 동작은 **비활성화(소프트 삭제)**이며, `departments.archived_at`(nullable)로 표현합니다. 하드 삭제는 부서원(`profiles`) 또는 `weekly_logs` 참조가 0건일 때만 UI에서 허용되고(참조가 있으면 삭제 버튼만 비활성화, 별도 안내 문구는 사용자 요청으로 제거됨), `deleteDepartmentAction`이 경합으로 `23503`(FK 위반)을 받으면 그 시점에 다시 참조 수를 세어 `lib/format.ts`의 `formatDepartmentDeleteBlockedMessage()`로 에러 토스트를 띄웁니다(이 함수는 더 이상 사전 안내 UI에는 쓰이지 않고, 경합 상황의 에러 메시지 생성에만 남아 있음). `23505`(이름 중복)는 "이미 존재하는 부서명입니다."로 변환. 비활성 부서는 신규 선택 목록(프로필/회원가입)에서는 제외하되 이미 그 부서인 사용자에게는 "(비활성)" 라벨로 계속 노출하고, 목록 필터에서는 과거 데이터 조회를 위해 항상 노출합니다.
-- **사용자 관리**(`app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`, `lib/actions/user-admin.ts`) — `updateUserRoleAction`/`updateUserDepartmentAction` 모두 클라이언트가 보낸 값을 신뢰하지 않고 **호출자의 `profiles.role`을 서버에서 재조회**해 관리자인지 확인합니다. 자기 자신의 역할 변경은 관리자 수와 무관하게 **항상** 서버 액션에서 차단합니다 — `prevent_unauthorized_role_change()` 트리거는 "마지막 관리자"의 강등만 막고 관리자가 2명 이상이면 자기 강등을 허용하므로, 로드맵이 요구하는 "자기 강등은 항상 금지"를 만족하려면 트리거보다 넓은 조건을 서버 액션에 추가해야 합니다. 소속 부서 변경 시에는 대상 사용자가 이전 부서 로그의 쓰기 권한(RLS)을 잃는다는 경고(`formatDepartmentChangeWarning()`)를 확인 다이얼로그에 표시합니다. 역할 변경 UI(목록 인라인 + 상세 폼, `components/user-role-select.tsx`로 공유)는 `weekly-log-detail-view.tsx`의 진행상태 변경과 동일한 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴을 재사용합니다.
+- **업무 타입 관리** — 위 "업무 타입(work_type) 다중 선택 속성" 절 참고.
+- **사용자 관리**(`app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`, `lib/actions/user-admin.ts`) — `updateUserRoleAction`/`updateUserDepartmentAction` 모두 클라이언트가 보낸 값을 신뢰하지 않고 **호출자의 `profiles.role`을 서버에서 재조회**해 관리자인지 확인합니다. 자기 자신의 역할 변경은 관리자 수와 무관하게 **항상** 서버 액션에서 차단합니다 — `prevent_unauthorized_role_change()` 트리거는 "마지막 관리자"의 강등만 막고 관리자가 2명 이상이면 자기 강등을 허용하므로, 로드맵이 요구하는 "자기 강등은 항상 금지"를 만족하려면 트리거보다 넓은 조건을 서버 액션에 추가해야 합니다. 소속 부서 변경 시에는 대상 사용자가 이전 부서 로그의 쓰기 권한(RLS)을 잃는다는 경고(`formatDepartmentChangeWarning()`)를 확인 다이얼로그에 표시합니다. 역할 변경 UI(목록 인라인 + 상세 폼, `components/user-role-select.tsx`로 공유)는 `weekly-log-detail-view.tsx`의 진행상태 변경과 동일한 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 패턴을 재사용합니다. 목록·상세 조회, 역할·소속 부서 변경 모두 조직 범위 제한이 적용됩니다(위 조직 범위 제한 절 참고).
 
 ### 댓글·멘션 (주간업무일지 상세 페이지)
 
