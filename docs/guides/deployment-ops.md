@@ -32,7 +32,9 @@ Supabase 대시보드 → **Authentication → URL Configuration** (프로젝트
 
 ## 4. 관리자 계정 지정 절차
 
-관리자 지정 UI는 MVP 범위 밖이므로, Supabase 대시보드의 **SQL Editor**(또는 `mcp__supabase__execute_sql`)에서 수동으로 `role`을 변경합니다. v1 고도화에서 UI로 대체될 예정이나(`docs/ROADMAP_v1.md`의 F020·Task 028 참고) 아직 구현 전이므로 이 수동 절차가 현재 유일한 방법입니다.
+**일상적인 관리자 지정은 이제 UI로 처리합니다** — v1 고도화(`docs/ROADMAP_v1.md`의 F020·Task 028)에서 사용자 관리 화면(`/protected/admin/users`)이 구현되어, 관리자가 목록/상세의 역할 Select로 다른 사용자를 `admin`으로 승격·강등할 수 있습니다(재로그인 없이 즉시 반영). 아래 수동 SQL 절차는 이제 **시스템에 관리자가 한 명도 없는 최초 부트스트랩 상황**에서만 필요합니다 — 사용자 관리 화면은 관리자 계정으로 로그인해야 접근할 수 있고 본인 역할은 UI로 변경할 수 없어(자기 강등 방지), 첫 관리자는 직접 DB 접속으로 지정해야 하기 때문입니다.
+
+Supabase 대시보드의 **SQL Editor**(또는 `mcp__supabase__execute_sql`)에서 수동으로 `role`을 변경합니다.
 
 > `profiles.role`에는 앱(PostgREST) 경로로 들어오는 **인증된 일반 사용자의 자기 role 상승만** 차단하는 `BEFORE UPDATE` 트리거(`prevent_unauthorized_role_change()`)가 적용되어 있습니다. `auth.uid()`가 없는 연결(SQL Editor, `mcp__supabase__execute_sql` 등 직접 DB 접속)은 이 트리거의 검사 대상이 아니므로 아래 절차는 그대로 동작합니다 — 앱의 로그인 세션으로 같은 SQL을 실행하려 하면(예: 브라우저 콘솔에서 `supabase-js` 호출) 관리자가 아닌 한 차단됩니다.
 
@@ -61,20 +63,27 @@ returning id, email, role;
 - 대상은 **이미 `role = 'admin'`이어야** 합니다 — `prevent_unauthorized_role_change()` 트리거가 `user → superadmin` 직접 승격은 직접 DB 접속에서도 차단합니다(`auth.uid()` 유무와 무관한 검사).
 - 이후 두 번째 이상의 슈퍼관리자·관리자 지정은 이 수동 절차 없이 사용자 관리 화면에서 처리하면 됩니다(이미 슈퍼관리자가 된 계정, 또는 다른 관리자가 대상을 승격).
 
-## 5. 부서 seed 데이터 운영 반영 절차
+## 5. 부서 관리 절차
 
-부서 관리 UI도 MVP 범위 밖입니다(v1에서 F019·Task 027로 대체될 예정, `docs/ROADMAP_v1.md` 참고). Task 008 마이그레이션으로 초기 부서를 시드했고 현재 운영 중인 부서는 3개(Commerce시스템팀/ERP시스템팀/IT기획팀, 2026-08-05 기준)이며, 이후 조직 개편으로 부서를 추가·변경해야 하면 SQL Editor에서 직접 처리합니다.
+**부서 관리도 이제 UI로 처리합니다** — v1 고도화(`docs/ROADMAP_v1.md`의 F019·Task 027)에서 관리자 콘솔의 부서 관리 화면(`/protected/admin/departments`)이 구현되어, 관리자가 자기 소속 조직의 부서를 추가·이름 변경·비활성화(소프트 삭제, `archived_at`)할 수 있습니다. 참조(부서원 또는 `weekly_logs`)가 있는 부서는 하드 삭제 버튼이 자동으로 비활성화되고 비활성화만 허용되며, 비활성 부서는 신규 선택 목록(프로필/회원가입)에서만 제외되고 과거 데이터 조회·목록 필터에는 계속 노출됩니다. 슈퍼관리자는 전 조직의 부서를 관리할 수 있습니다.
+
+따라서 아래 수동 SQL 절차는 이제 **일상 운영에서는 필요하지 않고**, 초기 부트스트랩이나 UI로 다루기 어려운 예외 상황에서만 참고합니다. 조직 계층(F027)이 도입되며 `departments.organization_id`가 **NOT NULL FK**가 되었으므로, 부서를 직접 INSERT할 때는 반드시 소속 조직 id를 함께 지정해야 합니다(생략하면 제약 위반으로 실패).
 
 ```sql
--- 부서 추가
-insert into departments (name) values ('신규부서명');
+-- 부서 추가 (organization_id 필수)
+insert into departments (name, organization_id)
+values ('신규부서명', '<organization-id>');
 
 -- 부서명 변경 (기존 weekly_logs·profiles의 department_id 참조는 유지됨)
 update departments set name = '변경할이름' where id = '<department-id>';
+
+-- 비활성화(소프트 삭제) / 다시 활성화 — UI 동작과 동일
+update departments set archived_at = now() where id = '<department-id>';
+update departments set archived_at = null where id = '<department-id>';
 ```
 
-- 부서 삭제는 권장하지 않습니다 — `weekly_logs.department_id`/`profiles.department_id`가 `references departments(id)`로 걸려 있어 참조 중인 부서를 지우면 FK 제약 위반으로 실패합니다. 더 이상 쓰지 않는 부서는 이름 뒤에 `(사용중지)` 등을 붙여 구분하는 방식을 권장합니다.
-- 부서 목록은 `departments` 테이블을 RLS 정책상 인증된 사용자 전체가 SELECT할 수 있으므로, 추가 즉시 프로필 온보딩·관리자 필터 드롭다운에 반영됩니다(재배포 불필요).
+- 하드 삭제(`delete from departments ...`)는 `weekly_logs.department_id`/`profiles.department_id`가 `references departments(id)`로 걸려 있어 참조 중이면 FK 제약 위반으로 실패합니다 — 소프트 삭제(`archived_at`)를 기본으로 사용하세요.
+- 부서 목록은 RLS상 인증된 사용자 전체가 SELECT할 수 있으므로, 추가/변경 즉시 프로필 온보딩·관리자 필터 드롭다운에 반영됩니다(재배포 불필요).
 
 ## 6. 프로덕션 스모크 테스트 체크리스트
 

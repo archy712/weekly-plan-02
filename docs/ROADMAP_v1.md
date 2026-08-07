@@ -526,18 +526,18 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - **단일 브라우저 컨텍스트 한계(Task 035 전례 재확인)**: Playwright MCP가 쿠키/세션을 탭 간 공유해 "두 사용자 동시 로그인"이 불가. 실시간 알림 배지 증가는 이번에도 UI로는 직접 재현하지 않고, 알림 생성 트리거(멘션→mention·로그작성자→comment, self 제외, 중복 억제)를 DB로 실증
     - **impersonation ROLLBACK 컨벤션**: 모든 쓰기형 권한 검증은 `DO` 블록 안에서 수행 후 마지막에 `RAISE EXCEPTION`으로 강제 롤백(Task 032·034와 동일)해 테스트 데이터가 커밋되지 않도록 함. 실제 UI로 만든 데이터(QA 댓글 등)만 명시적으로 사후 삭제
 
-- **Task 037: 성능·보안 점검 및 문서 갱신, 배포**
-  - [ ] `mcp__supabase__get_advisors`(security + performance) 최종 점검 — 신규 테이블 4종(`departments` 변경분, `weekly_log_comments`, `weekly_log_comment_mentions`, `notifications`)의 RLS 활성화·인덱스 누락·정책 중복 경고 0건화. MVP에서 의도된 설계로 확인된 기존 경고와 신규 경고를 구분해 기록
-  - [ ] 쿼리 성능 실측 — 댓글이 많은 로그의 상세 페이지, 알림이 쌓인 계정의 헤더, 전체 기간 대시보드 3곳을 `EXPLAIN ANALYZE`로 확인 후 필요한 인덱스만 추가(과도한 사전 최적화 지양)
-  - [ ] 번들 크기 점검 — recharts 도입 후 초기 번들 영향을 `npm run build`로 확인하고, 대시보드 진입 전 차트 청크가 로드되지 않는지 프로덕션에서 네트워크 실측
-  - [ ] Realtime 사용량 확인 — 동시 접속 시 채널 수와 커넥션이 Supabase 플랜 한도 내인지 점검
-  - [ ] **문서 갱신 (이 프로젝트의 확립된 관례)**
-    - [ ] `docs/PRD.md` — F019~F024를 "MVP 이후 기능(제외)"에서 정식 기능 명세로 이동, 데이터 모델에 신규 테이블 3종 추가, 기술 스택에 recharts·Realtime 추가
-    - [ ] `CLAUDE.md` — 관리자 콘솔 가드, 권한 하드닝 트리거, 댓글 RLS가 부서 모델과 의도적으로 다른 이유, Realtime 구독 정리 규칙을 아키텍처 섹션에 추가
-    - [ ] `docs/guides/deployment-ops.md` — 부서/역할 관리가 이제 UI로 가능해졌으므로 기존 4·5절(SQL 수동 절차)을 갱신, 알림 보존 정책 추가
-    - [ ] `README.md` — 신규 기능 소개 반영
-  - [ ] Vercel 배포 및 프로덕션 스모크 테스트 — 관리자 콘솔, 대시보드, 댓글·멘션, 실시간 알림을 프로덕션 도메인에서 실행 (MVP Task 017과 동일한 절차)
-  - **수락 기준**: 어드바이저 신규 경고 0건, 프로덕션에서 6개 기능이 모두 동작, 4개 문서가 v1 상태를 정확히 반영
+- **Task 037: 성능·보안 점검 및 문서 갱신, 배포** 🚧 (배포·프로덕션 스모크만 사용자 작업으로 대기)
+  - [x] `mcp__supabase__get_advisors`(security + performance) 최종 점검 — **신규 테이블 3종(`weekly_log_comments`/`weekly_log_comment_mentions`/`notifications`) 및 `departments` 변경분 관련 신규 경고 0건**. 잔여 경고는 전부 기존/의도된 것: security WARN 7(SECURITY DEFINER 함수 6종 `is_admin`/`is_superadmin`/`current_department_id`/`current_organization_id`/`get_profile_identities`/`search_mentionable_profiles` — 전부 `anon` EXECUTE 회수한 확립된 컨벤션 + leaked password protection Auth 설정), performance INFO 3(`weekly_log_attachments` FK 2종 미인덱스 + `departments_organization_id_idx` 미사용 — 전부 MVP/기존). Task 036 baseline과 동일
+  - [x] 쿼리 성능 실측 — 3곳 모두 `EXPLAIN (ANALYZE, BUFFERS)`로 확인, 전부 인덱스 사용·1ms 미만: 댓글 상세(`weekly_log_comments_log_created_idx` Bitmap Index Scan, 0.19ms), 헤더 알림(`notifications_recipient_unread_idx` Index Scan, 0.18ms), 전체 대시보드(`stats_logs_by_status` Function Scan, 318행 집계 3.1ms). **신규 인덱스 추가 없음**(과도한 사전 최적화 지양) — 신규 테이블 인덱스가 이미 조회 패턴을 커버(`notifications`는 `(recipient_id, read_at, created_at desc)`·weekly_log_id·actor_id·comment_id, 댓글은 `(weekly_log_id, created_at)`·author·parent, 멘션은 `(mentioned_user_id)`)
+  - [x] 번들 크기 점검 — `npm run build` green(26페이지, TypeScript 통과). recharts는 대시보드 차트 6종 컴포넌트에서만 import되고 그 컴포넌트들은 `app/protected/admin/dashboard/page.tsx` 라우트에서만 사용 → App Router 라우트 단위 코드 스플리팅으로 **초기/공유 번들에 recharts 미포함**, 대시보드 진입 시에만 청크 로드(코드 레벨 확인. 프로덕션 네트워크 실측은 아래 배포 스모크 항목에서 수행)
+  - [x] Realtime 사용량 확인 — 구독은 `hooks/use-notifications.ts` 한 곳뿐, **사용자당 채널 1개**(`notifications:${userId}`, `recipient_id=eq.` 필터 INSERT 구독 1개)만 열리고 언마운트/라우트 이동 시 `removeChannel`로 정리(커넥션 누적 방지). publication(`supabase_realtime`)에는 `notifications` 테이블만 등록. 동시 접속자 = 열린 채널 수라 부서 단위 앱 규모에서 어떤 플랜 한도에도 여유. 연결 끊김 시 60초 폴링 폴백
+  - [x] **문서 갱신 (이 프로젝트의 확립된 관례)** — PRD·데이터 모델·기술 스택은 Task 034/035 진행 중 증분 갱신돼 있어 이번엔 상태 문구 중심으로 정합화
+    - [x] `docs/PRD.md` — F019~F024 정식 기능 명세·데이터 모델 3종·기술 스택 recharts/Realtime은 이미 반영돼 있었음. 이번엔 "실시간 알림(F023)은 계획 단계" → "구현 완료"로, 섹션 3 헤더 "(계획)" 제거로 상태 정합화
+    - [x] `CLAUDE.md` — 관리자 콘솔 가드·권한 하드닝 트리거·댓글 RLS 근거는 이미 문서화돼 있었고, **누락돼 있던 "실시간 알림(Supabase Realtime)" 아키텍처 섹션 신규 추가**(개인 기준 RLS·트리거 전용 생성·publication 단일 테이블·구독 정리 규칙·SSR 시드+증분·폴링 폴백·낙관적 읽음 처리)
+    - [x] `docs/guides/deployment-ops.md` — 4절(관리자 지정)·5절(부서 관리)을 "UI로 대체 예정" → "이제 UI로 처리, 수동 SQL은 부트스트랩/예외용"으로 갱신. 5절 raw insert 예시에 조직 계층(F027) 도입으로 필수가 된 `organization_id` 반영 + 소프트 삭제(`archived_at`) 예시 추가. 알림 보존 정책(7절)은 이미 존재
+    - [x] `README.md` — 실시간 알림 기능 항목 추가, 기술 스택에 Supabase Realtime 추가, "실시간 알림은 아직 구현 전" 문구를 "v1 전 기능 구현 완료, 다음은 F031/F032"로 갱신
+  - [ ] Vercel 배포 및 프로덕션 스모크 테스트 — 관리자 콘솔, 대시보드, 댓글·멘션, 실시간 알림을 프로덕션 도메인에서 실행 (MVP Task 017과 동일한 절차). **Vercel/Supabase 대시보드 접근이 필요한 사용자 작업** — `docs/guides/deployment-ops.md` 1~3·6절 절차 참고. 배포 후 도메인을 알려주면 Playwright MCP로 스모크(번들 청크 네트워크 실측 포함) 함께 수행 가능
+  - **수락 기준**: 어드바이저 신규 경고 0건 ✅, 4개 문서가 v1 상태를 정확히 반영 ✅, 프로덕션에서 6개 기능 동작(배포 후 확인 대기)
 
 ---
 

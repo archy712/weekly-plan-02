@@ -172,6 +172,18 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **목록 페이지의 댓글수 표시**(`app/protected/weekly-logs/page.tsx`)는 `weekly_logs` select에 join할 수 없어(별개 테이블) 조회된 로그 id들로 `weekly_log_comments`를 2차 조회해 Map으로 집계한 뒤 병합합니다. `deleted_at is null`인 행만 세므로(삭제된 댓글은 실제 내용이 없어 집계에서 제외), `components/weekly-log-table.tsx`/`components/weekly-log-card.tsx`는 `comment_count > 0`일 때만 제목 옆에 `(N)`을 표시합니다.
 - **목록의 부서 컬럼은 작성자 아바타+이름으로 대체되어 있습니다(ad hoc)** — 목록에서는 부서보다 담당자가 누구인지가 더 유용하다는 판단으로, `weekly-log-table.tsx`/`weekly-log-card.tsx`의 부서 `Badge`를 아바타 프리셋(`lib/constants/avatars.ts`) + 작성자명(없으면 이메일, 최종 폴백 "알 수 없는 사용자") 조합으로 바꿨습니다. `showDepartment` prop은 `showAuthor`로, 정렬 키는 `department_name`에서 `author_name`으로 이름이 바뀌었습니다. `app/protected/weekly-logs/page.tsx`가 조회된 로그들의 `author_id`를 위 댓글 작성자 조회와 동일하게 `get_profile_identities` RPC로 배치 조회해 `WeeklyLogListItem`에 `author_name`/`author_email`/`author_avatar_key`로 병합합니다(신규 RPC 없음, `profiles_select_own_or_admin` RLS 때문에 embed로는 타인 신원을 가져올 수 없어 기존 함수를 재사용). 부서 자체는 삭제되지 않고 상세 페이지·부서 필터·PDF/Excel에는 계속 노출됩니다.
 
+### 실시간 알림 (Supabase Realtime, 헤더 알림 벨)
+
+- `notifications` 테이블은 **이 프로젝트에서 부서가 아니라 수신자 개인 기준으로 RLS를 적용하는 유일한 테이블**입니다 — SELECT/DELETE는 `recipient_id = (select auth.uid())`인 본인 것만, UPDATE는 본인이 `read_at`만 바꿀 수 있고(다른 컬럼 변경은 `notifications_protect_columns` `BEFORE UPDATE` 트리거로 차단, `profiles.role` 보호 트리거와 동일한 컬럼 보호 패턴), **INSERT는 클라이언트에 전혀 허용하지 않습니다**.
+- **알림 행은 오직 DB 트리거로만 생성**됩니다 — `weekly_log_comments`의 `weekly_log_comments_notify`(작성자에게 `comment`/`reply` 알림)와 `weekly_log_comment_mentions`의 `weekly_log_comment_mentions_notify`(멘션 대상에게 `mention` 알림) 두 `AFTER INSERT` `SECURITY DEFINER` 트리거입니다. 자기 자신에게는 알림을 만들지 않고, `notifications_recipient_comment_unique(recipient_id, comment_id)`로 같은 댓글에 대한 중복 알림을 억제합니다. 클라이언트가 알림을 직접 만들 방법이 없으므로 `lib/actions/notification.ts`의 서버 액션은 읽음 처리(`markNotificationReadAction`/`markAllNotificationsReadAction`)만 담당합니다.
+- **Realtime publication(`supabase_realtime`)에는 `notifications` 테이블 하나만 등록**되어 있습니다 — 다른 테이블은 Postgres Changes를 흘리지 않습니다. 새 테이블을 실시간으로 구독해야 할 일이 생기기 전까지 이 publication을 넓히지 마세요.
+- **구독은 `hooks/use-notifications.ts` 한 곳에서만** 이뤄지며, 반드시 브라우저 클라이언트(`lib/supabase/client`)를 씁니다(서버 클라이언트로는 구독 불가, 위 "Supabase 클라이언트 3종" 규칙). 핵심 규칙:
+  - **채널 정리 필수** — `useEffect` 클린업에서 `supabase.removeChannel(channel)`을 반드시 호출합니다. 누락하면 라우트 이동마다 채널이 누적돼 커넥션이 고갈됩니다(이 프로젝트 최초의 Realtime 사용처라 특히 주의). 사용자당 채널 1개(`notifications:${userId}`, `recipient_id=eq.${userId}` 필터)만 열립니다.
+  - **초기 데이터는 SSR 시드, 훅은 증분만** — 헤더 서버 컴포넌트(`components/site-header.tsx` → 알림 벨)가 초기 목록·안 읽은 개수를 내려주고, 훅은 그 위에 얹히는 신규 INSERT만 처리합니다(마운트 시 전체 재조회 안 함). `unreadCount`는 최근 10건 목록에서 역산하지 않고 별도로 추적합니다(11번째 이전의 안 읽은 알림이 과소 집계되지 않도록).
+  - **연결 끊김은 조용히 폴링 폴백** — `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` 시 에러 토스트로 사용자를 방해하지 않고 60초 폴링으로 폴백하며, 재구독(`SUBSCRIBED`)되면 폴링을 정리합니다. 알림은 배지 하나짜리 저위험 기능이라는 판단(로드맵 명시 — 에러 토스트 금지).
+  - **읽음 처리는 낙관적 업데이트** — 진행상태·역할 변경과 동일하게 즉시 반영 후 서버 액션 실패 시 롤백합니다(`markAllRead`의 부분 실패만 개별 롤백 대신 `resync()`로 서버 진실을 재조회).
+- 보존 정책(읽은 알림 90일 경과분만 수동 삭제, 읽지 않은 알림은 영구 보존)은 `docs/guides/deployment-ops.md` 7절 참고 — pg_cron 등 정기 실행 인프라는 아직 도입하지 않아 자동 정리는 없습니다.
+
 ## Claude Code 커스텀 설정
 
 - `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다(Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다):
