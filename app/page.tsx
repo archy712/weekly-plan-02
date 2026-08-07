@@ -1,4 +1,14 @@
+// 서비스 랜딩(루트 "/") 페이지 — 비로그인 사용자에게 서비스를 소개하고 로그인/회원가입으로
+// 유도하며, 로그인 사용자에게는 자기 조직의 주간업무로 진입하는 CTA를 보여준다.
+// proxy.ts(lib/supabase/proxy.ts)의 비로그인 리다이렉트 예외에 "/"가 포함돼 있어 인증 없이
+// 접근 가능한 공개 페이지다.
+//
+// 이 파일 자체는 async 데이터 접근이 없는 순수 동기 Server Component이며(정적 렌더 가능),
+// 쿠키(getClaims)에 의존하는 동적 부분(LandingHeader·HeroCta)만 각각 <Suspense>로 격리한다.
+// next.config.ts의 cacheComponents: true 하에서 Suspense 밖의 동적 데이터 접근은 프로덕션
+// 빌드를 실패시키므로(공개 정보 페이지 F036~F038과 동일 제약), 이 경계 설정은 필수다.
 import { Suspense } from "react";
+// 주요 기능 카드에 쓰이는 lucide 아이콘들 — 아래 features 배열에서 각 항목의 icon으로 사용.
 import {
   Bell,
   Building2,
@@ -11,6 +21,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+// LandingHeader/HeroCta: 쿠키 기반 세션(getClaims)을 읽는 동적 Server Component (아래 Suspense로 감쌈).
+// SiteFooter: 공개 정보 페이지(컴포넌트/아이콘/기술 스택 갤러리)로 진입하는 공통 푸터 (정적).
 import { LandingHeader } from "@/components/landing-header";
 import { SiteFooter } from "@/components/site-footer";
 import { HeroCta } from "@/components/hero-cta";
@@ -21,8 +33,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+// Skeleton: HeroCta가 세션을 확인하는 동안(Suspense pending) 보여줄 버튼 자리표시자.
 import { Skeleton } from "@/components/ui/skeleton";
 
+// 히어로 아래 "주요 기능" 섹션에 3열 그리드로 렌더링되는 기능 소개 카드 데이터.
+// 모듈 최상단의 정적 상수라 렌더마다 재생성되지 않으며, 각 실제 기능의 위치는 CLAUDE.md의
+// 해당 절(리치 텍스트 에디터·조직 계층·업무 타입/중요도·PDF/Excel·대시보드·관리자 콘솔·
+// 실시간 알림·댓글/멘션·첨부파일)을 참고. 순서 = 화면 노출 순서, title은 카드 key로도 쓰인다.
 const features = [
   {
     icon: FileText,
@@ -82,14 +99,21 @@ const features = [
 
 export default function Home() {
   return (
+    // 전체 페이지 세로 플렉스 컨테이너: 최소 화면 높이를 채워 푸터가 항상 하단에 붙게 한다.
     <main className="min-h-screen flex flex-col items-center">
       <div className="flex-1 w-full flex flex-col gap-5 items-center">
+        {/* 헤더 + 본문 콘텐츠 묶음(푸터 제외). gap-20으로 헤더와 히어로 사이 간격 확보. */}
         <div className="flex-1 w-full flex flex-col gap-20 items-center">
+          {/* 헤더: 쿠키(getClaims)를 읽는 동적 컴포넌트라 Suspense로 격리(cacheComponents 제약).
+              비로그인 시에는 LandingHeader가 null을 반환하므로 fallback도 null(자리 차지 안 함). */}
           <Suspense fallback={null}>
             <LandingHeader />
           </Suspense>
+          {/* 본문 폭 제한 컨테이너(max-w-5xl). 상하 패딩은 sm 이상에서 넓어지는 반응형. */}
           <div className="w-full max-w-5xl flex flex-col gap-10 px-5 pb-16 pt-8 sm:pb-20 sm:pt-10">
+          {/* ── 히어로 섹션: 서비스 한 줄 소개 + CTA ── */}
           <section className="flex flex-col items-center gap-8 py-6 text-center">
+            {/* 대표 헤드라인. <br/>로 두 줄 고정, 폰트 크기는 sm/md에서 단계적으로 확대. */}
             <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
               부서별 주간업무일지를
               <br />
@@ -100,6 +124,9 @@ export default function Home() {
               현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
+              {/* CTA 버튼: HeroCta가 세션을 조회해 로그인 상태(→"주간업무 보러가기")와
+                  비로그인 상태(→로그인/회원가입 버튼)를 분기. 세션 조회 중에는 fallback으로
+                  버튼 크기의 Skeleton 2개를 보여줘 레이아웃 이동(CLS)을 방지한다. */}
               <Suspense
                 fallback={
                   <>
@@ -113,6 +140,7 @@ export default function Home() {
             </div>
           </section>
 
+          {/* ── 주요 기능 섹션: features 배열을 카드 그리드로 렌더링 ── */}
           <section className="flex flex-col gap-8">
             <div className="flex flex-col items-center gap-3 text-center">
               <h2 className="text-2xl font-bold sm:text-3xl">주요 기능</h2>
@@ -121,8 +149,10 @@ export default function Home() {
                 곳에 담았습니다.
               </p>
             </div>
+            {/* 반응형 그리드: 모바일 1열 → sm 2열 → lg 3열. */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature) => (
+                // title은 배열 내 고유하므로 key로 사용. feature.icon은 컴포넌트 참조라 JSX로 렌더.
                 <Card key={feature.title}>
                   <CardHeader>
                     <feature.icon className="mb-2 size-8 text-primary" />
@@ -137,6 +167,7 @@ export default function Home() {
           </section>
           </div>
         </div>
+        {/* 공통 푸터: 정적이므로 Suspense 불필요. 공개 정보 페이지(F036~F038)로 진입. */}
         <SiteFooter />
       </div>
     </main>
