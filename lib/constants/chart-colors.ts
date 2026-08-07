@@ -23,13 +23,17 @@ export const TREND_CHART_COLORS = {
   completed: STATUS_CHART_COLORS.completed,
 } as const;
 
-// 부서별 예상 M/M·금액 차트 색상. 두 지표는 스케일이 전혀 달라(M/M vs 원화 금액)
-// 한 차트에 두 축으로 겹치지 않고 별도 차트로 분리했으므로, 색은 서로 구분되기만 하면
-// 되어 --chart-1/--chart-2를 사용한다.
-export const WORKLOAD_CHART_COLORS = {
-  mm: "hsl(var(--chart-1))",
-  cost: "hsl(var(--chart-2))",
-} as const;
+// 부서별 예상 M/M·금액 차트 색상. 두 차트 모두 부서(막대)마다 서로 다른 색으로 구분되도록
+// --chart-1~5 팔레트(5색)를 순서대로 반복(cycle)한다. 업무 타입 차트와 동일하게 Cell로
+// 막대별 색을 개별 지정하며(dashboard-workload-chart.tsx 참고), 부서가 5개를 넘으면 색이
+// 순환된다.
+export const WORKLOAD_CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+] as const;
 
 // 업무 타입별 건수 차트 색상. 진행상태 도넛과 달리 업무 타입은 10종으로 --chart-1~5
 // 팔레트(5색)보다 많아 1:1로 매핑할 수 없으므로, 5색을 순서대로 반복(cycle)해 인접한

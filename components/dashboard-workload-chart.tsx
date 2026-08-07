@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -29,11 +29,11 @@ export type DepartmentWorkload = {
 };
 
 const mmChartConfig: ChartConfig = {
-  mm_sum: { label: "예상 M/M", color: WORKLOAD_CHART_COLORS.mm },
+  mm_sum: { label: "예상 M/M", color: WORKLOAD_CHART_COLORS[0] },
 };
 
 const costChartConfig: ChartConfig = {
-  cost_sum: { label: "예상 금액", color: WORKLOAD_CHART_COLORS.cost },
+  cost_sum: { label: "예상 금액", color: WORKLOAD_CHART_COLORS[0] },
 };
 
 // 큰 금액을 축·막대 라벨에 그대로 찍으면 자리를 너무 많이 차지하므로 백만/억 2개 단위로
@@ -106,11 +106,13 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                         />
                       }
                     />
-                    <Bar
-                      dataKey="mm_sum"
-                      fill="var(--color-mm_sum)"
-                      radius={[0, 4, 4, 0]}
-                    >
+                    <Bar dataKey="mm_sum" radius={[0, 4, 4, 0]}>
+                      {data.map((row, index) => (
+                        <Cell
+                          key={row.department_id}
+                          fill={WORKLOAD_CHART_COLORS[index % WORKLOAD_CHART_COLORS.length]}
+                        />
+                      ))}
                       <LabelList
                         dataKey="mm_sum"
                         position="right"
@@ -158,11 +160,13 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                         />
                       }
                     />
-                    <Bar
-                      dataKey="cost_sum"
-                      fill="var(--color-cost_sum)"
-                      radius={[0, 4, 4, 0]}
-                    >
+                    <Bar dataKey="cost_sum" radius={[0, 4, 4, 0]}>
+                      {data.map((row, index) => (
+                        <Cell
+                          key={row.department_id}
+                          fill={WORKLOAD_CHART_COLORS[index % WORKLOAD_CHART_COLORS.length]}
+                        />
+                      ))}
                       <LabelList
                         dataKey="cost_sum"
                         position="right"
