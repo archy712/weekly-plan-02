@@ -146,6 +146,25 @@ export const ALL_ROLES_FILTER = "all" as const;
 
 export type RoleFilter = typeof ALL_ROLES_FILTER | UserRole;
 
+// 사용자 관리 목록 무한 스크롤(주간업무일지 목록과 동일 패턴). 한 배치 30건, 정렬은 서버
+// ORDER BY로 처리한다. 역할(role)은 "슈퍼관리자→관리자→일반" 커스텀 순위라 DB ORDER BY로
+// 표현할 수 없고, 소속 부서(department_name)는 to-one 임베드라 부모를 안정적으로 정렬하기
+// 어려워, 둘 다 정렬 대상에서 제외한다(email/name/created_at만 서버 정렬).
+export const USER_ADMIN_PAGE_SIZE = 30;
+export type UserAdminSortKey = "email" | "name" | "created_at";
+
+export type UserAdminListFilters = {
+  department: DepartmentFilter;
+  role: RoleFilter;
+  q: string;
+};
+
+// direction은 asc/desc라 weekly_logs와 동일한 WeeklyLogSortDirection을 재사용한다.
+export type UserAdminListSort = {
+  key: UserAdminSortKey | null;
+  direction: WeeklyLogSortDirection;
+};
+
 // 사용자 관리 목록(관리자 화면) 한 행에 필요한 정보. profiles_department_id_fkey가
 // SET NULL이라 department_id/department_name은 항상 null일 가능성을 열어둔다.
 export type UserAdminListItem = {

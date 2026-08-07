@@ -4,26 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { AdminUsersSkeleton } from "@/components/admin-users-skeleton";
 import { UserAdminTable } from "@/components/user-admin-table";
-import { escapeLikePattern } from "@/lib/utils";
 import {
-  ALL_DEPARTMENTS_FILTER,
-  ALL_ROLES_FILTER,
-} from "@/lib/types";
-import type {
-  Department,
-  DepartmentFilter,
-  RoleFilter,
-  UserAdminListItem,
-  UserRole,
-} from "@/lib/types";
+  fetchUsersPage,
+  getScopedDepartments,
+  normalizeUserAdminFilters,
+  normalizeUserAdminSort,
+} from "@/lib/queries/user-admin";
+import { USER_ADMIN_PAGE_SIZE } from "@/lib/types";
+import type { Department } from "@/lib/types";
 
-const USERS_SELECT =
-  "id, email, name, department_id, role, avatar_key, created_at, departments(name)";
+type AdminUsersSearchParams = {
+  department?: string;
+  role?: string;
+  q?: string;
+  sort?: string;
+  dir?: string;
+};
 
 async function UsersContent({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; role?: string; q?: string }>;
+  searchParams: Promise<AdminUsersSearchParams>;
 }) {
   const supabase = await createClient();
   // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
@@ -32,75 +33,42 @@ async function UsersContent({
   const { id: currentUserId, organizationId, role: callerRole } = await requireAdmin();
   const isSuperAdmin = callerRole === "superadmin";
 
-  const { department: departmentParam, role: roleParam, q: rawQuery } = await searchParams;
+  const params = await searchParams;
+  const filters = normalizeUserAdminFilters({
+    department: params.department,
+    role: params.role,
+    q: params.q,
+  });
+  const sort = normalizeUserAdminSort({ key: params.sort, direction: params.dir });
 
-  const selectedDepartment: DepartmentFilter = departmentParam || ALL_DEPARTMENTS_FILTER;
-  const VALID_ROLES: UserRole[] = ["user", "admin", "superadmin"];
-  const selectedRole: RoleFilter =
-    roleParam && VALID_ROLES.includes(roleParam as UserRole)
-      ? (roleParam as UserRole)
-      : ALL_ROLES_FILTER;
-  const searchQuery = rawQuery?.trim() ?? "";
-
-  // 관리자 소속 조직의 부서만 필터 드롭다운과 사용자 목록 범위를 동시에 결정한다.
-  // F034: 슈퍼관리자는 조직 필터 없이 전 조직의 부서를 가져와 전 조직 사용자를 다룰 수
-  // 있게 한다(lib/actions/user-admin.ts의 서버 액션도 슈퍼관리자에 한해 조직 일치
-  // 검증을 건너뛰도록 함께 완화되어 있음).
-  let departmentQuery = supabase
-    .from("departments")
-    .select("id, name, created_at, archived_at, organization_id")
-    .order("name");
-  if (!isSuperAdmin) {
-    departmentQuery = departmentQuery.eq("organization_id", organizationId);
-  }
-  const { data: departmentRows } = await departmentQuery;
-  const departments: Department[] = departmentRows ?? [];
+  // 조직 스코프의 부서 목록(필터 드롭다운 + 사용자 목록 스코프)과 첫 배치(30건)를 조회한다.
+  // 이후 배치는 클라이언트가 스크롤 시점에 loadMoreUsersAction으로 이어서 가져온다.
+  const departments: Department[] = await getScopedDepartments(
+    supabase,
+    isSuperAdmin,
+    organizationId,
+  );
   const departmentIds = departments.map((department) => department.id);
-
-  // 소속 조직에 부서가 하나도 없으면(현실적으로 드묾) in([]) 대신 빈 배열을 그대로 써서
-  // "일치하는 행 없음"을 안전하게 표현한다.
-  let usersQuery = supabase
-    .from("profiles")
-    .select(USERS_SELECT)
-    .in("department_id", departmentIds)
-    .order("email", { ascending: true });
-
-  if (selectedDepartment !== ALL_DEPARTMENTS_FILTER) {
-    usersQuery = usersQuery.eq("department_id", selectedDepartment);
-  }
-  if (selectedRole !== ALL_ROLES_FILTER) {
-    usersQuery = usersQuery.eq("role", selectedRole);
-  }
-  if (searchQuery) {
-    // 이메일 단일 컬럼 검색이라 weekly_logs 목록과 달리 .or() 병합이 필요 없다.
-    // 그래도 검색어에 %/_/\가 섞이면 ilike 패턴이 깨지므로 동일하게 이스케이프한다.
-    usersQuery = usersQuery.ilike("email", `%${escapeLikePattern(searchQuery)}%`);
-  }
-
-  const { data: userRows, error: usersError } = await usersQuery;
-  if (usersError) {
-    throw usersError;
-  }
-
-  const items: UserAdminListItem[] = (userRows ?? []).map((row) => ({
-    id: row.id,
-    email: row.email ?? "",
-    name: row.name,
-    department_id: row.department_id,
-    department_name: row.departments?.name ?? null,
-    role: (row.role as UserRole) ?? "user",
-    avatar_key: row.avatar_key ?? "fox",
-    created_at: row.created_at,
-  }));
+  const page = await fetchUsersPage(
+    supabase,
+    departmentIds,
+    filters,
+    sort,
+    0,
+    USER_ADMIN_PAGE_SIZE,
+  );
 
   return (
     <UserAdminTable
-      items={items}
+      initialItems={page.items}
+      initialHasMore={page.hasMore}
       departments={departments}
-      currentDepartmentId={selectedDepartment}
-      currentRole={selectedRole}
-      currentSearchQuery={searchQuery}
+      currentDepartmentId={filters.department}
+      currentRole={filters.role}
+      currentSearchQuery={filters.q}
       currentUserId={currentUserId}
+      currentSortKey={sort.key}
+      currentSortDirection={sort.direction}
     />
   );
 }
@@ -108,7 +76,7 @@ async function UsersContent({
 export default function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; role?: string; q?: string }>;
+  searchParams: Promise<AdminUsersSearchParams>;
 }) {
   return (
     <Suspense fallback={<AdminUsersSkeleton />}>
