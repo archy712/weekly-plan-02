@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html";
+import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html-server";
 import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";

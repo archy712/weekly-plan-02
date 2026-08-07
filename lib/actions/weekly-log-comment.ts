@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { sanitizeCommentContent } from "@/lib/sanitize-html";
+import { sanitizeCommentContent } from "@/lib/sanitize-html-server";
 import { commentSchema, type CommentFormData } from "@/lib/schemas/comment";
 
 export type CommentActionResult = { success: true } | { success: false; error: string };
