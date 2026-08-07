@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +15,12 @@ export type CurrentProfile = {
 // 세션 확인(getClaims) → profiles 조회를 한 곳에 모은 헬퍼.
 // getClaims()는 JWT 로컬 디코딩이라 role 변경이 즉시 반영되지 않으므로
 // 관리자 여부 판단에는 절대 claims를 쓰지 않고 항상 DB의 profiles.role을 조회한다.
-export async function getCurrentProfile(): Promise<CurrentProfile> {
+//
+// React cache()로 감싸 **요청 단위로 메모이즈**한다 — 관리자 콘솔은 레이아웃 가드
+// (app/protected/admin/layout.tsx)와 각 페이지가 각각 requireAdmin()을 호출해 같은 요청에서
+// profiles를 두 번 조회하던 것을 한 번으로 합친다. cache()는 요청 스코프라 요청 간에는
+// 공유되지 않으므로 "매 요청 새 클라이언트 생성" 관례와 충돌하지 않는다.
+export const getCurrentProfile = cache(async (): Promise<CurrentProfile> => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
 
@@ -35,7 +41,7 @@ export async function getCurrentProfile(): Promise<CurrentProfile> {
     departmentId: profile?.department_id ?? null,
     organizationId: profile?.departments?.organization_id ?? null,
   };
-}
+});
 
 // 부서 미설정 사용자는 /protected/profile로 보내는 기존 온보딩 게이트.
 export async function requireDepartment(): Promise<CurrentProfile> {

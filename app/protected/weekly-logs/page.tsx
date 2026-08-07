@@ -158,42 +158,52 @@ async function WeeklyLogsContent({
     logs = data;
   }
 
-  // 댓글수는 weekly_logs와 별개 테이블(weekly_log_comments)이라 목록 조회 select에 포함할
-  // 수 없다 — 현재 페이지에 보이는 로그 id들로 별도 조회한 뒤 병합한다. 삭제된 댓글
-  // (deleted_at)은 상세 화면에서도 "삭제된 댓글입니다" placeholder로만 남고 실제 내용이
-  // 없으므로 집계에서 제외한다.
+  // 목록 렌더링에 필요한 4개의 2차 조회(댓글수·추천비추천·작성자 신원·부서 목록)는 서로
+  // 독립적이라 순차로 await하면 왕복(round-trip)만 늘어난다 — 한 번에 병렬로 실행한다.
+  //  - 댓글수/추천비추천/작성자 신원은 weekly_logs와 별개 테이블이라 목록 select에 담을 수
+  //    없어 현재 페이지 로그 id들로 2차 조회한다(삭제된 댓글은 deleted_at으로 제외, 추천은
+  //    익명 집계라 건수만, 작성자 신원은 profiles_select_own_or_admin RLS 때문에 embed 대신
+  //    get_profile_identities RPC로 배치 조회 — lib/queries/comments.ts와 동일 패턴).
+  //  - 부서 목록은 로그 id와 무관하지만(필터 드롭다운·비활성 라벨링용) 함께 병렬로 묶는다.
   const logIds = logs.map((log) => log.id);
+  const authorIds = [...new Set(logs.map((log) => log.author_id))];
+  const hasLogs = logIds.length > 0;
+
+  const [commentRows, reactionCounts, identities, departmentRows] = await Promise.all([
+    hasLogs
+      ? supabase
+          .from("weekly_log_comments")
+          .select("weekly_log_id")
+          .in("weekly_log_id", logIds)
+          .is("deleted_at", null)
+          .then((res) => res.data ?? [])
+      : Promise.resolve([] as { weekly_log_id: string }[]),
+    getReactionCountsForLogs(supabase, logIds),
+    hasLogs
+      ? supabase
+          .rpc("get_profile_identities", { profile_ids: authorIds })
+          .then((res) => res.data ?? [])
+      : Promise.resolve(
+          [] as { id: string; email: string; name: string | null; avatar_key: string }[],
+        ),
+    supabase
+      .from("departments")
+      .select("id, name, created_at, archived_at, organization_id")
+      .order("name")
+      .then((res) => res.data ?? []),
+  ]);
+
   const commentCounts = new Map<string, number>();
-  if (logIds.length > 0) {
-    const { data: commentRows } = await supabase
-      .from("weekly_log_comments")
-      .select("weekly_log_id")
-      .in("weekly_log_id", logIds)
-      .is("deleted_at", null);
-    for (const row of commentRows ?? []) {
-      commentCounts.set(row.weekly_log_id, (commentCounts.get(row.weekly_log_id) ?? 0) + 1);
-    }
+  for (const row of commentRows) {
+    commentCounts.set(row.weekly_log_id, (commentCounts.get(row.weekly_log_id) ?? 0) + 1);
   }
 
-  // 부서 컬럼을 아바타+작성자명으로 대체하기 위해 author_id들을 get_profile_identities로
-  // 배치 조회한다 — profiles_select_own_or_admin RLS 때문에 embed로는 타인의 이름/아바타를
-  // 가져올 수 없다(weekly_log_comments 작성자 조회와 동일한 패턴, lib/queries/comments.ts 참고).
-  // 추천/비추천 집계도 댓글수와 동일하게 별개 테이블이라 현재 페이지 로그 id들로 2차
-  // 조회해 병합한다(F031 목록 노출). 익명 집계이므로 건수만 가져온다.
-  const reactionCounts = await getReactionCountsForLogs(supabase, logIds);
-
-  const authorIds = [...new Set(logs.map((log) => log.author_id))];
   const identityMap = new Map<
     string,
     { email: string; name: string | null; avatar_key: string }
   >();
-  if (authorIds.length > 0) {
-    const { data: identities } = await supabase.rpc("get_profile_identities", {
-      profile_ids: authorIds,
-    });
-    for (const identity of identities ?? []) {
-      identityMap.set(identity.id, identity);
-    }
+  for (const identity of identities) {
+    identityMap.set(identity.id, identity);
   }
 
   const items: WeeklyLogListItem[] = logs.map((log) => {
@@ -216,11 +226,7 @@ async function WeeklyLogsContent({
     };
   });
 
-  const { data: departmentRows } = await supabase
-    .from("departments")
-    .select("id, name, created_at, archived_at, organization_id")
-    .order("name");
-  const departments: Department[] = departmentRows ?? [];
+  const departments: Department[] = departmentRows;
   const currentDepartmentName: string | null =
     selectedDepartment === ALL_DEPARTMENTS_FILTER
       ? null

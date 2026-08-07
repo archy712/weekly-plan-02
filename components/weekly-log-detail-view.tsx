@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -31,9 +32,17 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { StatusBadge } from "@/components/status-badge";
-import {
-  WeeklyLogForm,
-} from "@/components/weekly-log-form";
+// 편집 폼은 Tiptap 에디터(html-editor)를 끌고 오는 무거운 청크라, 대부분 읽기 전용인 상세
+// 페이지 초기 번들에서 분리한다 — "수정"을 눌러 isEditing이 될 때만 동적으로 로드한다.
+const WeeklyLogForm = dynamic(
+  () => import("@/components/weekly-log-form").then((mod) => mod.WeeklyLogForm),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm text-muted-foreground">편집 화면을 불러오는 중…</p>
+    ),
+  },
+);
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
 import { WeeklyLogReactionButtons } from "@/components/weekly-log-reaction-buttons";

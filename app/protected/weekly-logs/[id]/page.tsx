@@ -59,36 +59,39 @@ async function WeeklyLogDetailContent({
   // 쓰기(수정/삭제/완료토글)는 RLS에서 소속 부서 또는 admin으로만 허용된다.
   const canWrite = profile.role === "admin" || log.department_id === profile.department_id;
 
-  // 첨부파일도 weekly_logs와 동일하게 SELECT는 전 부서 공개다.
-  const { data: attachments, error: attachmentsError } = await supabase
-    .from("weekly_log_attachments")
-    .select("id, file_name, file_path, file_size, content_type, created_at")
-    .eq("weekly_log_id", id)
-    .order("created_at", { ascending: true });
+  // 로그 존재가 확정된 뒤 필요한 4개 조회(첨부·댓글·추천비추천·업무타입)는 서로 독립적이라
+  // 순차로 await하면 왕복만 늘어난다 — 한 번에 병렬로 실행한다. 넷 모두 weekly_logs SELECT
+  // 공개 범위를 그대로 따르는 부서 무관 조회이고, 업무타입은 조직 필터를 SQL이 아니라 아래
+  // JS에서 걸므로(전 조직 조회 후 필터) 로그 조직 id와 무관하게 미리 조회해도 안전하다.
+  const [attachmentsResult, comments, reactions, workTypesResult] = await Promise.all([
+    // 첨부파일도 weekly_logs와 동일하게 SELECT는 전 부서 공개다.
+    supabase
+      .from("weekly_log_attachments")
+      .select("id, file_name, file_path, file_size, content_type, created_at")
+      .eq("weekly_log_id", id)
+      .order("created_at", { ascending: true }),
+    // 댓글도 첨부파일과 동일하게 weekly_logs SELECT 공개 범위를 그대로 따른다(부서 무관 조회).
+    getWeeklyLogComments(supabase, id),
+    // 추천/비추천도 부서 무관 조회(F031). 익명 집계 + 로그인 사용자의 내 반응까지 함께 받는다.
+    getWeeklyLogReactionSummary(supabase, id, data.claims.sub),
+    supabase.from("work_types").select("name, archived_at, organization_id").order("name"),
+  ]);
 
-  if (attachmentsError) {
-    throw attachmentsError;
+  if (attachmentsResult.error) {
+    throw attachmentsResult.error;
+  }
+  if (workTypesResult.error) {
+    throw workTypesResult.error;
   }
 
-  // 댓글도 첨부파일과 동일하게 weekly_logs SELECT 공개 범위를 그대로 따른다(부서 무관 조회).
-  const comments = await getWeeklyLogComments(supabase, id);
-
-  // 추천/비추천도 부서 무관 조회(F031). 익명 집계 + 로그인 사용자의 내 반응까지 함께 받는다.
-  const reactions = await getWeeklyLogReactionSummary(supabase, id, data.claims.sub);
+  const attachments = attachmentsResult.data;
+  const workTypeRows = workTypesResult.data;
 
   // 부서 select의 "비활성 라벨링"과 동일한 패턴 — 이 로그의 부서가 속한 조직의 활성
   // 업무 타입은 항상 노출하고, 다른 조직 소속이거나 비활성인 타입은 이 로그에 이미
   // 선택되어 있는 경우에만(조직 재배정 등으로 어긋난 과거 값 보존) "(비활성)" 라벨로
   // 계속 노출한다.
   const logOrganizationId = log.departments?.organization_id ?? null;
-  const { data: workTypeRows, error: workTypesError } = await supabase
-    .from("work_types")
-    .select("name, archived_at, organization_id")
-    .order("name");
-
-  if (workTypesError) {
-    throw workTypesError;
-  }
 
   const workTypeOptions = (workTypeRows ?? [])
     .filter((row) => {

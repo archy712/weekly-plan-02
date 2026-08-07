@@ -26,6 +26,21 @@ async function fetchKoreanFontBase64(): Promise<string> {
   return arrayBufferToBase64(buffer);
 }
 
+// 폰트(약 2.5MB)는 내용이 고정이라 세션 내 첫 PDF 생성 때 한 번만 fetch + base64 변환하고,
+// 이후 다운로드는 메모이즈된 결과를 재사용한다(반복 다운로드 시 2.5MB 재fetch·재변환 제거).
+let koreanFontBase64Promise: Promise<string> | null = null;
+
+function loadKoreanFontBase64(): Promise<string> {
+  if (!koreanFontBase64Promise) {
+    koreanFontBase64Promise = fetchKoreanFontBase64().catch((error) => {
+      // 실패한 Promise를 캐시에 남기면 이후 시도가 영구 실패하므로 초기화해 재시도를 허용한다.
+      koreanFontBase64Promise = null;
+      throw error;
+    });
+  }
+  return koreanFontBase64Promise;
+}
+
 function buildFileName(departmentLabel: string): string {
   const safeLabel = departmentLabel.replace(/[\\/:*?"<>|]/g, "_");
   return `주간업무일지_${safeLabel}_${formatDate(new Date()).replace(/-/g, "")}.pdf`;
@@ -46,7 +61,7 @@ export async function downloadWeeklyLogListPdf({
   const [{ default: JsPDF }, { default: autoTable }, fontBase64] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
-    fetchKoreanFontBase64(),
+    loadKoreanFontBase64(),
   ]);
 
   const doc = new JsPDF();

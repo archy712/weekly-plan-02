@@ -116,3 +116,38 @@ where read_at is not null
 - 이 SQL은 Supabase 대시보드 SQL Editor 또는 `mcp__supabase__execute_sql`로 직접 실행합니다. `read_at`/`recipient_id`만 변경 가능한 컬럼 보호 트리거(`prevent_unauthorized_notification_update()`)는 UPDATE만 검사하고 DELETE는 막지 않으므로, 직접 DB 접속(`auth.uid()`가 없는 연결)에서는 별도 우회 없이 그대로 동작합니다.
 - 실행 주기는 매월 1회 정도를 권장합니다(트래픽이 많지 않은 초기 단계 기준, 필요시 조정). 향후 실행 빈도가 잦아지거나 수동 실행을 잊는 문제가 생기면 Supabase의 `pg_cron` 확장(`mcp__supabase__list_extensions`로 설치 여부 확인 가능)으로 이 DELETE 문을 스케줄링하는 것을 검토하세요 — 이번 Task 034 범위에서는 구현하지 않고 절차 문서화까지만 수행했습니다.
 - 삭제 대상 건수를 먼저 확인하고 싶다면 `delete` 대신 `select count(*) from notifications where read_at is not null and read_at < now() - interval '90 days';`로 미리 조회한 뒤 실행하세요.
+
+## 8. 성능 점검 절차 및 결과 (Task 039, F032)
+
+MVP 이후 누적된 애플리케이션 전반의 성능을 **실측 기반**으로 점검한 결과입니다. 원칙은 "측정 먼저, 최적화는 그다음, 효과가 측정된 변경만 반영"입니다. 재점검 시 아래 방법을 그대로 재현하세요.
+
+### 측정 방법 (재현용)
+
+- **DB 쿼리**: `mcp__supabase__execute_sql`로 `explain (analyze, buffers) <쿼리>` 실행. 어드바이저는 `mcp__supabase__get_advisors`(`performance`/`security`).
+- **라우트별 client JS**: Turbopack 빌드는 라우트별 First Load JS 표를 출력하지 않으므로, `.next/server/app/<route>/page_client-reference-manifest.js`에서 참조하는 `static/chunks/*.js` 파일 크기를 합산해 비교한다(청크 집합 diff로 특정 라이브러리 편입 여부 판별).
+- **정적 자산 헤더**: `npm run start` 후 `curl -sI <url>`로 응답 헤더 실측.
+
+### 적용한 개선 (측정된 것만)
+
+1. **서버 컴포넌트 DB 왕복 병렬화** — 목록(`app/protected/weekly-logs/page.tsx`)의 댓글수·추천비추천·작성자 신원·부서 목록 4개 독립 2차 조회와, 상세(`weekly-logs/[id]/page.tsx`)의 첨부·댓글·추천비추천·업무타입 4개 조회를 각각 순차 `await`에서 `Promise.all` 1배치로 전환. 쿼리 자체는 현재 규모(weekly_logs 318건, 전체 목록 `EXPLAIN` 0.94ms)에서 이미 sub-ms라 병목은 실행시간이 아니라 **순차 왕복 횟수**였음.
+2. **`getCurrentProfile` 요청 단위 메모이즈** — `lib/auth/require-admin.ts`를 React `cache()`로 감싸 관리자 콘솔에서 레이아웃 가드와 각 페이지가 각각 호출하던 `profiles` 조회(요청당 2회)를 1회로 축소. `cache()`는 요청 스코프라 교차 사용자 누수 없음.
+3. **상세 라우트 편집 폼 지연 로딩** — `weekly-log-detail-view.tsx`의 `WeeklyLogForm`(→ Tiptap 에디터)을 `next/dynamic(ssr:false)`로 전환해 "수정" 클릭 시점에만 로드. 상세 라우트 client JS **1090KB → 611KB(-479KB, ~44%)**, 목록 라우트(550KB) 수준으로 하락.
+4. **PDF 한글 폰트 정적 자산 최적화** — (a) `lib/pdf/weekly-log-pdf.ts`에서 폰트 base64를 모듈 레벨로 메모이즈(세션 내 반복 다운로드 시 2.5MB 재fetch·재변환 제거), (b) `next.config.ts` `headers()`로 `/fonts/*`에 `public, max-age=31536000, immutable` 부여, (c) `proxy.ts` matcher에 `ttf|woff|woff2|otf` 추가해 폰트가 `updateSession`을 거치지 않고 정적 서빙되게 함. 실측: 폰트 응답이 `307`(proxy 리다이렉트) → `200 OK` + immutable 캐시.
+
+### 확인만 하고 변경 없음 (누수 없음)
+
+- **jsPDF·exceljs**: `await import(...)` 동적 로딩이라 초기 번들 미포함.
+- **recharts**: `dashboard-*-chart` → `components/ui/chart.tsx`에서만 참조되어 대시보드 라우트로 코드 스플릿(목록/상세 미포함).
+- **Tiptap**: 작성(new)·상세(detail) 라우트에만 존재. 읽기 전용 렌더러 `html-content.tsx`는 Tiptap을 import하지 않음(목록 라우트에 에디터 미편입).
+
+### 기각/의도된 설계로 분류 (근거 기록 — 반복 방지)
+
+- **목록 서버사이드 페이지네이션**: 현재 목록은 `LIMIT` 없이 필터 결과 전체를 로드하고 클라이언트가 정렬·슬라이스(`PAGE_SIZE=20`)한다. 318건 0.94ms라 현재 무해하나, 10배(3천)·100배(3만)에서는 페이로드와 2차 조회가 함께 커진다. 서버 페이지네이션은 정렬·검색(title/content 병합)·페이지네이션 의미를 전부 서버로 옮기는 아키텍처 변경이라 회귀 위험이 크고 Task 039 범위 밖("아키텍처 재작성 수준 리팩터링" 제외). **weekly_logs가 수천 건대에 진입하면 그때 별도 Task로 착수**를 권장. PDF/Excel 다운로드가 필터 결과 전체를 한 번에 불러오는 구조도 동일 시점에 재검토.
+- **미인덱스 FK 3종**(`weekly_log_attachments.department_id`·`.uploaded_by`, `weekly_log_reactions.user_id`): 조회 핫패스는 `weekly_log_id` 선두 인덱스/`unique(weekly_log_id, user_id)`가 이미 커버한다. 단독 인덱스는 부서/프로필 삭제 시 CASCADE 스캔(희소한 관리 작업)에만 이득이고, 특히 reactions는 토글이 잦은 쓰기 핫패스라 인덱스 쓰기 오버헤드 > 이득. **인덱스 추가 안 함(의도된 설계)** — 어드바이저 performance INFO는 baseline 유지.
+- **`departments_organization_id_idx` 미사용**: 향후 조직 필터링 대비 유지(무해).
+- **관리자 부서 페이지의 부서별 N×2 count 쿼리**: 부서 8건 규모에서 이미 `Promise.all` 병렬. 사내 도구 규모에서 허용.
+
+### 회귀 검증
+
+- `npm run build` green, `npx tsc --noEmit` 0오류. 미인증 보호 경로 → `/auth/login` 307 리다이렉트 유지(proxy matcher 변경이 인증을 깨지 않음 실측).
+- **인증 계정이 필요한 전 플로우 Playwright E2E 회귀와 2계정 교차 사용자 누수 확인은 6절 프로덕션 스모크와 동일하게 사용자 작업으로 대기** — 배포 도메인 또는 테스트 로그인을 제공하면 Playwright MCP로 함께 수행 가능.
