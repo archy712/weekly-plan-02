@@ -296,7 +296,7 @@ export function WeeklyLogListView({
       const ids = result.items.map((item) => item.id);
       const supabase = createClient();
       const { data, error } = await supabase
-        .from("weekly_logs")
+        .from("weeklyplan_weekly_logs")
         .select("id, work_type, importance, estimated_mm, estimated_cost, partner_company, content")
         .in("id", ids);
       if (error) throw error;

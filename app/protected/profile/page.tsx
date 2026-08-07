@@ -18,11 +18,11 @@ async function ProfileContent() {
   const [{ data: profile, error: profileError }, { data: departments, error: departmentsError }] =
     await Promise.all([
       supabase
-        .from("profiles")
+        .from("weeklyplan_profiles")
         .select("id, email, name, department_id, phone_number, avatar_key, bio")
         .eq("id", userId)
         .maybeSingle(),
-      supabase.from("departments").select("id, name, archived_at").order("name"),
+      supabase.from("weeklyplan_departments").select("id, name, archived_at").order("name"),
     ]);
 
   if (profileError) {

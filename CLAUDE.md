@@ -22,6 +22,16 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 ## 아키텍처
 
+### DB 객체 이름 규칙 — `weeklyplan_` 접두사 (중요)
+
+이 프로젝트는 **하나의 Supabase(Postgres) 데이터베이스를 다른 프로젝트와 공유**하며, `public` 스키마 안에서 이 프로젝트의 객체를 구분하기 위해 접두사 규칙을 씁니다. Supabase의 시스템 스키마(`auth`/`storage`/`realtime`/`graphql`/`extensions`/`vault` 등)는 건드리지 않았고, 스키마 자체를 새로 만들지도 않았습니다 — 오직 `public` 안의 객체 이름에 접두사를 붙였습니다.
+
+- **접두사가 붙은 것**: 이 프로젝트가 만든 **모든 테이블·함수·제약(pkey/fk/unique/check)·인덱스**에 `weeklyplan_` 접두사가 붙어 있습니다. 예) 테이블 `profiles` → `weeklyplan_profiles`, `weekly_logs` → `weeklyplan_weekly_logs`; 함수 `is_admin()` → `weeklyplan_is_admin()`, `current_department_id()` → `weeklyplan_current_department_id()`, `stats_logs_by_status()` → `weeklyplan_stats_logs_by_status()`; 제약 `profiles_pkey` → `weeklyplan_profiles_pkey`, FK `departments_organization_id_fkey` → `weeklyplan_departments_organization_id_fkey`.
+- **접두사가 붙지 않은(그대로인) 것**: **RLS 정책명**(`profiles_update_own`, `profiles_select_own_or_admin`, `departments_insert_admin`, `organizations_update_admin` 등), **트리거명**(`on_auth_user_created`, `weekly_log_comments_notify`, `prevent_unauthorized_role_change`, `notifications_protect_columns` 등), **Storage 버킷명**(`weekly-log-attachments`)은 변경하지 않았습니다. 이들은 테이블·함수에 종속되거나 스키마 내 이름 충돌 위험이 낮아 그대로 뒀습니다.
+- **RLS/트리거/FK가 여전히 동작하는 이유**: Postgres는 정책·트리거·FK의 대상 테이블/함수를 이름이 아니라 OID로 참조하므로, 테이블·함수 이름을 바꿔도 이 참조들은 자동으로 새 이름을 따라갑니다. 함수 **본문 텍스트**의 `public.<테이블>`·다른 함수 호출만 새 이름으로 다시 썼습니다.
+- **본문 표기 관례**: **아래 문서 전체에서 테이블·함수·제약을 언급할 때는 가독성을 위해 접두사를 생략한 base 이름(`weekly_logs`, `is_admin()`, `profiles.role` 등)으로 표기**합니다. 실제 DB 객체를 다룰 때(SQL, `mcp__supabase__execute_sql`, `.from()`/`.rpc()` 등)는 항상 앞에 `weeklyplan_`을 붙여야 합니다. 앱 코드(`.from("weeklyplan_profiles")`, `.rpc("weeklyplan_stats_...")`, `Tables<"weeklyplan_...">`)와 `lib/supabase/database.types.ts`는 이미 접두사가 반영된 상태입니다.
+- 이 접두사 작업은 Supabase MCP `apply_migration`으로 적용됐습니다(마이그레이션 `prefix_weeklyplan_tables_and_functions`, `prefix_weeklyplan_constraints_and_indexes`) — 다른 DB 변경과 마찬가지로 로컬 `supabase/migrations/`에는 보이지 않으니 스키마 확인 시 `mcp__supabase__list_migrations`/`execute_sql`로 실측할 것.
+
 ### 디렉토리 구조 — `src/` 없음
 
 `app/`, `components/`, `lib/`는 모두 프로젝트 **루트**에 위치합니다 (`src/` 디렉토리 사용 안 함). 경로 별칭 `@/*`는 `tsconfig.json`에서 `./*`(루트)로 매핑됩니다. `docs/guides/`에 아키텍처/스타일/폼 처리/배포·운영에 대한 상세 가이드 6종이 있으니 관련 작업 전에 참고하세요.

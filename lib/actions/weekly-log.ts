@@ -55,7 +55,7 @@ export async function requireAuthorProfile(
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("weeklyplan_profiles")
     .select("department_id")
     .eq("id", data.claims.sub)
     .maybeSingle();
@@ -86,7 +86,7 @@ export async function createWeeklyLogAction(
 
   // department_id는 폼 입력이 아니라 작성자 프로필 기준으로 서버에서 지정한다.
   const { data: inserted, error } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .insert({
       ...toWeeklyLogPayload(parsed.data),
       department_id: author.departmentId,
@@ -123,7 +123,7 @@ export async function updateWeeklyLogAction(
   }
 
   const { data: updated, error } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .update(toWeeklyLogPayload(parsed.data))
     .eq("id", id)
     .select("id")
@@ -161,7 +161,7 @@ export async function updateWeeklyLogWorkTypeAction(
   }
 
   const { data: updated, error } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .update({ work_type: parsed.data })
     .eq("id", id)
     .select("id")
@@ -195,7 +195,7 @@ export async function updateWeeklyLogImportanceAction(
   }
 
   const { data: updated, error } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .update({ importance: parsed.data })
     .eq("id", id)
     .select("id")
@@ -221,7 +221,7 @@ export async function deleteWeeklyLogAction(id: string): Promise<WeeklyLogAction
   }
 
   const { data: deleted, error } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .delete()
     .eq("id", id)
     .select("id")
@@ -249,7 +249,7 @@ export async function updateWeeklyLogStatusAction(
   }
 
   const { data: updated, error } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .update({ status })
     .eq("id", id)
     .select("id")

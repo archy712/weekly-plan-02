@@ -12,7 +12,7 @@ async function ProtectedRedirect(): Promise<never> {
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("weeklyplan_profiles")
     .select("department_id")
     .eq("id", data.claims.sub)
     .maybeSingle();

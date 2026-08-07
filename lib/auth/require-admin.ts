@@ -29,8 +29,8 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile> => {
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, department_id, departments(organization_id)")
+    .from("weeklyplan_profiles")
+    .select("role, department_id, departments:weeklyplan_departments(organization_id)")
     .eq("id", data.claims.sub)
     .maybeSingle();
 

@@ -12,7 +12,7 @@ import type {
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 const USERS_SELECT =
-  "id, email, name, department_id, role, avatar_key, created_at, departments(name)";
+  "id, email, name, department_id, role, avatar_key, created_at, departments:weeklyplan_departments(name)";
 
 const VALID_ROLES: UserRole[] = ["user", "admin", "superadmin"];
 
@@ -36,7 +36,7 @@ export async function getScopedDepartments(
   organizationId: string,
 ): Promise<Department[]> {
   let query = supabase
-    .from("departments")
+    .from("weeklyplan_departments")
     .select("id, name, created_at, archived_at, organization_id")
     .order("name");
   if (!isSuperAdmin) {
@@ -108,7 +108,7 @@ async function fetchUserRows(
 ): Promise<{ rows: UserRow[]; hasMore: boolean }> {
   // 조직에 부서가 하나도 없으면 in([])로 "일치 행 없음"을 안전하게 표현한다.
   let query = applyUserFilters(
-    supabase.from("profiles").select(USERS_SELECT).in("department_id", departmentIds),
+    supabase.from("weeklyplan_profiles").select(USERS_SELECT).in("department_id", departmentIds),
     filters,
   );
 
@@ -157,7 +157,7 @@ export async function countUsers(
 ): Promise<number> {
   const { count, error } = await applyUserFilters(
     supabase
-      .from("profiles")
+      .from("weeklyplan_profiles")
       .select("id", { count: "exact", head: true })
       .in("department_id", departmentIds),
     filters,

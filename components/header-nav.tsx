@@ -41,7 +41,7 @@ async function getNavUser(): Promise<NavUser> {
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("weeklyplan_profiles")
     .select("role, avatar_key")
     .eq("id", claims.sub)
     .maybeSingle();

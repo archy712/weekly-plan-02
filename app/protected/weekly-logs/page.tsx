@@ -36,7 +36,7 @@ async function WeeklyLogsContent({
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("weeklyplan_profiles")
     .select("department_id, role")
     .eq("id", data.claims.sub)
     .maybeSingle();
@@ -66,7 +66,7 @@ async function WeeklyLogsContent({
   const [page, departmentRows, totalCount] = await Promise.all([
     fetchWeeklyLogsPage(supabase, filters, sort, 0, WEEKLY_LOGS_PAGE_SIZE),
     supabase
-      .from("departments")
+      .from("weeklyplan_departments")
       .select("id, name, created_at, archived_at, organization_id")
       .order("name")
       .then((res) => res.data ?? []),

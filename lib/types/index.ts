@@ -7,13 +7,13 @@ import type { WeeklyLogImportance } from "@/lib/constants/importance";
 // 열리는 것은 조직(organizations) 생성과 전 조직 범위의 수정/닫기뿐이다.
 export type UserRole = "user" | "admin" | "superadmin";
 
-export type Department = Tables<"departments">;
+export type Department = Tables<"weeklyplan_departments">;
 
-export type Organization = Tables<"organizations">;
+export type Organization = Tables<"weeklyplan_organizations">;
 
-export type WorkType = Tables<"work_types">;
+export type WorkType = Tables<"weeklyplan_work_types">;
 
-export type Profile = Omit<Tables<"profiles">, "role"> & {
+export type Profile = Omit<Tables<"weeklyplan_profiles">, "role"> & {
   role: UserRole;
 };
 
@@ -41,7 +41,7 @@ export type { WeeklyLogImportance };
 // "(비활성)" 라벨을 붙인다(app/protected/weekly-logs/[id]/page.tsx, new/page.tsx 참고).
 export type WorkTypeOption = { name: string; archived: boolean };
 
-export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type" | "importance"> & {
+export type WeeklyLog = Omit<Tables<"weeklyplan_weekly_logs">, "status" | "work_type" | "importance"> & {
   status: WeeklyLogStatus;
   // 다중 선택(체크박스)이라 배열로 저장한다 — 최소 1개(DB CHECK 제약 cardinality > 0).
   work_type: WeeklyLogWorkType[];
@@ -76,7 +76,7 @@ export type WeeklyLogExportItem = WeeklyLogListItem &
   >;
 
 export type WeeklyLogAttachment = Pick<
-  Tables<"weekly_log_attachments">,
+  Tables<"weeklyplan_weekly_log_attachments">,
   "id" | "file_name" | "file_path" | "file_size" | "content_type" | "created_at"
 >;
 
@@ -204,7 +204,7 @@ export type WeeklyLogCommentMention = {
 // 상세 페이지 댓글 목록에 필요한 정보. deleted_at이 있으면 "삭제된 댓글입니다"로
 // 렌더링하되 대댓글(parent_comment_id로 참조)은 유지한다(소프트 삭제, Task 032).
 export type WeeklyLogComment = Pick<
-  Tables<"weekly_log_comments">,
+  Tables<"weeklyplan_weekly_log_comments">,
   | "id"
   | "weekly_log_id"
   | "author_id"
@@ -225,7 +225,7 @@ export type WeeklyLogComment = Pick<
 // RLS가 걸려 있어(개인 데이터), 이 타입은 항상 "내 알림" 목록에만 쓰인다.
 export type NotificationType = "mention" | "comment" | "reply";
 
-export type Notification = Omit<Tables<"notifications">, "type"> & {
+export type Notification = Omit<Tables<"weeklyplan_notifications">, "type"> & {
   type: NotificationType;
 };
 

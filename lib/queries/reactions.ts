@@ -15,7 +15,7 @@ export async function getWeeklyLogReactionSummary(
   userId: string | null,
 ): Promise<WeeklyLogReactionSummary> {
   const { data: rows, error } = await supabase
-    .from("weekly_log_reactions")
+    .from("weeklyplan_weekly_log_reactions")
     .select("reaction, user_id")
     .eq("weekly_log_id", weeklyLogId);
 
@@ -47,7 +47,7 @@ export async function getReactionCountsForLogs(
   if (logIds.length === 0) return counts;
 
   const { data: rows, error } = await supabase
-    .from("weekly_log_reactions")
+    .from("weeklyplan_weekly_log_reactions")
     .select("weekly_log_id, reaction")
     .in("weekly_log_id", logIds);
 

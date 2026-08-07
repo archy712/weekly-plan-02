@@ -70,7 +70,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname !== "/protected/profile"
   ) {
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("weeklyplan_profiles")
       .select("department_id")
       .eq("id", user.sub)
       .maybeSingle();

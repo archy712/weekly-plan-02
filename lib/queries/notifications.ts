@@ -34,8 +34,8 @@ export async function enrichNotifications(
 
   const [{ data: identities, error: identitiesError }, { data: logs, error: logsError }] =
     await Promise.all([
-      supabase.rpc("get_profile_identities", { profile_ids: actorIds }),
-      supabase.from("weekly_logs").select("id, title").in("id", weeklyLogIds),
+      supabase.rpc("weeklyplan_get_profile_identities", { profile_ids: actorIds }),
+      supabase.from("weeklyplan_weekly_logs").select("id, title").in("id", weeklyLogIds),
     ]);
 
   if (identitiesError) {
@@ -74,7 +74,7 @@ export async function getUnreadNotificationCount(
   userId: string,
 ): Promise<number> {
   const { count, error } = await supabase
-    .from("notifications")
+    .from("weeklyplan_notifications")
     .select("id", { count: "exact", head: true })
     .eq("recipient_id", userId)
     .is("read_at", null);
@@ -95,7 +95,7 @@ export async function getRecentNotifications(
   limit = 10,
 ): Promise<NotificationListItem[]> {
   const { data: rows, error } = await supabase
-    .from("notifications")
+    .from("weeklyplan_notifications")
     .select("id, type, actor_id, recipient_id, weekly_log_id, comment_id, read_at, created_at")
     .eq("recipient_id", userId)
     .order("created_at", { ascending: false })

@@ -40,10 +40,10 @@ import { formatPhoneNumberInput } from "@/lib/utils";
 import { profileSchema, type ProfileFormData } from "@/lib/schemas/profile";
 
 type Profile = Pick<
-  Tables<"profiles">,
+  Tables<"weeklyplan_profiles">,
   "id" | "email" | "name" | "department_id" | "phone_number" | "avatar_key" | "bio"
 >;
-type Department = Pick<Tables<"departments">, "id" | "name" | "archived_at">;
+type Department = Pick<Tables<"weeklyplan_departments">, "id" | "name" | "archived_at">;
 
 export function ProfileForm({
   profile,
@@ -76,7 +76,7 @@ export function ProfileForm({
 
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("weeklyplan_profiles")
         .update({
           name: values.name || null,
           department_id: values.department_id,

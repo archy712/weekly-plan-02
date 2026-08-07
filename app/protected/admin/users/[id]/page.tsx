@@ -32,9 +32,9 @@ async function UserDetailContent({
   const currentUserId = claimsData?.claims?.sub ?? "";
 
   const { data: target, error: targetError } = await supabase
-    .from("profiles")
+    .from("weeklyplan_profiles")
     .select(
-      "id, email, name, department_id, role, avatar_key, phone_number, bio, created_at, departments(name)",
+      "id, email, name, department_id, role, avatar_key, phone_number, bio, created_at, departments:weeklyplan_departments(name)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -65,7 +65,7 @@ async function UserDetailContent({
   // 한 번에 가져와 메모리에서 집계한다 — 사용자 1인당 로그 수가 적은 사내 도구
   // 규모(전체 167건/34명, 평균 5건 내외)라 이 방식이 왕복 횟수를 줄여 더 낫다.
   const { data: logRows, error: logsError } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .select("id, title, start_date, status")
     .eq("author_id", id)
     .order("start_date", { ascending: false })
@@ -99,7 +99,7 @@ async function UserDetailContent({
   // 소속 부서 변경 select — 비활성 부서는 신규 선택지에서 제외하되, 이미 그 부서에
   // 속한 사용자에게는 현재 값이 계속 보이도록 예외를 둔다(profile-form.tsx와 동일 관례).
   const { data: departmentRows } = await supabase
-    .from("departments")
+    .from("weeklyplan_departments")
     .select("id, name, created_at, archived_at, organization_id")
     .order("name");
   const departments: Department[] = (departmentRows ?? []).filter(

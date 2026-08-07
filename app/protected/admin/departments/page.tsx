@@ -31,7 +31,7 @@ async function DepartmentsContent() {
   // 별도로 가져온다). 슈퍼관리자는 F034로 전 조직을 다룰 수 있어 조직 필터 없이 전체를
   // 가져온다 — 테이블의 "소속 조직" 컬럼이 이미 각 행을 구분해 보여준다.
   let organizationsQuery = supabase
-    .from("organizations")
+    .from("weeklyplan_organizations")
     .select("id, name, created_at, archived_at");
   if (!isSuperAdmin) {
     organizationsQuery = organizationsQuery.eq("id", organizationId);
@@ -47,8 +47,8 @@ async function DepartmentsContent() {
   const organizations = organizationRows ?? [];
 
   let departmentsQuery = supabase
-    .from("departments")
-    .select("id, name, created_at, archived_at, organization_id, organizations(name)")
+    .from("weeklyplan_departments")
+    .select("id, name, created_at, archived_at, organization_id, organizations:weeklyplan_organizations(name)")
     .order("name");
   if (!isSuperAdmin) {
     departmentsQuery = departmentsQuery.eq("organization_id", organizationId);
@@ -75,11 +75,11 @@ async function DepartmentsContent() {
     departments.map(async (department) => {
       const [{ count: memberCount }, { count: logCount }] = await Promise.all([
         supabase
-          .from("profiles")
+          .from("weeklyplan_profiles")
           .select("id", { count: "exact", head: true })
           .eq("department_id", department.id),
         supabase
-          .from("weekly_logs")
+          .from("weeklyplan_weekly_logs")
           .select("id", { count: "exact", head: true })
           .eq("department_id", department.id),
       ]);

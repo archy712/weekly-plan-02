@@ -27,7 +27,7 @@ export async function markNotificationReadAction(id: string): Promise<Notificati
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("notifications")
+    .from("weeklyplan_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("id", id)
     .select("id")
@@ -52,7 +52,7 @@ export async function markAllNotificationsReadAction(): Promise<NotificationActi
   // recipient_id는 RLS(recipient_id = auth.uid())로 이미 본인 행만 대상이 되지만, UPDATE 문에는
   // WHERE 절이 필요하므로 명시적으로 조건을 건다(읽지 않은 알림만 대상, 이미 읽은 행은 건드리지 않음).
   const { error } = await supabase
-    .from("notifications")
+    .from("weeklyplan_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("recipient_id", auth.userId)
     .is("read_at", null);
@@ -71,7 +71,7 @@ export async function deleteNotificationAction(id: string): Promise<Notification
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: deleted, error } = await supabase
-    .from("notifications")
+    .from("weeklyplan_notifications")
     .delete()
     .eq("id", id)
     .select("id")

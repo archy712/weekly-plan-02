@@ -76,7 +76,7 @@ export function SignUpForm({
       // 가입 자체를 막지 않는다 — 실패해도 프로필 화면에서 나중에 입력 가능
       if (data.user) {
         await supabase
-          .from("profiles")
+          .from("weeklyplan_profiles")
           .update({
             name: name || null,
             phone_number: phoneNumber || null,

@@ -30,7 +30,7 @@ async function WeeklyLogDetailContent({
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("weeklyplan_profiles")
     .select("department_id, role")
     .eq("id", data.claims.sub)
     .maybeSingle();
@@ -40,9 +40,9 @@ async function WeeklyLogDetailContent({
   }
 
   const { data: log, error: logError } = await supabase
-    .from("weekly_logs")
+    .from("weeklyplan_weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, estimated_mm, estimated_cost, partner_company, departments(name, organization_id), profiles(email)",
+      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, estimated_mm, estimated_cost, partner_company, departments:weeklyplan_departments(name, organization_id), profiles:weeklyplan_profiles(email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -66,7 +66,7 @@ async function WeeklyLogDetailContent({
   const [attachmentsResult, comments, reactions, workTypesResult] = await Promise.all([
     // 첨부파일도 weekly_logs와 동일하게 SELECT는 전 부서 공개다.
     supabase
-      .from("weekly_log_attachments")
+      .from("weeklyplan_weekly_log_attachments")
       .select("id, file_name, file_path, file_size, content_type, created_at")
       .eq("weekly_log_id", id)
       .order("created_at", { ascending: true }),
@@ -74,7 +74,7 @@ async function WeeklyLogDetailContent({
     getWeeklyLogComments(supabase, id),
     // 추천/비추천도 부서 무관 조회(F031). 익명 집계 + 로그인 사용자의 내 반응까지 함께 받는다.
     getWeeklyLogReactionSummary(supabase, id, data.claims.sub),
-    supabase.from("work_types").select("name, archived_at, organization_id").order("name"),
+    supabase.from("weeklyplan_work_types").select("name, archived_at, organization_id").order("name"),
   ]);
 
   if (attachmentsResult.error) {

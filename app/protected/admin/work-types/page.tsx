@@ -31,7 +31,7 @@ async function WorkTypesContent() {
   // 가져온다). 슈퍼관리자는 F034로 전 조직을 다룰 수 있어 조직 필터 없이 전체를
   // 가져온다 — 테이블의 "소속 조직" 컬럼이 이미 각 행을 구분해 보여준다.
   let organizationsQuery = supabase
-    .from("organizations")
+    .from("weeklyplan_organizations")
     .select("id, name, created_at, archived_at");
   if (!isSuperAdmin) {
     organizationsQuery = organizationsQuery.eq("id", organizationId);
@@ -47,8 +47,8 @@ async function WorkTypesContent() {
   const organizations = organizationRows ?? [];
 
   let workTypesQuery = supabase
-    .from("work_types")
-    .select("id, name, created_at, archived_at, organization_id, organizations(name)")
+    .from("weeklyplan_work_types")
+    .select("id, name, created_at, archived_at, organization_id, organizations:weeklyplan_organizations(name)")
     .order("name");
   if (!isSuperAdmin) {
     workTypesQuery = workTypesQuery.eq("organization_id", organizationId);
@@ -73,7 +73,7 @@ async function WorkTypesContent() {
   const counts = await Promise.all(
     workTypes.map(async (workType) => {
       const { count } = await supabase
-        .from("weekly_logs")
+        .from("weeklyplan_weekly_logs")
         .select("id", { count: "exact", head: true })
         .contains("work_type", [workType.name]);
       return { id: workType.id, logCount: count ?? 0 };

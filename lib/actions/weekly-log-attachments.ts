@@ -35,7 +35,7 @@ export async function createWeeklyLogAttachmentAction(
   }
 
   const { data, error } = await supabase
-    .from("weekly_log_attachments")
+    .from("weeklyplan_weekly_log_attachments")
     .insert({
       weekly_log_id: weeklyLogId,
       department_id: author.departmentId,
@@ -67,7 +67,7 @@ export async function deleteWeeklyLogAttachmentAction(
   }
 
   const { data: deleted, error } = await supabase
-    .from("weekly_log_attachments")
+    .from("weeklyplan_weekly_log_attachments")
     .delete()
     .eq("id", attachmentId)
     .select("id, weekly_log_id")
