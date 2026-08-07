@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Next.js 16 (App Router) + Supabase Auth 스타터 킷입니다. `@supabase/ssr`로 쿠키 기반 세션을 Client Component, Server Component, Route Handler, `proxy.ts` 전반에서 공유합니다.
 
-MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3)까지 구현이 완료되었고, 실시간 알림(Phase 4)은 아직 구현 전입니다. Phase 3 이후에는 원래 계획에 없던 ad hoc 확장(`docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 절 참고)도 다수 추가됐습니다 — 업무 타입·업무 중요도 속성, Excel 다운로드, 조직(organizations) 계층 신설과 이를 반영한 **관리자 콘솔의 조직 범위 제한**(관리자는 자기 소속 조직만 관리), 업무 타입 관리 UI, `admin` 위에 조직 생성·전 조직 관리가 가능한 **슈퍼관리자(superadmin) 등급**과 이를 관리자 콘솔 4개 탭(대시보드·부서·업무타입·사용자 관리)까지 확장한 전 조직 범위, 주간업무일지 목록의 부서 컬럼을 작성자 아바타+이름으로 대체한 것 등. 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
+MVP(부서별 주간업무일지 CRUD·조회·PDF·검색, `docs/roadmap/ROADMAP_mvp.md`)는 구현이 완료된 상태입니다. v1 고도화(`docs/ROADMAP_v1.md`)는 관리자 콘솔(부서 관리 UI·사용자 관리 UI, Phase 1), 기간 범위 검색·통계 대시보드(Phase 2), 댓글·멘션(Phase 3), 실시간 알림(Phase 4), 통합 검증·배포 전 점검(Phase 5)까지 구현이 완료되었습니다. Phase 3 이후에는 원래 계획에 없던 ad hoc 확장(`docs/ROADMAP_v1.md` "Phase 3 이후 ad hoc 확장" 절 참고)도 다수 추가됐습니다 — 업무 타입·업무 중요도 속성, Excel 다운로드, 조직(organizations) 계층 신설과 이를 반영한 **관리자 콘솔의 조직 범위 제한**(관리자는 자기 소속 조직만 관리), 업무 타입 관리 UI, `admin` 위에 조직 생성·전 조직 관리가 가능한 **슈퍼관리자(superadmin) 등급**과 이를 관리자 콘솔 4개 탭(대시보드·부서·업무타입·사용자 관리)까지 확장한 전 조직 범위, 주간업무일지 목록의 부서 컬럼을 작성자 아바타+이름으로 대체한 것 등. Phase 6으로는 사용자 요청 신규 기능 2건 — 주간업무일지 **추천/비추천(F031)**과 **애플리케이션 전반 성능 개선(F032)** — 이 구현 완료됐습니다(성능 개선은 인증 계정이 필요한 E2E 회귀 검증만 사용자 작업으로 대기). 전체 기능 명세는 `docs/PRD.md`(MVP + v1 계획 포함)를 참고하세요.
 
 ## 명령어
 
