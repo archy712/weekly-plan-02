@@ -602,6 +602,24 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ---
 
+### Phase 6 이후 ad hoc 확장 (6차, 계획에 없던 사용자 요청, 신규 F036~F039) ✅
+
+> Phase 6까지 마친 뒤 들어온 UI·문서·운영 성격의 요청 묶음. 대부분 앱 소개·탐색을 돕는 부가 페이지와 목록 UX 개선이라 **DB 마이그레이션이 전혀 없다**.
+
+- **푸터 내비게이션 + 정보/쇼케이스 페이지 3종 — 신규 F036~F038** — 랜딩·보호 페이지 공통 푸터(`components/site-footer.tsx`)에 프로젝트 문서(README·PRD)·로드맵(MVP·v1) GitHub 링크와 앱 내부 정보 페이지 3종 링크를 구분선으로 나열했다.
+  - **F036 컴포넌트 갤러리(`/component-gallery`)** — shadcn 컴포넌트를 8개 카테고리로 나눠 카탈로그로 보여주고(카테고리 선택 + 이름 검색), 카드 클릭 시 shadcn 공식 문서의 **Base UI 변형** 페이지(`ui.shadcn.com/docs/components/base/{slug}`)를 새 탭으로 연다. 실제 설치본은 Radix 계열이지만 요구사항에 따라 링크는 Base UI 문서로 통일(라이브 렌더링 아님, 카탈로그 + 외부 링크).
+  - **F037 아이콘 갤러리(`/icon-gallery`)** — 프로젝트가 쓰는 `lucide-react` 아이콘을 12개 카테고리로 나눠 `lucide-react/dynamic`의 `DynamicIcon`으로 **실물 렌더링**하고, 클릭 시 `lucide.dev/icons/{name}`로 연결. 아이콘 이름을 `IconName` 유니온 타입으로 지정해 오타를 컴파일 단계에서 차단한다.
+  - **F038 기술 스택(`/tech-stack`)** — `package.json`의 dependencies+devDependencies를 8개 카테고리로 소개. **왼쪽 배지 = npm 최신 버전**(registry `.../{name}/latest` fetch, `"use cache"` + `cacheLife("hours")`로 시간 단위 캐싱, 오프라인/장애 시 선언값 폴백), **오른쪽 배지 = `node_modules` 실제 설치 버전**(서버에서 fs로 읽음). 최신≠설치면 왼쪽 배지 강조.
+  - **공개 라우트 처리**: 세 페이지는 비로그인 랜딩 푸터에서도 진입하므로 `lib/supabase/proxy.ts` 공개 경로 예외에 `/component-gallery`·`/icon-gallery`·`/tech-stack`을 추가했다. 또한 `cacheComponents` 하에서 쿠키를 읽는 `<LandingHeader/>`를 Suspense 밖에서 렌더링하면 빌드가 실패하므로 세 페이지 모두 `<Suspense fallback={null}>`로 감쌌다(빌드 중 실측·수정).
+  - **관련 파일**: `components/site-footer.tsx`, `lib/supabase/proxy.ts`, `app/{component-gallery,icon-gallery,tech-stack}/page.tsx`, `components/{component-gallery-view,icon-gallery-view,tech-stack-view}.tsx`, `lib/constants/{component-gallery,icon-gallery,tech-stack}.ts`, `lib/queries/npm-versions.ts`.
+- **주간업무목록·사용자 관리 총 건수 표시 — 신규 F039** — 두 목록 모두 무한 스크롤이라 화면엔 일부만 로드되므로, 현재 필터 조건에 맞는 **총 건수**를 별도 count 쿼리로 조회해 표시한다. 주간업무목록은 기간 프리셋 행 오른쪽에 "총 업무 N건"/"조건에 맞는 업무 N건", 사용자 관리는 필터 행 오른쪽에 "총 사용자 N명"/"조건에 맞는 사용자 N명"(둘 다 우측 정렬). 필터 로직을 `applyScalarFilters`(weekly-logs)·`applyUserFilters`(user-admin) 공용 헬퍼로 추출해 목록 조회와 건수 조회가 어긋나지 않게 했다. 검색어 없는 경우는 `count:'exact', head:true`로 정확 건수, 주간업무의 제목/내용 OR 검색은 두 ilike의 id 합집합 크기(.or() 미사용 관례 유지).
+  - **관련 파일**: `lib/queries/weekly-logs.ts`, `lib/queries/user-admin.ts`, `app/protected/weekly-logs/page.tsx`, `app/protected/admin/users/page.tsx`, `components/weekly-log-list-view.tsx`, `components/user-admin-table.tsx`.
+- **의존성 안전 업데이트 (chore, F 번호 없음)** — 동일 메이저 내 minor/patch 8종만 업데이트(next 16.3.0, @supabase/supabase-js 2.112.2, lucide-react 1.30.0, recharts 3.10.1, sanitize-html 2.17.6, eslint-config-next 16.3.0, @types/node 26.2.0, postcss 8.5.26). **메이저 업그레이드(zod 3→4·eslint 9→10·typescript 5→7)는 호환성 위험으로 제외**. 실제 버전 갱신은 `package-lock.json`이 담고 package.json은 관례를 보존(exact 핀 2줄만 변경). eslint-config-next 16.3.0의 새 규칙이 CLAUDE.md에 명시된 의도적 `window.location.href` 하드 네비게이션을 경고로 표시하나 의도된 패턴이라 유지.
+- **랜딩 페이지 여백 정리 (style, F 번호 없음)** — 히어로 섹션 상하 간격·풋터 간격을 축소하되, 로그인 시 헤더–콘텐츠 간격은 내부 래퍼(`gap-20`)로 원복(`app/page.tsx`만 수정).
+- **DB 마이그레이션 없음** — 이 묶음 전체가 UI·문서·조회 전용이라 스키마 변경이 없다.
+
+---
+
 ## 기능 ID 커버리지 매핑
 
 | 기능 ID | 기능명 | 담당 Task |
@@ -623,6 +641,10 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F032 | 애플리케이션 전반 성능 개선 | Task 039 (🚧 구현 완료, 인증 E2E 회귀만 대기) |
 | F034 | 슈퍼관리자 대시보드/부서/업무타입/사용자 관리 전 조직 확장 | ad hoc(Phase 3 이후 4차, Task 번호 없음) |
 | F035 | 주간업무일지 목록 작성자 아바타 표시(부서 컬럼 대체) | ad hoc(Phase 3 이후 5차, Task 번호 없음) |
+| F036 | 컴포넌트 갤러리 페이지(shadcn Base UI 카탈로그) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
+| F037 | 아이콘 갤러리 페이지(lucide) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
+| F038 | 기술 스택 소개 페이지(package.json 기반) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
+| F039 | 목록 총 건수 표시(주간업무·사용자 관리) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
 | — | 통합 검증·마감 | Task 036, Task 037 |
 
 ## 데이터 모델 변경 요약 (MVP 대비)
