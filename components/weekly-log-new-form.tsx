@@ -47,7 +47,11 @@ export function WeeklyLogNewForm({ workTypeOptions }: { workTypeOptions: WorkTyp
     }
 
     toast.success("주간업무일지가 저장되었습니다.");
-    router.push(`/protected/weekly-logs/${created.id}`);
+    // 작성 후에는 상세가 아니라 목록으로 돌아간다. createWeeklyLogAction이 이미
+    // revalidatePath로 목록을 무효화하지만, 라우터 클라이언트 캐시가 이전 목록을
+    // 재사용하지 않도록 refresh를 함께 호출해 새로 만든 업무가 즉시 보이게 한다.
+    router.push("/protected/weekly-logs");
+    router.refresh();
   };
 
   return (
