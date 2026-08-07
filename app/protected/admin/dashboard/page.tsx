@@ -159,8 +159,8 @@ async function DashboardContent({
             <DashboardWorkTypeChart data={workTypeStats} />
             <DashboardImportanceChart data={importanceStats} />
             <DashboardTrendChart data={monthlyTrend} />
-            <DashboardWorkloadChart data={workloadRows} />
             <DashboardReactionChart data={reactionStats} />
+            <DashboardWorkloadChart data={workloadRows} />
           </div>
         </DimOnPending>
       </div>
