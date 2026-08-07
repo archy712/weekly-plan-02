@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
+import { useNavigationProgress } from "@/components/navigation-progress";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import {
   Select,
@@ -39,7 +38,9 @@ export function DashboardFilters({
   organizations?: Pick<Organization, "id" | "name" | "archived_at">[];
   currentOrgId?: string;
 }) {
-  const router = useRouter();
+  // 필터 변경 중 상단 로딩 바 + 차트 dim을 위해 router.push 대신 Provider의 navigate를 쓴다
+  // (NavigationProgressProvider가 transition을 소유, page.tsx에서 차트를 DimOnPending으로 감쌈).
+  const { navigate: navigateWithProgress } = useNavigationProgress();
   const isSuperAdmin = organizations !== undefined;
 
   const navigate = (overrides: {
@@ -63,7 +64,7 @@ export function DashboardFilters({
     const to = overrides.to === null ? "" : (overrides.to ?? currentTo ?? "");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    router.push(`/protected/admin/dashboard?${params.toString()}`);
+    navigateWithProgress(`/protected/admin/dashboard?${params.toString()}`);
   };
 
   return (

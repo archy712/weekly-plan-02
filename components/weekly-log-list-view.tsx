@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Search, X } from "lucide-react";
@@ -35,6 +35,8 @@ import { WeeklyLogTable, type SortDirection, type WeeklyLogSortKey } from "@/com
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
+import { LoadingBar } from "@/components/loading-bar";
+import { cn } from "@/lib/utils";
 import { downloadWeeklyLogListPdf } from "@/lib/pdf/weekly-log-pdf";
 import { downloadWeeklyLogListExcel } from "@/lib/excel/weekly-log-excel";
 import { createClient } from "@/lib/supabase/client";
@@ -100,6 +102,11 @@ export function WeeklyLogListView({
   currentTo?: string;
 }) {
   const router = useRouter();
+  // 필터 변경은 URL 쿼리파라미터만 바뀌는 soft navigation이라 page.tsx의 Suspense
+  // fallback(스켈레톤)이 다시 뜨지 않는다 — 서버 재조회 동안 이전 결과가 그대로 남아
+  // "화면이 멈춘 것처럼" 보인다. router.push를 transition으로 감싸 isPending을 얻어
+  // 상단 로딩 바 + 결과 dim으로 진행 중임을 알린다.
+  const [isPending, startTransition] = useTransition();
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(currentSearchQuery ?? "");
@@ -187,7 +194,9 @@ export function WeeklyLogListView({
     const to = overrides.to === null ? "" : (overrides.to ?? currentTo ?? "");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    router.push(`/protected/weekly-logs?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/protected/weekly-logs?${params.toString()}`);
+    });
   };
 
   const handleDepartmentChange = (value: string) => {
@@ -313,6 +322,7 @@ export function WeeklyLogListView({
 
   return (
     <div className="flex flex-col gap-4">
+      <LoadingBar active={isPending} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
@@ -402,6 +412,15 @@ export function WeeklyLogListView({
           ))}
         </div>
       )}
+      {/* 재조회 중에는 이전 결과를 흐리게+비활성화해 "갱신 중"임을 알리되, 컨텍스트(무엇을
+          보고 있었는지)는 유지한다. 필터 UI는 위에 있어 이 dim의 영향을 받지 않는다. */}
+      <div
+        className={cn(
+          "flex flex-col gap-4 transition-opacity",
+          isPending && "pointer-events-none opacity-60",
+        )}
+        aria-busy={isPending}
+      >
       {items.length === 0 ? (
         <EmptyState
           title={
@@ -473,6 +492,7 @@ export function WeeklyLogListView({
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

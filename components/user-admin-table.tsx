@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
@@ -34,10 +34,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
+import { LoadingBar } from "@/components/loading-bar";
 import { UserRoleSelect } from "@/components/user-role-select";
 import { UserAdminCardList } from "@/components/user-admin-card";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { getAvatarPreset } from "@/lib/constants/avatars";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, ALL_ROLES_FILTER } from "@/lib/types";
 import type {
@@ -90,6 +92,10 @@ export function UserAdminTable({
   currentUserId: string;
 }) {
   const router = useRouter();
+  // 필터/검색은 URL 쿼리파라미터만 바뀌는 soft navigation이라 Suspense 스켈레톤이 다시
+  // 뜨지 않아 재조회 동안 화면이 멈춘 것처럼 보인다. transition으로 감싸 isPending을 얻어
+  // 상단 로딩 바 + 결과 dim으로 진행 중임을 알린다(weekly-log-list-view.tsx와 동일한 패턴).
+  const [isPending, startTransition] = useTransition();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(currentSearchQuery ?? "");
   const [sortKey, setSortKey] = useState<UserAdminSortKey | null>(null);
@@ -158,7 +164,9 @@ export function UserAdminTable({
     params.set("role", overrides.role ?? currentRole);
     const q = (overrides.q ?? currentSearchQuery ?? "").trim();
     if (q) params.set("q", q);
-    router.push(`/protected/admin/users?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/protected/admin/users?${params.toString()}`);
+    });
   };
 
   const handleDepartmentChange = (value: string) => navigate({ department: value });
@@ -172,6 +180,7 @@ export function UserAdminTable({
 
   return (
     <div className="flex flex-col gap-4">
+      <LoadingBar active={isPending} />
       <div className="flex flex-wrap items-center gap-2">
         <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
           <Input
@@ -211,6 +220,13 @@ export function UserAdminTable({
           </SelectContent>
         </Select>
       </div>
+      <div
+        className={cn(
+          "flex flex-col gap-4 transition-opacity",
+          isPending && "pointer-events-none opacity-60",
+        )}
+        aria-busy={isPending}
+      >
       {items.length === 0 ? (
         <EmptyState
           title={currentSearchQuery ? "검색 결과가 없습니다" : "표시할 사용자가 없습니다"}
@@ -374,6 +390,7 @@ export function UserAdminTable({
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

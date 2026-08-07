@@ -12,6 +12,7 @@ import {
   getWorkloadSummary,
 } from "@/lib/queries/stats";
 import { DASHBOARD_ALL_ORGANIZATIONS, DashboardFilters } from "@/components/dashboard-filters";
+import { DimOnPending, NavigationProgressProvider } from "@/components/navigation-progress";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
 import { DashboardDepartmentChart } from "@/components/dashboard-department-chart";
@@ -137,25 +138,29 @@ async function DashboardContent({
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <DashboardFilters
-        departments={departments}
-        currentDepartmentId={selectedDepartment}
-        currentFrom={fromDate}
-        currentTo={toDate}
-        organizations={organizations}
-        currentOrgId={selectedOrgId}
-      />
-      <DashboardSummaryCards statusStats={statusStats} monthlyTrend={monthlyTrend} />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <DashboardDepartmentChart data={departmentStats} />
-        <DashboardStatusChart data={statusStats} />
-        <DashboardWorkTypeChart data={workTypeStats} />
-        <DashboardImportanceChart data={importanceStats} />
-        <DashboardTrendChart data={monthlyTrend} />
-        <DashboardWorkloadChart data={workloadRows} />
+    <NavigationProgressProvider>
+      <div className="flex flex-col gap-6">
+        <DashboardFilters
+          departments={departments}
+          currentDepartmentId={selectedDepartment}
+          currentFrom={fromDate}
+          currentTo={toDate}
+          organizations={organizations}
+          currentOrgId={selectedOrgId}
+        />
+        <DimOnPending className="flex flex-col gap-6">
+          <DashboardSummaryCards statusStats={statusStats} monthlyTrend={monthlyTrend} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <DashboardDepartmentChart data={departmentStats} />
+            <DashboardStatusChart data={statusStats} />
+            <DashboardWorkTypeChart data={workTypeStats} />
+            <DashboardImportanceChart data={importanceStats} />
+            <DashboardTrendChart data={monthlyTrend} />
+            <DashboardWorkloadChart data={workloadRows} />
+          </div>
+        </DimOnPending>
       </div>
-    </div>
+    </NavigationProgressProvider>
   );
 }
 
