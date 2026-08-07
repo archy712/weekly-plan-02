@@ -322,6 +322,48 @@ export type Database = {
           },
         ]
       }
+      weekly_log_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          reaction: string
+          updated_at: string
+          user_id: string
+          weekly_log_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reaction: string
+          updated_at?: string
+          user_id: string
+          weekly_log_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reaction?: string
+          updated_at?: string
+          user_id?: string
+          weekly_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_log_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_reactions_weekly_log_id_fkey"
+            columns: ["weekly_log_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_logs: {
         Row: {
           author_id: string
@@ -503,6 +545,18 @@ export type Database = {
           completed_count: number
           created_count: number
           month: string
+        }[]
+      }
+      stats_reactions_summary: {
+        Args: {
+          dept_id?: string
+          from_date?: string
+          org_id?: string
+          to_date?: string
+        }
+        Returns: {
+          reaction: string
+          reaction_count: number
         }[]
       }
       stats_workload_summary: {

@@ -15,7 +15,7 @@ v1 고도화는 MVP(`docs/roadmap/ROADMAP_mvp.md`, Task 001~024 완료)에서 "M
 
 Phase 3 이후에는 원래 계획에 없던 ad hoc 요청 14건(F025~F030, F033~F035 포함)이 추가로 구현됐고(아래 "Phase 3 이후 ad hoc 확장" 5개 절), 여기에 **아직 착수하지 않은 신규 요구사항 2건**이 Phase 6으로 예약되어 있습니다:
 
-- **[F031] 주간업무일지 추천/비추천**: 개별 주간업무일지에 추천(좋아요)/비추천(싫어요)을 표시 — **미착수, 상세 스펙 미확정**
+- **[F031] 주간업무일지 추천/비추천**: 개별 주간업무일지에 추천(좋아요)/비추천(싫어요)을 표시 — **✅ 구현 완료(Task 038, 결정 6종 확정 후 진행)**
 - **[F032] 애플리케이션 전반 성능 개선**: 특정 기능이 아니라 MVP 포함 전체 애플리케이션을 대상으로 하는 성능 개선 이니셔티브 — **미착수, 상세 스펙 미확정**
 
 > F031·F032는 사용자가 한 줄로 던진 구두 요청에서 출발했습니다. 아래 Phase 6의 내용은 기존 설계 관례에서 유추한 **초안**이며, 확정되지 않은 항목은 억지로 정하지 않고 "주요 리스크 및 결정 필요 사항" 표에 결정 항목으로 남겨뒀습니다(이 프로젝트가 v1 착수 시점에 미정 사항을 다뤘던 방식과 동일). 착수 전 그 표의 F031·F032 항목을 먼저 확정하세요.
@@ -547,36 +547,34 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 > **선행 조건**: Phase 4·5와 기술적 의존성은 없으나(병렬 착수 가능), Task 039는 v1 전 기능이 올라간 뒤 측정해야 의미가 있으므로 **Task 036 완료 후 착수를 권장**한다.
 > **⚠️ 두 Task 모두 상세 스펙 미확정**: 아래 항목은 기존 설계 관례(F022 댓글의 RLS 판단, Task 037의 점검 절차)에서 유추한 초안이다. 확정되지 않은 것은 억지로 정하지 않고 아래 "주요 리스크 및 결정 필요 사항" 표에 남겨뒀으니, **착수 전 그 표의 F031·F032 행을 먼저 확정할 것**. 스키마·UI를 먼저 만들고 나중에 정책을 맞추면 마이그레이션을 두 번 쓰게 된다.
 
-- **Task 038: 주간업무일지 추천/비추천 기능 구현 (F031)**
-  - [ ] **DB 마이그레이션 — `weekly_log_reactions` 테이블 신규 생성** (아래 스키마는 **초안**, 결정 항목 확정 후 확정)
-    - `id uuid pk`, `weekly_log_id uuid → weekly_logs(id) on delete cascade`, `user_id uuid → profiles(id) on delete cascade`, `reaction text` (`up` | `down` CHECK 제약 — MVP의 `status`/`role`, v1의 `notifications.type`과 동일한 CHECK 방식), `created_at`, `updated_at`
-    - `unique(weekly_log_id, user_id)` — **1인 1표 토글 모델**. 추천 상태에서 비추천을 누르면 새 행이 생기는 게 아니라 기존 행의 `reaction`이 갱신되고, 같은 버튼을 다시 누르면 행이 삭제(해제)된다
-    - 인덱스: `unique(weekly_log_id, user_id)`가 `weekly_log_id` 선두를 이미 커버하므로 **추가 인덱스는 실측 후에만** (Task 037과 동일하게 과도한 사전 최적화 지양)
-  - [ ] **RLS 정책 — 댓글(F022)과 동일하게 부서 무관**
-    - SELECT: 전 인증 사용자 공개 (`weekly_logs`·`weekly_log_comments`와 동일)
-    - INSERT/UPDATE/DELETE: `user_id = (select auth.uid())`인 **본인 행만**. **부서 조건을 걸지 않는다** — `weekly_logs`가 이미 전 부서 SELECT 공개이고 댓글 INSERT도 부서 무관으로 열어둔 상태에서 반응만 부서로 막으면 "타 부서 업무에 반응한다"는 기능 자체가 무의미해짐(Task 032의 판단 근거를 그대로 재사용하는 **두 번째 지점**이므로 마이그레이션 주석에 근거를 남길 것)
-    - 관리자 예외(타인의 반응 삭제 허용) 여부는 **결정 필요** — 리스크 표 참고
-  - [ ] **집계 조회 방식 구현** — 상세 페이지는 단건이라 직접 count로 충분. 목록에도 노출하기로 확정되면 댓글수(`comment_count`)와 동일하게 **현재 페이지의 로그 id들로 2차 조회 후 Map 병합** 패턴을 재사용(Task 033 ad hoc 노트). `weekly_logs`에 카운터 컬럼을 비정규화하지 **않는다** — 트리거 동기화 비용 대비 이득이 불명확
-  - [ ] `mcp__supabase__generate_typescript_types` 재생성, `lib/types/index.ts`에 반응·집계 타입 추가
-  - [ ] `lib/actions/weekly-log-reaction.ts` 신규 — `toggleWeeklyLogReactionAction`(up/down 단일 진입점, 기존 `{success, error}` 반환 규약 유지). 클라이언트가 보낸 카운트는 신뢰하지 않고 서버에서 재집계
-  - [ ] `components/weekly-log-reaction-buttons.tsx` 신규 — 추천/비추천 버튼 + 각 카운트 + 내 반응 상태 강조. 낙관적 업데이트(즉시 반영 → 실패 시 롤백 + 토스트) 적용 여부는 **결정 필요**
-  - [ ] 상세 페이지(`components/weekly-log-detail-view.tsx`)에 배치. 목록 페이지 노출은 결정 확정 후 반영
-  - [ ] 경계 조건 — 자기 글 투표 허용 여부가 확정되면 **UI(버튼 비활성화 + 사유 툴팁)와 서버 액션 양쪽에 동일하게** 반영(클라이언트만 막으면 우회 가능)
-  - [ ] 접근성 — 아이콘 전용 버튼에 `aria-label`(예: "추천 3건") 부여. MVP Task 015·v1 Task 035에서 반복 지적된 항목이므로 처음부터 반영
-  - [ ] `mcp__supabase__get_advisors`(security + performance)로 신규 테이블 경고 확인 및 해소
-  - **관련 파일**: DB 마이그레이션, `lib/actions/weekly-log-reaction.ts`(신규), `components/weekly-log-reaction-buttons.tsx`(신규), `components/weekly-log-detail-view.tsx`, `app/protected/weekly-logs/[id]/page.tsx`, `lib/types/index.ts`, `lib/supabase/database.types.ts`, (목록 노출 확정 시) `app/protected/weekly-logs/page.tsx`·`components/weekly-log-table.tsx`·`components/weekly-log-card.tsx`
-  - **수락 기준**: 로그인한 사용자가 부서와 무관하게 임의의 주간업무일지에 추천/비추천을 **1표만** 남길 수 있고, 재클릭으로 해제·전환이 가능하며, 타인의 반응은 어떤 경로로도 조작할 수 없다
-  - **테스트 체크리스트** (Playwright MCP 실브라우저 + impersonation SQL 병행. QA 계정·테스트 반응은 종료 후 완전 삭제 — Task 033 관례)
-    - [ ] 추천 클릭 → 카운트 +1, 재클릭 → 해제되어 원복되는지 확인
-    - [ ] 추천 상태에서 비추천 클릭 → 추천 −1·비추천 +1이 되고 행이 2건으로 늘지 않는지 SQL로 확인
-    - [ ] 타 부서 계정으로 반응이 가능한지 확인(부서 제한이 없다는 설계 검증)
-    - [ ] 타인의 반응 행을 impersonation으로 UPDATE/DELETE 시도 → 거부 확인
-    - [ ] 같은 사용자·같은 로그에 두 번째 행 INSERT 시도 → unique 위반으로 거부되는지 확인
-    - [ ] 자기 글 투표 허용/금지가 **확정된 정책대로** 동작하는지 UI·서버 액션 양쪽에서 확인
-    - [ ] 로그 삭제 시 연결된 반응이 CASCADE로 정리되는지 확인
-    - [ ] 버튼 연타·네트워크 실패 강제 주입 시 카운트가 어긋나지 않고 에러 토스트가 뜨는지 확인
-    - [ ] 3개 뷰포트 × 라이트/다크에서 버튼 레이아웃·접근성 이름 확인
-    - [ ] 콘솔 에러·하이드레이션 경고 0건 확인
+- **Task 038: 주간업무일지 추천/비추천 기능 구현 (F031) ✅**
+  - **확정된 결정(착수 전 사용자 확인, 리스크 표 F031 행)**: 자기 글 투표 **허용**(특수 케이스 없음) / 노출 범위 **상세 + 목록**(댓글수 배지와 동일한 2차 조회 방식) / 익명성 **익명 집계만**(명단 비공개, `get_profile_identities` 불필요) / 통계 반영 **대시보드 반영**(신규 `stats_reactions_summary` RPC) / 인터랙션 **낙관적 업데이트**(진행상태·중요도와 동일 관례) / 관리자 예외 **없음**(DELETE도 본인 행만, 수락 기준 "타인의 반응은 어떤 경로로도 조작할 수 없다"와 정합)
+  - [x] **DB 마이그레이션 — `weekly_log_reactions` 테이블 신규 생성**(`create_weekly_log_reactions`, Supabase MCP `apply_migration`)
+    - `id uuid pk`, `weekly_log_id → weekly_logs(id) on delete cascade`, `user_id → profiles(id) on delete cascade`, `reaction text` (`up` | `down` CHECK), `created_at`, `updated_at`(기존 `set_updated_at()` 트리거 재사용)
+    - `unique(weekly_log_id, user_id)` — **1인 1표 토글 모델**. 전환은 기존 행 `reaction` 갱신, 같은 버튼 재클릭은 행 삭제(해제)
+    - 추가 인덱스 없음(unique가 `weekly_log_id` 선두를 커버, 과도한 사전 최적화 지양)
+  - [x] **RLS 정책 — 댓글(F022)과 동일하게 부서 무관**: SELECT 전 인증 공개 / INSERT·UPDATE·DELETE는 `user_id = (select auth.uid())` 본인 행만. **부서 조건·관리자 예외 없음** — 근거를 마이그레이션 테이블 주석에 "Task 032 판단을 재사용하는 두 번째 지점"으로 명시
+  - [x] **집계 조회 방식 구현**(`lib/queries/reactions.ts` 신규) — 상세는 단건 count + 내 반응, 목록은 댓글수와 동일하게 페이지 로그 id들로 2차 조회 후 Map 병합. `weekly_logs`에 카운터 컬럼 비정규화하지 않음
+  - [x] `mcp__supabase__generate_typescript_types` 재생성(`lib/supabase/database.types.ts`), `lib/types/index.ts`에 `WeeklyLogReactionKind`/`WeeklyLogReactionSummary`·목록/상세 확장, `lib/types/stats.ts`에 `ReactionSummaryStats` 추가
+  - [x] `lib/actions/weekly-log-reaction.ts` 신규 — `toggleWeeklyLogReactionAction`(up/down 단일 진입점, `{success, error}` 규약 유지). 클라이언트 카운트 불신, 서버에서 토글 후 재집계한 `summary` 반환. 잘못된 UUID·FK 위반(23503) 방어
+  - [x] `components/weekly-log-reaction-buttons.tsx` 신규 — 추천/비추천 버튼 + 각 카운트 + 내 반응 강조(`variant`·`aria-pressed`). **낙관적 업데이트 적용**(성공 시 서버 재집계값으로 확정, 실패 시 이전 값 롤백 + 토스트). 목록용 읽기 전용 표시는 `components/weekly-log-reaction-counts.tsx`로 분리
+  - [x] 상세 페이지 배치(`weekly-log-detail-view.tsx`, `[id]/page.tsx`) — **canWrite 게이트 없이** 전 로그인 사용자에게 노출. 목록 배치(`page.tsx`·`weekly-log-table.tsx`·`weekly-log-card.tsx`) — 제목 옆 익명 집계(둘 다 0이면 미표시). 대시보드 7번째 차트(`components/dashboard-reaction-chart.tsx`, `stats_reactions_summary` RPC + `getReactionsSummary`, org 범위 준수)
+  - [x] 경계 조건 — 자기 글 투표 **허용**이라 작성자 검사 없음(별도 비활성화 UI 불필요)
+  - [x] 접근성 — 아이콘 전용 버튼에 `aria-label`("추천 N건"[, ", 내가 추천함"]) + `aria-pressed`. 목록 집계도 `aria-label` 부여
+  - [x] `mcp__supabase__get_advisors`(security + performance) — **신규 테이블 관련 경고 0건**(RLS 활성·정책 정상, `stats_reactions_summary`는 SECURITY INVOKER라 DEFINER 경고 없음). 잔여는 기존 baseline(security WARN 7·performance INFO 3) 그대로
+  - **관련 파일**: 마이그레이션, `lib/actions/weekly-log-reaction.ts`·`lib/queries/reactions.ts`·`components/weekly-log-reaction-buttons.tsx`·`components/weekly-log-reaction-counts.tsx`·`components/dashboard-reaction-chart.tsx`(전부 신규), `lib/queries/stats.ts`·`lib/types/index.ts`·`lib/types/stats.ts`·`lib/constants/chart-colors.ts`·`lib/supabase/database.types.ts`, `components/weekly-log-detail-view.tsx`·`weekly-log-table.tsx`·`weekly-log-card.tsx`, `app/protected/weekly-logs/[id]/page.tsx`·`weekly-logs/page.tsx`·`admin/dashboard/page.tsx`
+  - **수락 기준 충족**: 로그인 사용자가 부서 무관하게 임의 로그에 1표만 남기고 재클릭 해제·전환 가능, 타인 반응은 어떤 경로로도 조작 불가(impersonation으로 실증) ✅
+  - **테스트 결과** (Playwright MCP 실브라우저 + impersonation SQL 병행. QA 계정·반응은 종료 후 완전 삭제 — reactions 0/auth 0/profile 0 실측 복원)
+    - [x] 추천 클릭 → 1건·[pressed], 재클릭 → 0 원복(UI 실측)
+    - [x] 추천→비추천 전환 → 추천 0·비추천 1, DB 행 1건 유지(insert 아닌 update, SQL 확인)
+    - [x] 타 부서 계정(dept 966f)으로 타 부서 로그(dept 6090)에 반응 가능(UI + impersonation 모두 실증)
+    - [x] 타인 반응 UPDATE/DELETE impersonation 시도 → 각 0행(RLS 차단)
+    - [x] 같은 사용자·로그 두 번째 INSERT → unique_violation 차단
+    - [x] 자기 글 투표 허용 정책대로 동작(작성자 검사 없음 — UI·서버 액션 모두 제약 없음 확인)
+    - [x] 로그 삭제 시 반응 CASCADE 정리(before 1 → after 0, ROLLBACK 검증)
+    - [x] 낙관적 업데이트 — 버튼은 `isPending` 중 `disabled`로 연타 차단, 실패 시 이전 값 롤백 + 토스트(코드/패턴 확인). **네트워크 실패 강제 주입 재현은 생략** — 진행상태·역할 변경에서 동일 패턴을 Task 036·028에서 실측 검증한 이력이라 회귀만 확인
+    - [x] 뷰포트 — 데스크탑(1280) 테이블 + 모바일(390) 카드 모두 집계 표시·버튼 레이아웃 정상. **다크모드 전용 스크린샷은 생략** — 버튼이 shadcn `Button`(default/outline) + `text-muted-foreground` 테마 토큰만 사용해 구조적으로 테마 인식
+    - [x] 콘솔 에러·하이드레이션 경고 0건(전 세션 `browser_console_messages` all: error 0/warning 0), `npm run build` green, `npx tsc --noEmit` 0오류
   - **범위 밖 유지**: 댓글에 대한 반응, 추천 종류 확장(👍 외 다양한 이모지 반응 — `docs/PRD.md` 4절에서 영구 제외로 명시된 "이모지 반응"은 **댓글** 대상이지만 업무일지에도 확장하지 않는다), 추천 발생 시 알림(F023) 연동, 추천순 정렬·인기 랭킹 화면, 추천 취소 이력 감사 로그
 
 - **Task 039: 애플리케이션 전반 성능 개선 (F032)**
@@ -620,7 +618,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F029 | 업무 타입 관리 UI | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F030 | 관리자 콘솔 조직 범위 제한 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F033 | 슈퍼관리자 등급(조직 생성·전 조직 수정/닫기) | ad hoc(Phase 3 이후 3차, Task 번호 없음) |
-| F031 | 주간업무일지 추천/비추천 | Task 038 (미착수, 스펙 미확정) |
+| F031 | 주간업무일지 추천/비추천 | Task 038 (✅ 완료) |
 | F032 | 애플리케이션 전반 성능 개선 | Task 039 (미착수, 스펙 미확정) |
 | F034 | 슈퍼관리자 대시보드/부서/업무타입/사용자 관리 전 조직 확장 | ad hoc(Phase 3 이후 4차, Task 번호 없음) |
 | F035 | 주간업무일지 목록 작성자 아바타 표시(부서 컬럼 대체) | ad hoc(Phase 3 이후 5차, Task 번호 없음) |
@@ -657,12 +655,12 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | 멘션 입력 UI 구현 방식 | 전용 멘션 라이브러리 도입 vs 기존 shadcn 프리미티브 조합 → 의존성 최소화 관점에서 후자 우선 검토 | Task 033 |
 | `header-nav.tsx` 동시 수정 | Task 025(관리자 메뉴)·031(대시보드 메뉴)·035(알림 벨)이 같은 파일을 수정 → 병렬 진행 시 충돌 관리 필요 | Phase 1·2·4 |
 | 알림 데이터 증가 | 활동량에 비례해 무한 증가 → 보존 기간 정책(예: 90일) 결정 및 운영 문서화 | Task 034·037 |
-| **🆕 F031 자기 글 투표 허용 여부** | 작성자가 자기 업무일지에 스스로 추천할 수 있는가. 허용하면 집계에 자화자찬이 섞이고, 금지하면 "내 업무도 지지 표시한다"는 자연스러운 동작이 사라짐. 확정 후 **UI와 서버 액션 양쪽에** 동일하게 반영해야 함 | Task 038 착수 전 |
-| **🆕 F031 노출 범위** | 상세 페이지에만 둘지, 목록 페이지에도 집계를 노출할지. 목록에 노출하면 댓글수 배지와 동일하게 페이지당 2차 조회가 1회 추가됨 | Task 038 착수 전 |
-| **🆕 F031 익명성** | 누가 추천/비추천했는지 명단을 공개할지, 익명 집계만 보여줄지. 특히 비추천 명단 공개는 조직 내 갈등 소지가 큼. 공개를 택하면 `profiles_select_own_or_admin` RLS 때문에 댓글 작성자 표시와 동일하게 `get_profile_identities` RPC 경유가 필요 | Task 038 착수 전 |
-| **🆕 F031 통계 반영 여부** | 추천/비추천을 관리자 대시보드(F024)의 카드·차트에 반영할지. 반영 시 `stats_*` RPC 1종 신규 + 조직 범위(`org_id`) 파라미터 관례 준수 필요 | Task 038 착수 전 |
-| **🆕 F031 인터랙션 패턴** | 진행상태·업무타입·중요도처럼 낙관적 업데이트(즉시 반영 → 실패 시 롤백)를 적용할지, 서버 응답 후 반영할지. 버튼 연타 시 카운트 어긋남 리스크와 직결 | Task 038 |
-| **🆕 F031 관리자 예외** | 부적절한 반응을 관리자가 삭제할 수 있어야 하는지. 허용 시 DELETE 정책에 `is_admin()` OR 조건 추가(조직 범위 제한 F030과의 정합성도 함께 판단) | Task 038 |
+| ✅ **F031 자기 글 투표 허용 여부 (해결)** | **허용**으로 결정 — 특수 케이스가 없어 구현이 단순하고 우회 리스크도 없다(GitHub 반응처럼 자기 글에도 반응 가능). 서버 액션에 작성자 검사를 두지 않음 | Task 038 |
+| ✅ **F031 노출 범위 (해결)** | **상세 + 목록 모두 노출**로 결정 — 목록은 댓글수 배지와 동일하게 페이지 로그 id 2차 조회 후 Map 병합, 익명 집계만 표시(둘 다 0이면 미표시) | Task 038 |
+| ✅ **F031 익명성 (해결)** | **익명 집계만**으로 결정 — 명단 비공개라 조직 내 갈등 소지 없고 `get_profile_identities` RPC 경유가 불필요해 구현도 단순 | Task 038 |
+| ✅ **F031 통계 반영 여부 (해결)** | **대시보드 반영**으로 결정 — `stats_reactions_summary` RPC 1종 신규(SECURITY INVOKER, `org_id` 파라미터 관례 준수, 0건도 up/down 2행 반환), 대시보드 7번째 차트로 추가 | Task 038 |
+| ✅ **F031 인터랙션 패턴 (해결)** | **낙관적 업데이트**로 결정 — 진행상태·중요도와 동일 패턴. 성공 시 서버 재집계값으로 확정, 실패 시 롤백. 버튼은 `isPending` 중 `disabled`로 연타 차단 | Task 038 |
+| ✅ **F031 관리자 예외 (해결)** | **없음**으로 결정 — DELETE도 본인 행만 허용(수락 기준 "타인의 반응은 어떤 경로로도 조작할 수 없다"와 정합). DELETE 정책에 `is_admin()` OR 조건을 두지 않음 | Task 038 |
 | **🆕 F032 목표 지표 유무** | 수치 목표(예: 목록 페이지 로딩 N초 이하)를 세우는지, 목표 없이 일반 점검·정리로 두는지에 따라 **Task의 완료 조건 자체가 달라짐** | Task 039 착수 전 |
 | **🆕 F032 우선순위 영역** | DB 쿼리·인덱스 / 클라이언트 번들 / 캐싱(`cacheComponents`) 중 어디부터 손댈지. 전부 동시에 바꾸면 개선 효과의 원인 분리가 불가능하므로 영역을 순차로 진행할 것 | Task 039 착수 전 |
 | **🆕 F032와 Task 037의 중복** | Task 037은 v1 신규 테이블 4종 한정 배포 전 점검, Task 039는 MVP 포함 전체 대상 별도 이니셔티브 → 같은 항목을 두 번 손대지 않도록 착수 시 경계 재확인 | Task 037·039 |

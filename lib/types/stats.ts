@@ -1,5 +1,10 @@
 import type { Database } from "@/lib/supabase/database.types";
-import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
+import type {
+  WeeklyLogImportance,
+  WeeklyLogReactionKind,
+  WeeklyLogStatus,
+  WeeklyLogWorkType,
+} from "@/lib/types";
 
 // Task 030: 통계 집계 RPC(SECURITY INVOKER, lib/queries/stats.ts에서 호출)의 반환 타입.
 // database.types.ts의 Functions 정의를 그대로 재사용해 RPC 시그니처가 바뀌면(재생성 시)
@@ -44,6 +49,14 @@ export type MonthlyLogTrend =
 // 0건이면 NULL — "0일"과 "데이터 없음"을 구분하기 위해 0으로 대체하지 않는다.
 export type WorkloadSummary =
   StatsFunctions["stats_workload_summary"]["Returns"][number];
+
+// 추천/비추천 집계 — stats_reactions_summary(from_date, to_date, dept_id, org_id).
+// DB 컬럼은 text이지만 CHECK 제약과 동일한 up/down 2개 값만 오므로 WeeklyLogReactionKind로
+// 좁힌다. 데이터가 0건인 반응도 항상 2행으로 반환된다(다른 stats_*와 동일한 관례).
+export type ReactionSummaryStats = Omit<
+  StatsFunctions["stats_reactions_summary"]["Returns"][number],
+  "reaction"
+> & { reaction: WeeklyLogReactionKind };
 
 // 조회 함수 공통 기간 파라미터. from/to는 "YYYY-MM-DD" 형식(z.string().date() 검증을
 // 거친 값)이며, 비워두면 해당 방향의 필터를 적용하지 않는다(app/protected/weekly-logs와

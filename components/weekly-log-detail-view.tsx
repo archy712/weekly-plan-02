@@ -36,6 +36,7 @@ import {
 } from "@/components/weekly-log-form";
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
+import { WeeklyLogReactionButtons } from "@/components/weekly-log-reaction-buttons";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
 import {
   formatImportanceLabel,
@@ -331,6 +332,8 @@ export function WeeklyLogDetailView({
       {attachmentsState.attachments.length > 0 && (
         <WeeklyLogAttachmentField attachments={attachmentsState.attachments} pendingFiles={[]} />
       )}
+      {/* 추천/비추천은 부서·쓰기권한과 무관하게 모든 로그인 사용자에게 노출한다(F031). */}
+      <WeeklyLogReactionButtons weeklyLogId={log.id} initialSummary={log.reactions} />
       {canWrite && (
         <>
           <div className="flex items-center gap-2">

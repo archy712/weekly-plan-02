@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
+import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { formatDate } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ export function WeeklyLogCard({
         <span>
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
         </span>
+        <WeeklyLogReactionCounts up={item.reaction_up_count} down={item.reaction_down_count} />
       </CardContent>
     </Card>
   );

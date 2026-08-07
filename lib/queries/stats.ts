@@ -3,6 +3,7 @@ import type {
   DepartmentLogStats,
   ImportanceLogStats,
   MonthlyLogTrend,
+  ReactionSummaryStats,
   StatsDateRange,
   StatusLogStats,
   WorkloadSummary,
@@ -133,6 +134,29 @@ export async function getMonthlyTrend(
   }
 
   return data ?? [];
+}
+
+// 추천/비추천 익명 집계(F031). departmentId를 생략하면 전 부서 대상. 데이터가 0건인
+// 반응도 항상 up/down 2행으로 반환된다(다른 stats_*와 동일).
+export async function getReactionsSummary(
+  range: StatsDateRange = {},
+  departmentId?: string,
+  organizationId?: string,
+): Promise<ReactionSummaryStats[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stats_reactions_summary", {
+    from_date: range.from,
+    to_date: range.to,
+    dept_id: departmentId,
+    org_id: organizationId,
+  });
+
+  if (error) {
+    console.error("[lib/queries/stats] stats_reactions_summary 조회 실패:", error);
+    return [];
+  }
+
+  return (data ?? []) as ReactionSummaryStats[];
 }
 
 // 예상 M/M·예상 금액 합계 및 평균 소요 기간. 그룹화 없이 주어진 기간·부서 조건에 대한

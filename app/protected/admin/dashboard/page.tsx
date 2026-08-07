@@ -9,6 +9,7 @@ import {
   getLogsByStatus,
   getLogsByWorkType,
   getMonthlyTrend,
+  getReactionsSummary,
   getWorkloadSummary,
 } from "@/lib/queries/stats";
 import { DASHBOARD_ALL_ORGANIZATIONS, DashboardFilters } from "@/components/dashboard-filters";
@@ -19,6 +20,7 @@ import { DashboardDepartmentChart } from "@/components/dashboard-department-char
 import { DashboardStatusChart } from "@/components/dashboard-status-chart";
 import { DashboardWorkTypeChart } from "@/components/dashboard-worktype-chart";
 import { DashboardImportanceChart } from "@/components/dashboard-importance-chart";
+import { DashboardReactionChart } from "@/components/dashboard-reaction-chart";
 import { DashboardTrendChart } from "@/components/dashboard-trend-chart";
 import {
   DashboardWorkloadChart,
@@ -110,13 +112,14 @@ async function DashboardContent({
   const { data: departmentRows } = await departmentQuery;
   const departments: Department[] = departmentRows ?? [];
 
-  const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend] =
+  const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend, reactionStats] =
     await Promise.all([
       getLogsByDepartment(range, selectedOrgId),
       getLogsByStatus(range, departmentId, selectedOrgId),
       getLogsByWorkType(range, departmentId, selectedOrgId),
       getLogsByImportance(range, departmentId, selectedOrgId),
       getMonthlyTrend(TREND_MONTHS, departmentId, selectedOrgId),
+      getReactionsSummary(range, departmentId, selectedOrgId),
     ]);
 
   // stats_workload_summary는 부서별 그룹화 없이 단일 행 요약만 반환하므로(Task 030),
@@ -157,6 +160,7 @@ async function DashboardContent({
             <DashboardImportanceChart data={importanceStats} />
             <DashboardTrendChart data={monthlyTrend} />
             <DashboardWorkloadChart data={workloadRows} />
+            <DashboardReactionChart data={reactionStats} />
           </div>
         </DimOnPending>
       </div>

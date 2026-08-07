@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
+import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { formatDate } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
@@ -100,6 +101,11 @@ export function WeeklyLogTable({
                     </span>
                   )}
                 </Link>
+                <WeeklyLogReactionCounts
+                  up={item.reaction_up_count}
+                  down={item.reaction_down_count}
+                  className="ml-2 align-middle"
+                />
               </TableCell>
               {showAuthor && (
                 <TableCell className="py-3">

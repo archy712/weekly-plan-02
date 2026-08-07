@@ -42,6 +42,14 @@ export const WORK_TYPE_CHART_COLORS = [
   "hsl(var(--chart-5))",
 ] as const;
 
+// 추천/비추천(F031) 차트 색상. 추천은 긍정 의미의 --success(진행중 상태와 같은 초록이지만
+// 대시보드에서 두 차트가 나란히 놓이지 않아 혼동 우려가 낮음), 비추천은 부정 의미의
+// --destructive를 사용해 의미와 색을 직관적으로 맞춘다.
+export const REACTION_CHART_COLORS = {
+  up: "hsl(var(--success))",
+  down: "hsl(var(--destructive))",
+} as const;
+
 // 업무 중요도 분포(레이더) 차트 색상. 5개 축이 전부 같은 지표(건수)의 단일 계열이라
 // 축마다 다른 색을 줄 필요가 없어 --chart-4 하나만 사용(부서별 M/M·금액 차트가 이미
 // --chart-1/--chart-2를, 업무 타입 차트가 --chart-1~5를 순환 사용 중이라 시각적으로

@@ -19,6 +19,18 @@ export type Profile = Omit<Tables<"profiles">, "role"> & {
 
 export type WeeklyLogStatus = "planned" | "in_progress" | "completed";
 
+// F031 추천/비추천. 1인 1표 토글이라 내 반응은 up/down 둘 중 하나이거나 없음(null).
+export type WeeklyLogReactionKind = "up" | "down";
+
+// 상세/목록에 노출하는 익명 집계 + 내 반응 상태. 누가 눌렀는지 명단은 공개하지 않으므로
+// (F031 익명성 결정) 이 타입은 건수와 "내 반응"만 담는다. my_reaction은 로그인 사용자가
+// 이 로그에 남긴 반응(없으면 null) — 버튼 강조·토글 판정에 쓴다.
+export type WeeklyLogReactionSummary = {
+  up: number;
+  down: number;
+  my_reaction: WeeklyLogReactionKind | null;
+};
+
 // 업무 타입은 관리자가 work_types 테이블에서 관리하는 동적 목록이라 컴파일 타임 리터럴
 // 유니온으로 좁힐 수 없다 — 유효성은 DB 트리거(validate_weekly_log_work_type)가 최종 방어선.
 export type WeeklyLogWorkType = string;
@@ -48,6 +60,10 @@ export type WeeklyLogListItem = Pick<
   author_email: string | null;
   author_avatar_key: string;
   comment_count: number;
+  // F031 목록 노출: 댓글수 배지와 동일하게 현재 페이지 로그 id들로 2차 조회해 병합하는
+  // 익명 집계(추천/비추천 건수). 목록에는 상호작용이 없어 "내 반응"은 담지 않는다.
+  reaction_up_count: number;
+  reaction_down_count: number;
 };
 
 // Excel 다운로드는 목록 조회에 포함되지 않는 업무 속성(업무타입/중요도/예상소요기간·금액/
@@ -83,6 +99,9 @@ export type WeeklyLogDetail = Pick<
   author_email: string | null;
   attachments: WeeklyLogAttachment[];
   comments: WeeklyLogComment[];
+  // F031 상세 페이지 추천/비추천(익명 집계 + 내 반응). 상호작용이 있는 화면이라 목록과
+  // 달리 my_reaction까지 포함한다.
+  reactions: WeeklyLogReactionSummary;
 };
 
 export const ALL_DEPARTMENTS_FILTER = "all" as const;

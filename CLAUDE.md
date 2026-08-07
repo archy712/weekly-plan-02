@@ -184,6 +184,14 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
   - **읽음 처리는 낙관적 업데이트** — 진행상태·역할 변경과 동일하게 즉시 반영 후 서버 액션 실패 시 롤백합니다(`markAllRead`의 부분 실패만 개별 롤백 대신 `resync()`로 서버 진실을 재조회).
 - 보존 정책(읽은 알림 90일 경과분만 수동 삭제, 읽지 않은 알림은 영구 보존)은 `docs/guides/deployment-ops.md` 7절 참고 — pg_cron 등 정기 실행 인프라는 아직 도입하지 않아 자동 정리는 없습니다.
 
+### 추천/비추천 (weekly_log_reactions, F031)
+
+- `weekly_log_reactions`는 **댓글(`weekly_log_comments`)과 동일하게 부서 조건을 걸지 않는 두 번째 지점**입니다 — SELECT는 전 인증 사용자 공개, INSERT/UPDATE/DELETE는 `user_id = (select auth.uid())`인 **본인 행만**(부서 조건·관리자 예외 없음). `weekly_logs`가 이미 전 부서 SELECT 공개이고 댓글 작성도 부서 무관인 상태에서 반응만 부서로 막으면 "타 부서 업무에 반응한다"는 기능이 성립하지 않기 때문입니다(Task 032 판단 재사용, 마이그레이션 테이블 주석에 근거 명시).
+- **1인 1표 토글**은 `unique(weekly_log_id, user_id)`로 DB가 강제합니다. `lib/actions/weekly-log-reaction.ts`의 `toggleWeeklyLogReactionAction`이 유일한 진입점이며, 기존 내 반응을 조회해 (없으면) insert / (같은 반응) delete(해제) / (반대 반응) update(전환 — 새 행을 만들지 않음)로 분기합니다. **클라이언트가 보낸 카운트는 신뢰하지 않고** 토글 후 서버에서 재집계한 `summary`(익명 up/down 건수 + 내 반응)를 반환합니다.
+- **자기 글 투표는 허용**(작성자 검사 없음), **관리자 예외 없음**(DELETE도 본인 행만) — 수락 기준 "타인의 반응은 어떤 경로로도 조작할 수 없다"와 정합. RLS가 본인 행만 허용하므로 서버 액션이 별도 소유권 재검증을 하지 않아도 안전합니다.
+- **집계 조회**(`lib/queries/reactions.ts`)는 두 갈래: 상세 페이지는 단건(up/down + 내 반응), 목록은 **댓글수(`comment_count`)와 동일하게 페이지 로그 id들로 2차 조회 후 Map 병합**(익명 건수만). `weekly_logs`에 카운터 컬럼을 비정규화하지 않습니다. **명단은 공개하지 않으므로**(익명 집계) 댓글 작성자 표시와 달리 `get_profile_identities` RPC 경유가 필요 없습니다.
+- **UI**: 상세 페이지 버튼(`components/weekly-log-reaction-buttons.tsx`)은 **canWrite 게이트 없이 전 로그인 사용자에게 노출**되고 진행상태·중요도와 동일한 낙관적 업데이트(성공 시 서버 재집계값으로 확정, 실패 시 롤백 + 토스트, `isPending` 중 `disabled`로 연타 차단)를 씁니다. 목록의 읽기 전용 집계는 `components/weekly-log-reaction-counts.tsx`(둘 다 0이면 미표시). 대시보드는 `components/dashboard-reaction-chart.tsx` + `stats_reactions_summary` RPC(다른 `stats_*`와 동일하게 SECURITY INVOKER·`org_id` 파라미터·0건도 up/down 2행 반환).
+
 ## Claude Code 커스텀 설정
 
 - `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다(Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다):

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
 import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton";
 import { getWeeklyLogComments } from "@/lib/queries/comments";
+import { getWeeklyLogReactionSummary } from "@/lib/queries/reactions";
 import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 
 async function WeeklyLogDetailContent({
@@ -72,6 +73,9 @@ async function WeeklyLogDetailContent({
   // 댓글도 첨부파일과 동일하게 weekly_logs SELECT 공개 범위를 그대로 따른다(부서 무관 조회).
   const comments = await getWeeklyLogComments(supabase, id);
 
+  // 추천/비추천도 부서 무관 조회(F031). 익명 집계 + 로그인 사용자의 내 반응까지 함께 받는다.
+  const reactions = await getWeeklyLogReactionSummary(supabase, id, data.claims.sub);
+
   // 부서 select의 "비활성 라벨링"과 동일한 패턴 — 이 로그의 부서가 속한 조직의 활성
   // 업무 타입은 항상 노출하고, 다른 조직 소속이거나 비활성인 타입은 이 로그에 이미
   // 선택되어 있는 경우에만(조직 재배정 등으로 어긋난 과거 값 보존) "(비활성)" 라벨로
@@ -117,6 +121,7 @@ async function WeeklyLogDetailContent({
         author_email: log.profiles?.email ?? null,
         attachments: attachments ?? [],
         comments,
+        reactions,
       }}
       canWrite={canWrite}
       currentUserId={data.claims.sub}

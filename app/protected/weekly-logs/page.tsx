@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogListView } from "@/components/weekly-log-list-view";
 import { WeeklyLogListSkeleton } from "@/components/weekly-log-list-skeleton";
+import { getReactionCountsForLogs } from "@/lib/queries/reactions";
 import { escapeLikePattern } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
@@ -177,6 +178,10 @@ async function WeeklyLogsContent({
   // 부서 컬럼을 아바타+작성자명으로 대체하기 위해 author_id들을 get_profile_identities로
   // 배치 조회한다 — profiles_select_own_or_admin RLS 때문에 embed로는 타인의 이름/아바타를
   // 가져올 수 없다(weekly_log_comments 작성자 조회와 동일한 패턴, lib/queries/comments.ts 참고).
+  // 추천/비추천 집계도 댓글수와 동일하게 별개 테이블이라 현재 페이지 로그 id들로 2차
+  // 조회해 병합한다(F031 목록 노출). 익명 집계이므로 건수만 가져온다.
+  const reactionCounts = await getReactionCountsForLogs(supabase, logIds);
+
   const authorIds = [...new Set(logs.map((log) => log.author_id))];
   const identityMap = new Map<
     string,
@@ -206,6 +211,8 @@ async function WeeklyLogsContent({
       author_email: author?.email ?? null,
       author_avatar_key: author?.avatar_key ?? "fox",
       comment_count: commentCounts.get(log.id) ?? 0,
+      reaction_up_count: reactionCounts.get(log.id)?.up ?? 0,
+      reaction_down_count: reactionCounts.get(log.id)?.down ?? 0,
     };
   });
 
