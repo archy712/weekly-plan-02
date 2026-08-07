@@ -4,6 +4,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -14,15 +15,9 @@ import { SortableTableHead, type SortDirection } from "@/components/sortable-tab
 import { formatDate } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
-import type { WeeklyLogListItem } from "@/lib/types";
+import type { WeeklyLogListItem, WeeklyLogSortKey } from "@/lib/types";
 
-export type WeeklyLogSortKey =
-  | "title"
-  | "author_name"
-  | "start_date"
-  | "target_end_date"
-  | "status";
-export type { SortDirection };
+export type { WeeklyLogSortKey, SortDirection };
 
 export function WeeklyLogTable({
   items,
@@ -50,14 +45,13 @@ export function WeeklyLogTable({
               onSort={onSort}
               className="pl-4"
             />
+            {/* 작성자 이름은 weekly_logs 컬럼이 아니라 get_profile_identities RPC로만 조회돼
+                DB ORDER BY로 정렬할 수 없으므로(증분 로딩은 서버 정렬만 사용) 정렬 불가
+                일반 헤더로 둔다. */}
             {showAuthor && (
-              <SortableTableHead
-                label="작성자"
-                sortKey="author_name"
-                currentSortKey={sortKey}
-                currentDirection={sortDirection}
-                onSort={onSort}
-              />
+              <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                작성자
+              </TableHead>
             )}
             <SortableTableHead
               label="시작일"

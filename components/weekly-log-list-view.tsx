@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Search, X } from "lucide-react";
@@ -22,16 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { WeeklyLogTable, type SortDirection, type WeeklyLogSortKey } from "@/components/weekly-log-table";
+import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
@@ -40,6 +37,10 @@ import { cn } from "@/lib/utils";
 import { downloadWeeklyLogListPdf } from "@/lib/pdf/weekly-log-pdf";
 import { downloadWeeklyLogListExcel } from "@/lib/excel/weekly-log-excel";
 import { createClient } from "@/lib/supabase/client";
+import {
+  loadAllWeeklyLogsForExportAction,
+  loadMoreWeeklyLogsAction,
+} from "@/lib/actions/weekly-log-list";
 import { formatDate, getStatusLabel } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
@@ -48,42 +49,16 @@ import type {
   StatusFilter,
   WeeklyLogExportItem,
   WeeklyLogListItem,
+  WeeklyLogSortDirection,
+  WeeklyLogSortKey,
   WeeklyLogStatus,
 } from "@/lib/types";
 
 const STATUS_FILTER_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
 
-const PAGE_SIZE = 20;
-
-// 진행상태는 알파벳/가나다 순이 아니라 업무 흐름 순서(예정 → 진행중 → 완료)로 정렬해야
-// 의미가 통하므로 별도 순위표를 둔다.
-const STATUS_SORT_RANK: Record<WeeklyLogStatus, number> = {
-  planned: 0,
-  in_progress: 1,
-  completed: 2,
-};
-
-// 총 페이지가 많을 때 앞/뒤/현재 주변만 보여주고 나머지는 생략(...) 처리한다.
-function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  const keep = new Set([1, total, current - 1, current, current + 1]);
-  const sorted = [...keep].filter((page) => page >= 1 && page <= total).sort((a, b) => a - b);
-  const result: (number | "ellipsis")[] = [];
-  let previous = 0;
-  for (const page of sorted) {
-    if (previous && page - previous > 1) {
-      result.push("ellipsis");
-    }
-    result.push(page);
-    previous = page;
-  }
-  return result;
-}
-
 export function WeeklyLogListView({
-  items,
+  initialItems,
+  initialHasMore,
   departments,
   currentDepartmentId,
   currentDepartmentName,
@@ -91,8 +66,11 @@ export function WeeklyLogListView({
   currentStatus,
   currentFrom,
   currentTo,
+  currentSortKey,
+  currentSortDirection,
 }: {
-  items: WeeklyLogListItem[];
+  initialItems: WeeklyLogListItem[];
+  initialHasMore: boolean;
   departments: Department[];
   currentDepartmentId: DepartmentFilter;
   currentDepartmentName?: string | null;
@@ -100,90 +78,54 @@ export function WeeklyLogListView({
   currentStatus: StatusFilter;
   currentFrom?: string;
   currentTo?: string;
+  currentSortKey: WeeklyLogSortKey | null;
+  currentSortDirection: WeeklyLogSortDirection;
 }) {
   const router = useRouter();
-  // 필터 변경은 URL 쿼리파라미터만 바뀌는 soft navigation이라 page.tsx의 Suspense
+  // 필터/정렬 변경은 URL 쿼리파라미터만 바뀌는 soft navigation이라 page.tsx의 Suspense
   // fallback(스켈레톤)이 다시 뜨지 않는다 — 서버 재조회 동안 이전 결과가 그대로 남아
   // "화면이 멈춘 것처럼" 보인다. router.push를 transition으로 감싸 isPending을 얻어
   // 상단 로딩 바 + 결과 dim으로 진행 중임을 알린다.
   const [isPending, startTransition] = useTransition();
   const [isDownloading, setIsDownloading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState(currentSearchQuery ?? "");
-  const [sortKey, setSortKey] = useState<WeeklyLogSortKey | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  // 무한 스크롤 상태: 서버가 내려준 첫 배치를 시드로 삼고, 하단 센티넬이 보이면 서버 액션으로
+  // 다음 배치를 이어 붙인다. 정렬은 서버 ORDER BY로 처리하므로 여기서 다시 정렬하지 않는다.
+  const [items, setItems] = useState<WeeklyLogListItem[]>(initialItems);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadingRef = useRef(false);
+
   const [prevKey, setPrevKey] = useState(
-    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}`,
+    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`,
   );
 
-  // 부서/진행상태/기간 필터나 검색어(서버에서 확정된 값)가 바뀌면 항목 목록이 통째로
-  // 달라지므로 페이지를 1로 되돌리고 입력값도 최신 서버 상태와 맞춘다(뒤로가기 대응).
+  // 부서/진행상태/기간/검색어/정렬(서버에서 확정된 값)이 바뀌면 서버가 첫 배치를 다시 내려
+  // initialItems가 갱신되므로, 목록 상태를 그 첫 배치로 되돌린다(뒤로가기·필터 변경 대응).
   // (렌더링 중 상태 조정 — https://react.dev/learn/you-might-not-need-an-effect)
-  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}`;
+  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`;
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
-    setCurrentPage(1);
+    setItems(initialItems);
+    setHasMore(initialHasMore);
     setSearchInput(currentSearchQuery ?? "");
   }
 
-  const sortedItems = useMemo(() => {
-    if (!sortKey) return items;
-    const sorted = [...items].sort((a, b) => {
-      let comparison = 0;
-      switch (sortKey) {
-        case "title":
-          comparison = a.title.localeCompare(b.title, "ko");
-          break;
-        case "author_name": {
-          const nameA = a.author_name ?? a.author_email ?? "";
-          const nameB = b.author_name ?? b.author_email ?? "";
-          comparison = nameA.localeCompare(nameB, "ko");
-          break;
-        }
-        case "start_date":
-          comparison = a.start_date.localeCompare(b.start_date);
-          break;
-        case "target_end_date":
-          comparison = a.target_end_date.localeCompare(b.target_end_date);
-          break;
-        case "status":
-          comparison = STATUS_SORT_RANK[a.status] - STATUS_SORT_RANK[b.status];
-          break;
-      }
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
-    return sorted;
-  }, [items, sortKey, sortDirection]);
-
-  const handleSort = (key: WeeklyLogSortKey) => {
-    if (sortKey === key) {
-      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDirection("asc");
-    }
-    setCurrentPage(1);
-  };
-
-  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const pagedItems = useMemo(
-    () => sortedItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [sortedItems, safePage],
-  );
-
-  // 부서/상태/검색어/기간 필터는 클라이언트 상태가 아니라 URL(?department=&q=&from=&to=)로
-  // 관리한다 — 서버 컴포넌트가 searchParams를 읽어 매번 다시 조회한다. weekly_logs SELECT는
-  // 전 부서 공개이므로 이 필터는 관리자 여부와 관계없이 누구나 사용할 수 있다.
+  // 부서/상태/검색어/기간/정렬 필터는 클라이언트 상태가 아니라 URL로 관리한다 — 서버
+  // 컴포넌트가 searchParams를 읽어 첫 배치를 다시 조회한다. weekly_logs SELECT는 전 부서
+  // 공개이므로 이 필터는 관리자 여부와 관계없이 누구나 사용할 수 있다.
   // "전체 부서"를 골랐을 때도 파라미터를 명시적으로 남겨야, 파라미터가 아예 없는
   // 최초 진입(기본값: admin은 전체, 일반 유저는 소속 부서)과 구분된다.
-  // from/to는 명시적으로 null을 넘기면 해제(파라미터 제거), undefined면 현재 값을 유지한다.
+  // from/to/sort는 명시적으로 null을 넘기면 해제(파라미터 제거), undefined면 현재 값을 유지한다.
   const navigate = (overrides: {
     department?: string;
     q?: string;
     status?: string;
     from?: string | null;
     to?: string | null;
+    sort?: WeeklyLogSortKey | null;
+    dir?: WeeklyLogSortDirection;
   }) => {
     const params = new URLSearchParams();
     params.set("department", overrides.department ?? currentDepartmentId);
@@ -194,6 +136,11 @@ export function WeeklyLogListView({
     const to = overrides.to === null ? "" : (overrides.to ?? currentTo ?? "");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
+    const sortKey = overrides.sort === null ? null : (overrides.sort ?? currentSortKey);
+    if (sortKey) {
+      params.set("sort", sortKey);
+      params.set("dir", overrides.dir ?? currentSortDirection);
+    }
     startTransition(() => {
       router.push(`/protected/weekly-logs?${params.toString()}`);
     });
@@ -228,6 +175,80 @@ export function WeeklyLogListView({
     navigate({ from: range.from, to: range.to });
   };
 
+  // 정렬 헤더 토글은 클라이언트 정렬이 아니라 URL을 바꿔 서버가 첫 배치를 다시 정렬해
+  // 내려주게 한다(증분 로딩과 정합). 같은 키 재클릭 → 오름/내림 토글, 다른 키 → 오름차순부터.
+  const handleSort = (key: WeeklyLogSortKey) => {
+    if (currentSortKey === key) {
+      navigate({ sort: key, dir: currentSortDirection === "asc" ? "desc" : "asc" });
+    } else {
+      navigate({ sort: key, dir: "asc" });
+    }
+  };
+
+  const rawFilters = {
+    department: currentDepartmentId,
+    status: currentStatus,
+    q: currentSearchQuery ?? "",
+    from: currentFrom ?? null,
+    to: currentTo ?? null,
+  };
+  const rawSort = { key: currentSortKey, direction: currentSortDirection };
+
+  // 하단 센티넬이 보이면 다음 배치를 이어 붙인다. 옵저버가 짧은 순간에 여러 번 발화해도
+  // loadingRef로 동시 호출을 막는다(state 갱신 전에 동기적으로 잠금).
+  const loadMore = async () => {
+    if (loadingRef.current || !hasMore || isPending) return;
+    loadingRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const result = await loadMoreWeeklyLogsAction({
+        filters: rawFilters,
+        sort: rawSort,
+        offset: items.length,
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setItems((prev) => {
+        const seen = new Set(prev.map((item) => item.id));
+        const next = result.items.filter((item) => !seen.has(item.id));
+        return next.length > 0 ? [...prev, ...next] : prev;
+      });
+      setHasMore(result.hasMore);
+    } catch {
+      toast.error("목록을 불러오지 못했습니다.");
+    } finally {
+      loadingRef.current = false;
+      setIsLoadingMore(false);
+    }
+  };
+
+  // IntersectionObserver 콜백이 항상 최신 loadMore(최신 items/hasMore/필터 클로저)를 부르도록
+  // ref로 넘긴다 — 옵저버는 한 번만 설치하고 재설치하지 않는다. ref 갱신은 렌더 중이 아니라
+  // 커밋 후(effect)에 한다.
+  const loadMoreRef = useRef(loadMore);
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  });
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMoreRef.current();
+        }
+      },
+      // 센티넬이 화면에 완전히 닿기 전(200px 전방)에 미리 로딩을 시작해 끊김을 줄인다.
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const scopeLabel = currentDepartmentName ?? "전체 부서";
 
   // 화면에 보이는 필터 결과와 PDF가 항상 일치해야 하므로(MVP Task 013 설계 원칙),
@@ -237,10 +258,21 @@ export function WeeklyLogListView({
       ? `${currentFrom ? formatDate(currentFrom) : "제한없음"} ~ ${currentTo ? formatDate(currentTo) : "제한없음"}`
       : undefined;
 
+  // 무한 스크롤로는 화면에 일부만 로드돼 있으므로, 다운로드 시점에 현재 필터·정렬 기준
+  // 전체를 서버에서 다시 조회한다(화면 결과와 항상 일치).
   const handleDownloadPdf = async () => {
     setIsDownloading(true);
     try {
-      await downloadWeeklyLogListPdf({ items: sortedItems, departmentLabel: scopeLabel, dateRangeLabel });
+      const result = await loadAllWeeklyLogsForExportAction({ filters: rawFilters, sort: rawSort });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      await downloadWeeklyLogListPdf({
+        items: result.items,
+        departmentLabel: scopeLabel,
+        dateRangeLabel,
+      });
     } catch {
       toast.error("PDF 생성 중 오류가 발생했습니다.");
     } finally {
@@ -249,12 +281,17 @@ export function WeeklyLogListView({
   };
 
   // Excel은 목록 조회에 없는 업무 속성(업무타입/중요도/예상소요기간·금액/협력업체/내용)까지
-  // 담아야 하므로, 목록 페이로드를 무겁게 만들지 않기 위해 다운로드 시점에만 별도 조회한다.
+  // 담아야 하므로, 전체 목록을 조회한 뒤 그 id들로 상세를 별도 조회해 병합한다.
   // weekly_logs SELECT는 전 부서 공개이므로 부서와 무관하게 조회할 수 있다.
   const handleDownloadExcel = async () => {
     setIsDownloading(true);
     try {
-      const ids = sortedItems.map((item) => item.id);
+      const result = await loadAllWeeklyLogsForExportAction({ filters: rawFilters, sort: rawSort });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      const ids = result.items.map((item) => item.id);
       const supabase = createClient();
       const { data, error } = await supabase
         .from("weekly_logs")
@@ -263,7 +300,7 @@ export function WeeklyLogListView({
       if (error) throw error;
 
       const detailsById = new Map(data.map((row) => [row.id, row]));
-      const exportItems: WeeklyLogExportItem[] = sortedItems.map((item) => {
+      const exportItems: WeeklyLogExportItem[] = result.items.map((item) => {
         const details = detailsById.get(item.id);
         return {
           ...item,
@@ -276,7 +313,11 @@ export function WeeklyLogListView({
         };
       });
 
-      await downloadWeeklyLogListExcel({ items: exportItems, departmentLabel: scopeLabel, dateRangeLabel });
+      await downloadWeeklyLogListExcel({
+        items: exportItems,
+        departmentLabel: scopeLabel,
+        dateRangeLabel,
+      });
     } catch {
       toast.error("Excel 생성 중 오류가 발생했습니다.");
     } finally {
@@ -338,10 +379,7 @@ export function WeeklyLogListView({
               <Search className="size-4" />
             </Button>
           </form>
-          <Select
-            value={currentDepartmentId}
-            onValueChange={handleDepartmentChange}
-          >
+          <Select value={currentDepartmentId} onValueChange={handleDepartmentChange}>
             <SelectTrigger className="w-48" aria-label="부서 필터">
               <SelectValue placeholder="부서 선택" />
             </SelectTrigger>
@@ -421,77 +459,39 @@ export function WeeklyLogListView({
         )}
         aria-busy={isPending}
       >
-      {items.length === 0 ? (
-        <EmptyState
-          title={
-            activeFilters.length > 0 ? "검색 결과가 없습니다" : "등록된 주간업무일지가 없습니다"
-          }
-          description={
-            activeFilters.length > 0
-              ? "위 필터를 조정하거나 개별 배지를 해제해보세요."
-              : "신규 작성 버튼을 눌러 첫 업무일지를 작성해보세요."
-          }
-        />
-      ) : (
-        <>
-          <WeeklyLogTable
-            items={pagedItems}
-            showAuthor
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSort={handleSort}
+        {items.length === 0 ? (
+          <EmptyState
+            title={
+              activeFilters.length > 0 ? "검색 결과가 없습니다" : "등록된 주간업무일지가 없습니다"
+            }
+            description={
+              activeFilters.length > 0
+                ? "위 필터를 조정하거나 개별 배지를 해제해보세요."
+                : "신규 작성 버튼을 눌러 첫 업무일지를 작성해보세요."
+            }
           />
-          <WeeklyLogCardList items={pagedItems} showAuthor />
-          {totalPages > 1 && (
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (safePage > 1) setCurrentPage(safePage - 1);
-                    }}
-                    className={safePage === 1 ? "pointer-events-none opacity-50" : undefined}
-                  />
-                </PaginationItem>
-                {getPageNumbers(safePage, totalPages).map((page, index) =>
-                  page === "ellipsis" ? (
-                    <PaginationItem key={`ellipsis-${index}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        href="#"
-                        isActive={page === safePage}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage(page);
-                        }}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (safePage < totalPages) setCurrentPage(safePage + 1);
-                    }}
-                    className={
-                      safePage === totalPages ? "pointer-events-none opacity-50" : undefined
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
-        </>
-      )}
+        ) : (
+          <>
+            <WeeklyLogTable
+              items={items}
+              showAuthor
+              sortKey={currentSortKey}
+              sortDirection={currentSortDirection}
+              onSort={handleSort}
+            />
+            <WeeklyLogCardList items={items} showAuthor />
+            {/* 더 있으면 하단 센티넬을 두고, 화면에 들어오면 다음 배치를 로딩한다. 진행률을
+                알 수 없는 조회라 비결정형 인디케이터 바로 "불러오는 중"만 알린다. */}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex flex-col items-center gap-2 py-4">
+                <LoadingBar active className="max-w-xs" />
+                <p className="text-muted-foreground text-sm">
+                  {isLoadingMore ? "불러오는 중..." : "스크롤하면 더 불러옵니다"}
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

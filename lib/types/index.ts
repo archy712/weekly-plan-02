@@ -112,6 +112,36 @@ export const ALL_STATUSES_FILTER = "all" as const;
 
 export type StatusFilter = typeof ALL_STATUSES_FILTER | WeeklyLogStatus;
 
+// 무한 스크롤(서버 증분 로딩) 한 배치의 크기. 목록 하단 센티넬이 화면에 들어오면 이만큼
+// 서버에서 range로 추가 조회한다. 전통적 페이지 숫자 방식 대신 필요한 만큼만 로딩한다.
+export const WEEKLY_LOGS_PAGE_SIZE = 30;
+
+// 목록 정렬 키. 증분 로딩에서는 일부만 로드된 상태의 클라이언트 정렬이 어긋나므로 정렬을
+// 전부 서버 ORDER BY로 처리한다 — 그래서 작성자(author_name)는 정렬 대상에서 제외한다.
+// 작성자 이름은 weekly_logs 컬럼이 아니라 profiles_select_own_or_admin RLS 때문에
+// get_profile_identities RPC로만 조회돼 DB에서 ORDER BY로 정렬할 수 없기 때문이다.
+export type WeeklyLogSortKey = "title" | "start_date" | "target_end_date" | "status";
+export type WeeklyLogSortDirection = "asc" | "desc";
+
+// 서버 목록 조회에 필요한 확정된 필터값. page.tsx가 searchParams를 해석해 만들고,
+// 무한 스크롤/다운로드 서버 액션은 클라이언트가 보낸 값을 정규화(normalizeWeeklyLogFilters)해
+// 동일 헬퍼(lib/queries/weekly-logs.ts)를 재사용한다. department/status는 ALL_*_FILTER 또는
+// 구체값, q는 trim된 검색어("" = 없음), from/to는 유효한 날짜 문자열 또는 undefined.
+export type WeeklyLogListFilters = {
+  department: DepartmentFilter;
+  status: StatusFilter;
+  q: string;
+  from?: string;
+  to?: string;
+};
+
+// key가 null이면 기본 정렬(시작일 내림차순, created_at·id로 안정 정렬). 증분 로딩의 range
+// 윈도가 겹치거나 누락되지 않도록 모든 정렬에 created_at·id 타이브레이크를 붙인다.
+export type WeeklyLogListSort = {
+  key: WeeklyLogSortKey | null;
+  direction: WeeklyLogSortDirection;
+};
+
 export const ALL_ROLES_FILTER = "all" as const;
 
 export type RoleFilter = typeof ALL_ROLES_FILTER | UserRole;
