@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { AdminUsersSkeleton } from "@/components/admin-users-skeleton";
 import { UserAdminTable } from "@/components/user-admin-table";
 import {
+  countUsers,
   fetchUsersPage,
   getScopedDepartments,
   normalizeUserAdminFilters,
@@ -49,19 +50,16 @@ async function UsersContent({
     organizationId,
   );
   const departmentIds = departments.map((department) => department.id);
-  const page = await fetchUsersPage(
-    supabase,
-    departmentIds,
-    filters,
-    sort,
-    0,
-    USER_ADMIN_PAGE_SIZE,
-  );
+  const [page, totalCount] = await Promise.all([
+    fetchUsersPage(supabase, departmentIds, filters, sort, 0, USER_ADMIN_PAGE_SIZE),
+    countUsers(supabase, departmentIds, filters),
+  ]);
 
   return (
     <UserAdminTable
       initialItems={page.items}
       initialHasMore={page.hasMore}
+      totalCount={totalCount}
       departments={departments}
       currentDepartmentId={filters.department}
       currentRole={filters.role}

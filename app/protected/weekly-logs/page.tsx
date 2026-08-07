@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogListView } from "@/components/weekly-log-list-view";
 import { WeeklyLogListSkeleton } from "@/components/weekly-log-list-skeleton";
 import {
+  countWeeklyLogs,
   fetchWeeklyLogsPage,
   normalizeWeeklyLogFilters,
   normalizeWeeklyLogSort,
@@ -62,13 +63,14 @@ async function WeeklyLogsContent({
 
   // 첫 배치(30건)와 부서 목록을 병렬로 조회한다. 이후 배치는 클라이언트가 스크롤 시점에
   // loadMoreWeeklyLogsAction으로 이어서 가져온다.
-  const [page, departmentRows] = await Promise.all([
+  const [page, departmentRows, totalCount] = await Promise.all([
     fetchWeeklyLogsPage(supabase, filters, sort, 0, WEEKLY_LOGS_PAGE_SIZE),
     supabase
       .from("departments")
       .select("id, name, created_at, archived_at, organization_id")
       .order("name")
       .then((res) => res.data ?? []),
+    countWeeklyLogs(supabase, filters),
   ]);
 
   const departments: Department[] = departmentRows;
@@ -81,6 +83,7 @@ async function WeeklyLogsContent({
     <WeeklyLogListView
       initialItems={page.items}
       initialHasMore={page.hasMore}
+      totalCount={totalCount}
       departments={departments}
       currentDepartmentId={filters.department}
       currentDepartmentName={currentDepartmentName}

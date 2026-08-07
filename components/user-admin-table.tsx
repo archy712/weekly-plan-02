@@ -46,6 +46,7 @@ import type {
 export function UserAdminTable({
   initialItems,
   initialHasMore,
+  totalCount,
   departments,
   currentDepartmentId,
   currentRole,
@@ -56,6 +57,7 @@ export function UserAdminTable({
 }: {
   initialItems: UserAdminListItem[];
   initialHasMore: boolean;
+  totalCount: number;
   departments: Department[];
   currentDepartmentId: DepartmentFilter;
   currentRole: RoleFilter;
@@ -193,6 +195,10 @@ export function UserAdminTable({
   }, []);
 
   const hasSelfInList = items.some((item) => item.id === currentUserId);
+  const hasActiveFilter =
+    currentDepartmentId !== ALL_DEPARTMENTS_FILTER ||
+    currentRole !== ALL_ROLES_FILTER ||
+    !!currentSearchQuery;
 
   return (
     <div className="flex flex-col gap-4">
@@ -235,6 +241,14 @@ export function UserAdminTable({
             <SelectItem value="superadmin">슈퍼관리자</SelectItem>
           </SelectContent>
         </Select>
+        {/* 현재 필터 조건에 맞는 총 사용자 수 — 필터 행 오른쪽에 우측 정렬. */}
+        <p className="text-muted-foreground ml-auto text-sm">
+          {hasActiveFilter ? "조건에 맞는 사용자" : "총 사용자"}{" "}
+          <span className="text-foreground font-medium">
+            {totalCount.toLocaleString()}
+          </span>
+          명
+        </p>
       </div>
       <div
         className={cn(

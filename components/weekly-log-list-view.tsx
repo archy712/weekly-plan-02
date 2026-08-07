@@ -59,6 +59,7 @@ const STATUS_FILTER_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "com
 export function WeeklyLogListView({
   initialItems,
   initialHasMore,
+  totalCount,
   departments,
   currentDepartmentId,
   currentDepartmentName,
@@ -71,6 +72,7 @@ export function WeeklyLogListView({
 }: {
   initialItems: WeeklyLogListItem[];
   initialHasMore: boolean;
+  totalCount: number;
   departments: Department[];
   currentDepartmentId: DepartmentFilter;
   currentDepartmentName?: string | null;
@@ -424,14 +426,24 @@ export function WeeklyLogListView({
           </Button>
         </div>
       </div>
-      <DateRangeFilter
-        from={currentFrom}
-        to={currentTo}
-        onFromChange={handleFromChange}
-        onToChange={handleToChange}
-        onReset={handleDateRangeReset}
-        onPreset={applyDatePreset}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <DateRangeFilter
+          from={currentFrom}
+          to={currentTo}
+          onFromChange={handleFromChange}
+          onToChange={handleToChange}
+          onReset={handleDateRangeReset}
+          onPreset={applyDatePreset}
+        />
+        {/* 현재 필터 조건에 맞는 총 건수 — 기간 프리셋("최근 3개월") 오른쪽에 우측 정렬. */}
+        <p className="text-muted-foreground ml-auto text-sm">
+          {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
+          <span className="text-foreground font-medium">
+            {totalCount.toLocaleString()}
+          </span>
+          건
+        </p>
+      </div>
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-sm">적용된 필터:</span>

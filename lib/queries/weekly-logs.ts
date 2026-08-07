@@ -94,14 +94,16 @@ export function normalizeWeeklyLogSort(raw: {
 // 반환하므로 재할당으로 조건부 필터를 붙이는 관례(app/protected/weekly-logs/page.tsx와 동일)를
 // 따른다. 검색 시에는 title/content 각각에 ilike를 걸어 두 번 호출한다(.or()는 검색어의
 // 콤마·괄호로 필터 구조가 깨질 수 있어 쓰지 않는다는 프로젝트 관례).
-function buildWeeklyLogsQuery(
-  supabase: Client,
-  filters: WeeklyLogListFilters,
-  sort: WeeklyLogListSort,
-  ilike?: { column: "title" | "content"; pattern: string },
-) {
-  let query = supabase.from("weekly_logs").select(LOGS_SELECT);
-
+// department/status/기간 스칼라 필터를 쿼리에 적용한다. 목록 조회(buildWeeklyLogsQuery)와
+// 건수 조회(countWeeklyLogs)가 반드시 동일한 필터를 쓰도록 공유한다 — 한쪽만 바뀌면 화면
+// 목록과 "총 N건"이 어긋난다.
+function applyScalarFilters<
+  Q extends {
+    eq: (column: string, value: string) => Q;
+    lte: (column: string, value: string) => Q;
+    gte: (column: string, value: string) => Q;
+  },
+>(query: Q, filters: WeeklyLogListFilters): Q {
   if (filters.department !== ALL_DEPARTMENTS_FILTER) {
     query = query.eq("department_id", filters.department);
   }
@@ -115,6 +117,20 @@ function buildWeeklyLogsQuery(
   if (filters.from) {
     query = query.gte("target_end_date", filters.from);
   }
+  return query;
+}
+
+function buildWeeklyLogsQuery(
+  supabase: Client,
+  filters: WeeklyLogListFilters,
+  sort: WeeklyLogListSort,
+  ilike?: { column: "title" | "content"; pattern: string },
+) {
+  let query = applyScalarFilters(
+    supabase.from("weekly_logs").select(LOGS_SELECT),
+    filters,
+  );
+
   if (ilike) {
     query = query.ilike(ilike.column, ilike.pattern);
   }
@@ -302,6 +318,47 @@ export async function fetchWeeklyLogsPage(
   const { rows, hasMore } = await fetchWeeklyLogRows(supabase, filters, sort, { offset, limit });
   const items = await hydrateWeeklyLogRows(supabase, rows);
   return { items, hasMore };
+}
+
+// 현재 필터에 맞는 총 건수. 목록은 무한 스크롤로 일부만 로드되므로 화면에 "총 N건"을 표시할
+// 때 쓴다. 검색어가 있으면 제목/내용 두 ilike의 id 합집합 크기가 총 건수다(.or()는 검색어의
+// 콤마·괄호로 필터가 깨질 수 있어 쓰지 않는다는 관례 — 목록 조회와 동일 분기). 검색 분기는
+// Supabase 기본 max-rows 상한을 따른다(fetchAllWeeklyLogsForExport와 동일한 한계).
+export async function countWeeklyLogs(
+  supabase: Client,
+  filters: WeeklyLogListFilters,
+): Promise<number> {
+  if (filters.q) {
+    const pattern = `%${escapeLikePattern(filters.q)}%`;
+    const [titleRes, contentRes] = await Promise.all([
+      applyScalarFilters(supabase.from("weekly_logs").select("id"), filters).ilike(
+        "title",
+        pattern,
+      ),
+      applyScalarFilters(supabase.from("weekly_logs").select("id"), filters).ilike(
+        "content",
+        pattern,
+      ),
+    ]);
+    if (titleRes.error) throw titleRes.error;
+    if (contentRes.error) throw contentRes.error;
+
+    const ids = new Set<string>();
+    for (const row of [
+      ...((titleRes.data ?? []) as { id: string }[]),
+      ...((contentRes.data ?? []) as { id: string }[]),
+    ]) {
+      ids.add(row.id);
+    }
+    return ids.size;
+  }
+
+  const { count, error } = await applyScalarFilters(
+    supabase.from("weekly_logs").select("id", { count: "exact", head: true }),
+    filters,
+  );
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // PDF/Excel 다운로드용 전체 조회. 화면의 필터·정렬 결과와 항상 일치해야 하므로 동일 헬퍼를

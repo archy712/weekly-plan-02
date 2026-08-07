@@ -75,18 +75,15 @@ export function normalizeUserAdminSort(raw: {
   return { key, direction };
 }
 
-// range가 있으면 [offset, offset+limit) 윈도를 반환하고 다음 배치 존재 여부(hasMore)를
-// limit+1건 조회로 판정한다. range가 null이면 전체를 반환한다(기존 상한을 따른다).
-async function fetchUserRows(
-  supabase: Client,
-  departmentIds: string[],
-  filters: UserAdminListFilters,
-  sort: UserAdminListSort,
-  range: { offset: number; limit: number } | null,
-): Promise<{ rows: UserRow[]; hasMore: boolean }> {
-  // 조직에 부서가 하나도 없으면 in([])로 "일치 행 없음"을 안전하게 표현한다.
-  let query = supabase.from("profiles").select(USERS_SELECT).in("department_id", departmentIds);
-
+// department/role/이메일 검색 필터를 쿼리에 적용한다. 목록 조회(fetchUserRows)와 건수
+// 조회(countUsers)가 반드시 동일한 필터를 쓰도록 공유한다 — 한쪽만 바뀌면 화면 목록과
+// "총 N명"이 어긋난다. (department_id in(...) 조직 스코프는 호출부에서 먼저 적용한다.)
+function applyUserFilters<
+  Q extends {
+    eq: (column: string, value: string) => Q;
+    ilike: (column: string, pattern: string) => Q;
+  },
+>(query: Q, filters: UserAdminListFilters): Q {
   if (filters.department !== ALL_DEPARTMENTS_FILTER) {
     query = query.eq("department_id", filters.department);
   }
@@ -97,6 +94,23 @@ async function fetchUserRows(
     // 이메일 단일 컬럼 검색이라 .or() 병합이 필요 없다. %/_/\ 이스케이프만 적용한다.
     query = query.ilike("email", `%${escapeLikePattern(filters.q)}%`);
   }
+  return query;
+}
+
+// range가 있으면 [offset, offset+limit) 윈도를 반환하고 다음 배치 존재 여부(hasMore)를
+// limit+1건 조회로 판정한다. range가 null이면 전체를 반환한다(기존 상한을 따른다).
+async function fetchUserRows(
+  supabase: Client,
+  departmentIds: string[],
+  filters: UserAdminListFilters,
+  sort: UserAdminListSort,
+  range: { offset: number; limit: number } | null,
+): Promise<{ rows: UserRow[]; hasMore: boolean }> {
+  // 조직에 부서가 하나도 없으면 in([])로 "일치 행 없음"을 안전하게 표현한다.
+  let query = applyUserFilters(
+    supabase.from("profiles").select(USERS_SELECT).in("department_id", departmentIds),
+    filters,
+  );
 
   // 기본 정렬은 이메일 오름차순. 정렬 키는 profiles의 실제 컬럼(email/name/created_at)만
   // 허용되므로 그대로 order에 넘긴다(role/department_name은 정렬 대상이 아니다).
@@ -131,6 +145,25 @@ function toUserAdminItems(rows: UserRow[]): UserAdminListItem[] {
     avatar_key: row.avatar_key ?? "fox",
     created_at: row.created_at,
   }));
+}
+
+// 현재 필터에 맞는 총 사용자 수. 목록은 무한 스크롤로 일부만 로드되므로 화면에 "총 N명"을
+// 표시할 때 쓴다. 조직 스코프(.in(department_id, ...))와 department/role/이메일 검색 필터를
+// 목록 조회와 동일하게 적용해 head count로 정확 건수를 구한다.
+export async function countUsers(
+  supabase: Client,
+  departmentIds: string[],
+  filters: UserAdminListFilters,
+): Promise<number> {
+  const { count, error } = await applyUserFilters(
+    supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .in("department_id", departmentIds),
+    filters,
+  );
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // 무한 스크롤 한 배치(초기 SSR 및 스크롤 추가 로딩 공용).
