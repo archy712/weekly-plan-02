@@ -83,11 +83,12 @@ const features = [
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center">
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <Suspense fallback={null}>
-          <LandingHeader />
-        </Suspense>
-        <div className="flex-1 w-full max-w-5xl flex flex-col gap-10 px-5 pb-16 pt-8 sm:pb-20 sm:pt-10">
+      <div className="flex-1 w-full flex flex-col gap-5 items-center">
+        <div className="flex-1 w-full flex flex-col gap-20 items-center">
+          <Suspense fallback={null}>
+            <LandingHeader />
+          </Suspense>
+          <div className="w-full max-w-5xl flex flex-col gap-10 px-5 pb-16 pt-8 sm:pb-20 sm:pt-10">
           <section className="flex flex-col items-center gap-8 py-6 text-center">
             <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
               부서별 주간업무일지를
@@ -134,6 +135,7 @@ export default function Home() {
               ))}
             </div>
           </section>
+          </div>
         </div>
         <SiteFooter />
       </div>

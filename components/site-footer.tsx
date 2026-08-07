@@ -61,7 +61,7 @@ export function SiteFooter() {
           기술 스택
         </Link>
       </div>
-      <p>
+      <p className="mt-3">
         Developed by <span className="font-bold">archy712@gmail.com</span>
       </p>
     </footer>
