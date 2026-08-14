@@ -17,12 +17,12 @@ async function AdminOrganizationCard({ organizationId }: { organizationId: strin
   const [{ data: organization, error: organizationError }, { count: departmentCount }] =
     await Promise.all([
       supabase
-        .from("weeklyplan_organizations")
+        .from("organizations")
         .select("id, name, archived_at")
         .eq("id", organizationId)
         .single(),
       supabase
-        .from("weeklyplan_departments")
+        .from("departments")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId),
     ]);
@@ -60,8 +60,8 @@ async function SuperAdminOrganizationList() {
     { data: organizations, error: organizationsError },
     { data: departmentRows, error: departmentsError },
   ] = await Promise.all([
-    supabase.from("weeklyplan_organizations").select("id, name, archived_at").order("name"),
-    supabase.from("weeklyplan_departments").select("organization_id"),
+    supabase.from("organizations").select("id, name, archived_at").order("name"),
+    supabase.from("departments").select("organization_id"),
   ]);
 
   if (organizationsError) {

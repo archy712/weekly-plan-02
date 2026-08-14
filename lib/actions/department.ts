@@ -47,11 +47,11 @@ async function toActionError(
   if (error.code === FOREIGN_KEY_VIOLATION && departmentId) {
     const [{ count: memberCount }, { count: logCount }] = await Promise.all([
       supabase
-        .from("weeklyplan_profiles")
+        .from("profiles")
         .select("id", { count: "exact", head: true })
         .eq("department_id", departmentId),
       supabase
-        .from("weeklyplan_weekly_logs")
+        .from("weekly_logs")
         .select("id", { count: "exact", head: true })
         .eq("department_id", departmentId),
     ]);
@@ -78,7 +78,7 @@ export async function createDepartmentAction(
   const auth = await requireLoggedIn(supabase);
   if ("error" in auth) return { success: false, error: auth.error };
 
-  const { error } = await supabase.from("weeklyplan_departments").insert({
+  const { error } = await supabase.from("departments").insert({
     name: parsed.data.name,
     organization_id: parsed.data.organization_id,
   });
@@ -111,7 +111,7 @@ export async function updateDepartmentAction(
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_departments")
+    .from("departments")
     .update({ name: parsed.data.name, organization_id: parsed.data.organization_id })
     .eq("id", id)
     .select("id")
@@ -139,7 +139,7 @@ export async function archiveDepartmentAction(id: string): Promise<DepartmentAct
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_departments")
+    .from("departments")
     .update({ archived_at: new Date().toISOString() })
     .eq("id", id)
     .select("id")
@@ -162,7 +162,7 @@ export async function restoreDepartmentAction(id: string): Promise<DepartmentAct
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_departments")
+    .from("departments")
     .update({ archived_at: null })
     .eq("id", id)
     .select("id")
@@ -189,7 +189,7 @@ export async function deleteDepartmentAction(id: string): Promise<DepartmentActi
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: deleted, error } = await supabase
-    .from("weeklyplan_departments")
+    .from("departments")
     .delete()
     .eq("id", id)
     .select("id")

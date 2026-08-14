@@ -71,7 +71,7 @@ async function DashboardContent({
   let selectedOrgId: string | undefined = organizationId;
   if (isSuperAdmin) {
     const { data: organizationRows } = await supabase
-      .from("weeklyplan_organizations")
+      .from("organizations")
       .select("id, name, archived_at")
       .order("name");
     organizations = organizationRows ?? [];
@@ -103,7 +103,7 @@ async function DashboardContent({
   // 부서 드롭다운도 선택된 조직 범위를 따른다 — "전체 조직" 선택 시 전 조직의 부서를
   // 모두 보여주고, 특정 조직 선택 시 그 조직의 부서만 보여준다.
   let departmentQuery = supabase
-    .from("weeklyplan_departments")
+    .from("departments")
     .select("id, name, created_at, archived_at, organization_id")
     .order("name");
   if (selectedOrgId) {

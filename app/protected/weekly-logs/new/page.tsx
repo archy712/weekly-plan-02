@@ -14,8 +14,8 @@ async function NewWeeklyLogContent() {
   }
 
   const { data: profile } = await supabase
-    .from("weeklyplan_profiles")
-    .select("department_id, departments:weeklyplan_departments(organization_id)")
+    .from("profiles")
+    .select("department_id, departments:departments(organization_id)")
     .eq("id", data.claims.sub)
     .maybeSingle();
 
@@ -26,7 +26,7 @@ async function NewWeeklyLogContent() {
   // 신규 작성이라 기존 선택값이 없으므로, 작성자 부서가 속한 조직의 활성 업무 타입만
   // 노출한다(업무 타입도 부서처럼 조직 하위에 속함).
   const { data: workTypeRows, error: workTypesError } = await supabase
-    .from("weeklyplan_work_types")
+    .from("work_types")
     .select("name")
     .eq("organization_id", profile.departments.organization_id)
     .is("archived_at", null)

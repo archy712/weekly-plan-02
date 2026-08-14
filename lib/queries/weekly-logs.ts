@@ -14,7 +14,7 @@ import type {
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 const LOGS_SELECT =
-  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, departments:weeklyplan_departments(name)";
+  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, departments:departments(name)";
 
 type LogRow = {
   id: string;
@@ -127,7 +127,7 @@ function buildWeeklyLogsQuery(
   ilike?: { column: "title" | "content"; pattern: string },
 ) {
   let query = applyScalarFilters(
-    supabase.from("weeklyplan_weekly_logs").select(LOGS_SELECT),
+    supabase.from("weekly_logs").select(LOGS_SELECT),
     filters,
   );
 
@@ -256,7 +256,7 @@ async function hydrateWeeklyLogRows(
   const [commentRows, reactionCounts, identities] = await Promise.all([
     hasLogs
       ? supabase
-          .from("weeklyplan_weekly_log_comments")
+          .from("weekly_log_comments")
           .select("weekly_log_id")
           .in("weekly_log_id", logIds)
           .is("deleted_at", null)
@@ -265,7 +265,7 @@ async function hydrateWeeklyLogRows(
     getReactionCountsForLogs(supabase, logIds),
     hasLogs
       ? supabase
-          .rpc("weeklyplan_get_profile_identities", { profile_ids: authorIds })
+          .rpc("get_profile_identities", { profile_ids: authorIds })
           .then((res) => res.data ?? [])
       : Promise.resolve(
           [] as { id: string; email: string; name: string | null; avatar_key: string }[],
@@ -331,11 +331,11 @@ export async function countWeeklyLogs(
   if (filters.q) {
     const pattern = `%${escapeLikePattern(filters.q)}%`;
     const [titleRes, contentRes] = await Promise.all([
-      applyScalarFilters(supabase.from("weeklyplan_weekly_logs").select("id"), filters).ilike(
+      applyScalarFilters(supabase.from("weekly_logs").select("id"), filters).ilike(
         "title",
         pattern,
       ),
-      applyScalarFilters(supabase.from("weeklyplan_weekly_logs").select("id"), filters).ilike(
+      applyScalarFilters(supabase.from("weekly_logs").select("id"), filters).ilike(
         "content",
         pattern,
       ),
@@ -354,7 +354,7 @@ export async function countWeeklyLogs(
   }
 
   const { count, error } = await applyScalarFilters(
-    supabase.from("weeklyplan_weekly_logs").select("id", { count: "exact", head: true }),
+    supabase.from("weekly_logs").select("id", { count: "exact", head: true }),
     filters,
   );
   if (error) throw error;

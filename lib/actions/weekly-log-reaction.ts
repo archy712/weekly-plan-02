@@ -41,7 +41,7 @@ export async function toggleWeeklyLogReactionAction(
   const userId = claims.claims.sub;
 
   const { data: existing, error: selectError } = await supabase
-    .from("weeklyplan_weekly_log_reactions")
+    .from("weekly_log_reactions")
     .select("id, reaction")
     .eq("weekly_log_id", weeklyLogId)
     .eq("user_id", userId)
@@ -55,18 +55,18 @@ export async function toggleWeeklyLogReactionAction(
   if (!existing) {
     // weekly_log_id가 존재하지 않으면 FK 위반(23503)으로 실패한다(잘못된 id 방어).
     const { error } = await supabase
-      .from("weeklyplan_weekly_log_reactions")
+      .from("weekly_log_reactions")
       .insert({ weekly_log_id: weeklyLogId, user_id: userId, reaction: parsedReaction.data });
     writeError = error;
   } else if (existing.reaction === parsedReaction.data) {
     const { error } = await supabase
-      .from("weeklyplan_weekly_log_reactions")
+      .from("weekly_log_reactions")
       .delete()
       .eq("id", existing.id);
     writeError = error;
   } else {
     const { error } = await supabase
-      .from("weeklyplan_weekly_log_reactions")
+      .from("weekly_log_reactions")
       .update({ reaction: parsedReaction.data })
       .eq("id", existing.id);
     writeError = error;

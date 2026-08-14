@@ -11,8 +11,8 @@ export async function HeroCta() {
     // 헤더 타이틀과 동일한 조회로, 로그인한 사용자가 소속된 조직명을 버튼에 반영한다
     // (components/site-header-title.tsx와 동일한 조인 구조).
     const { data: profile } = await supabase
-      .from("weeklyplan_profiles")
-      .select("departments:weeklyplan_departments(organizations:weeklyplan_organizations(name))")
+      .from("profiles")
+      .select("departments:departments(organizations:organizations(name))")
       .eq("id", data.claims.sub)
       .maybeSingle();
     const organizationName = profile?.departments?.organizations?.name;

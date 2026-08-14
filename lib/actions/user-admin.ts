@@ -32,8 +32,8 @@ async function requireCallerAdmin(
   // getClaims()는 JWT 로컬 디코딩이라 role 변경이 즉시 반영되지 않을 수 있어
   // 관리자 여부 판단에는 절대 쓰지 않는다(CLAUDE.md 관례).
   const { data: callerProfile } = await supabase
-    .from("weeklyplan_profiles")
-    .select("role, departments:weeklyplan_departments(organization_id)")
+    .from("profiles")
+    .select("role, departments:departments(organization_id)")
     .eq("id", callerId)
     .maybeSingle();
 
@@ -60,7 +60,7 @@ async function isDepartmentInOrganization(
 ): Promise<boolean> {
   if (!departmentId) return false;
   const { data } = await supabase
-    .from("weeklyplan_departments")
+    .from("departments")
     .select("id")
     .eq("id", departmentId)
     .eq("organization_id", organizationId)
@@ -79,7 +79,7 @@ async function isDepartmentAccessible(
   if (!departmentId) return false;
   if (auth.isSuperAdmin) {
     const { data } = await supabase
-      .from("weeklyplan_departments")
+      .from("departments")
       .select("id")
       .eq("id", departmentId)
       .maybeSingle();
@@ -128,7 +128,7 @@ export async function updateUserRoleAction(
   // 대상 사용자가 호출자와 같은 조직 소속인지 확인 — 다른 조직 사용자의 역할은
   // 건드릴 수 없다. 슈퍼관리자는 F034로 이 조직 일치 검증을 건너뛴다(전 조직 허용).
   const { data: targetProfile } = await supabase
-    .from("weeklyplan_profiles")
+    .from("profiles")
     .select("department_id")
     .eq("id", userId)
     .maybeSingle();
@@ -141,7 +141,7 @@ export async function updateUserRoleAction(
   }
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_profiles")
+    .from("profiles")
     .update({ role })
     .eq("id", userId)
     .select("id")
@@ -179,7 +179,7 @@ export async function updateUserDepartmentAction(
   // 차단한다. 슈퍼관리자는 F034로 이 조직 일치 검증을 건너뛴다(전 조직 허용, 다른
   // 조직으로의 부서 이동도 포함).
   const { data: targetProfile } = await supabase
-    .from("weeklyplan_profiles")
+    .from("profiles")
     .select("department_id")
     .eq("id", userId)
     .maybeSingle();
@@ -193,7 +193,7 @@ export async function updateUserDepartmentAction(
   }
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_profiles")
+    .from("profiles")
     .update({ department_id: departmentId })
     .eq("id", userId)
     .select("id")

@@ -15,8 +15,8 @@ async function getCurrentUserOrganizationName(): Promise<string | null> {
   if (!claims) return null;
 
   const { data: profile } = await supabase
-    .from("weeklyplan_profiles")
-    .select("departments:weeklyplan_departments(organizations:weeklyplan_organizations(name))")
+    .from("profiles")
+    .select("departments:departments(organizations:organizations(name))")
     .eq("id", claims.sub)
     .maybeSingle();
 

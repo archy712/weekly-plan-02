@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      weeklyplan_departments: {
+      departments: {
         Row: {
           archived_at: string | null
           created_at: string
@@ -38,15 +38,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_departments_organization_id_fkey"
+            foreignKeyName: "departments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_organizations"
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_notifications: {
+      notifications: {
         Row: {
           actor_id: string
           comment_id: string | null
@@ -79,36 +79,36 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_notifications_actor_id_fkey"
+            foreignKeyName: "notifications_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_notifications_comment_id_fkey"
+            foreignKeyName: "notifications_comment_id_fkey"
             columns: ["comment_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_log_comments"
+            referencedRelation: "weekly_log_comments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_notifications_recipient_id_fkey"
+            foreignKeyName: "notifications_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_notifications_weekly_log_id_fkey"
+            foreignKeyName: "notifications_weekly_log_id_fkey"
             columns: ["weekly_log_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_logs"
+            referencedRelation: "weekly_logs"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_organizations: {
+      organizations: {
         Row: {
           archived_at: string | null
           created_at: string
@@ -129,7 +129,7 @@ export type Database = {
         }
         Relationships: []
       }
-      weeklyplan_profiles: {
+      profiles: {
         Row: {
           avatar_key: string
           bio: string | null
@@ -168,15 +168,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_profiles_department_id_fkey"
+            foreignKeyName: "profiles_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_departments"
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_weekly_log_attachments: {
+      weekly_log_attachments: {
         Row: {
           content_type: string | null
           created_at: string
@@ -212,29 +212,29 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_weekly_log_attachments_department_id_fkey"
+            foreignKeyName: "weekly_log_attachments_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_departments"
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_log_attachments_uploaded_by_fkey"
+            foreignKeyName: "weekly_log_attachments_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_log_attachments_weekly_log_id_fkey"
+            foreignKeyName: "weekly_log_attachments_weekly_log_id_fkey"
             columns: ["weekly_log_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_logs"
+            referencedRelation: "weekly_logs"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_weekly_log_comment_mentions: {
+      weekly_log_comment_mentions: {
         Row: {
           comment_id: string
           created_at: string
@@ -252,22 +252,22 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_weekly_log_comment_mentions_comment_id_fkey"
+            foreignKeyName: "weekly_log_comment_mentions_comment_id_fkey"
             columns: ["comment_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_log_comments"
+            referencedRelation: "weekly_log_comments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_log_comment_mentions_mentioned_user_id_fkey"
+            foreignKeyName: "weekly_log_comment_mentions_mentioned_user_id_fkey"
             columns: ["mentioned_user_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_weekly_log_comments: {
+      weekly_log_comments: {
         Row: {
           author_id: string
           content: string
@@ -300,29 +300,29 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_weekly_log_comments_author_id_fkey"
+            foreignKeyName: "weekly_log_comments_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_log_comments_parent_comment_id_fkey"
+            foreignKeyName: "weekly_log_comments_parent_comment_id_fkey"
             columns: ["parent_comment_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_log_comments"
+            referencedRelation: "weekly_log_comments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_log_comments_weekly_log_id_fkey"
+            foreignKeyName: "weekly_log_comments_weekly_log_id_fkey"
             columns: ["weekly_log_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_logs"
+            referencedRelation: "weekly_logs"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_weekly_log_reactions: {
+      weekly_log_reactions: {
         Row: {
           created_at: string
           id: string
@@ -349,22 +349,22 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_weekly_log_reactions_user_id_fkey"
+            foreignKeyName: "weekly_log_reactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_log_reactions_weekly_log_id_fkey"
+            foreignKeyName: "weekly_log_reactions_weekly_log_id_fkey"
             columns: ["weekly_log_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_weekly_logs"
+            referencedRelation: "weekly_logs"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_weekly_logs: {
+      weekly_logs: {
         Row: {
           author_id: string
           content: string
@@ -418,22 +418,22 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_weekly_logs_author_id_fkey"
+            foreignKeyName: "weekly_logs_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_profiles"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "weeklyplan_weekly_logs_department_id_fkey"
+            foreignKeyName: "weekly_logs_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_departments"
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
       }
-      weeklyplan_work_types: {
+      work_types: {
         Row: {
           archived_at: string | null
           created_at: string
@@ -457,10 +457,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "weeklyplan_work_types_organization_id_fkey"
+            foreignKeyName: "work_types_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "weeklyplan_organizations"
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -470,9 +470,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      weeklyplan_current_department_id: { Args: never; Returns: string }
-      weeklyplan_current_organization_id: { Args: never; Returns: string }
-      weeklyplan_get_profile_identities: {
+      current_department_id: { Args: never; Returns: string }
+      current_organization_id: { Args: never; Returns: string }
+      get_profile_identities: {
         Args: { profile_ids: string[] }
         Returns: {
           avatar_key: string
@@ -481,9 +481,9 @@ export type Database = {
           name: string
         }[]
       }
-      weeklyplan_is_admin: { Args: never; Returns: boolean }
-      weeklyplan_is_superadmin: { Args: never; Returns: boolean }
-      weeklyplan_search_mentionable_profiles: {
+      is_admin: { Args: never; Returns: boolean }
+      is_superadmin: { Args: never; Returns: boolean }
+      search_mentionable_profiles: {
         Args: { max_results?: number; search_query: string }
         Returns: {
           avatar_key: string
@@ -492,7 +492,7 @@ export type Database = {
           name: string
         }[]
       }
-      weeklyplan_stats_logs_by_department: {
+      stats_logs_by_department: {
         Args: { from_date?: string; org_id?: string; to_date?: string }
         Returns: {
           completed_count: number
@@ -503,7 +503,7 @@ export type Database = {
           total_count: number
         }[]
       }
-      weeklyplan_stats_logs_by_importance: {
+      stats_logs_by_importance: {
         Args: {
           dept_id?: string
           from_date?: string
@@ -515,7 +515,7 @@ export type Database = {
           log_count: number
         }[]
       }
-      weeklyplan_stats_logs_by_status: {
+      stats_logs_by_status: {
         Args: {
           dept_id?: string
           from_date?: string
@@ -527,7 +527,7 @@ export type Database = {
           status: string
         }[]
       }
-      weeklyplan_stats_logs_by_work_type: {
+      stats_logs_by_work_type: {
         Args: {
           dept_id?: string
           from_date?: string
@@ -539,7 +539,7 @@ export type Database = {
           work_type: string
         }[]
       }
-      weeklyplan_stats_logs_monthly_trend: {
+      stats_logs_monthly_trend: {
         Args: { dept_id?: string; months?: number; org_id?: string }
         Returns: {
           completed_count: number
@@ -547,7 +547,7 @@ export type Database = {
           month: string
         }[]
       }
-      weeklyplan_stats_reactions_summary: {
+      stats_reactions_summary: {
         Args: {
           dept_id?: string
           from_date?: string
@@ -559,7 +559,7 @@ export type Database = {
           reaction_count: number
         }[]
       }
-      weeklyplan_stats_workload_summary: {
+      stats_workload_summary: {
         Args: {
           dept_id?: string
           from_date?: string

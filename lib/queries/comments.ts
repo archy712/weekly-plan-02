@@ -10,7 +10,7 @@ export async function getWeeklyLogComments(
   weeklyLogId: string,
 ): Promise<WeeklyLogComment[]> {
   const { data: rows, error } = await supabase
-    .from("weeklyplan_weekly_log_comments")
+    .from("weekly_log_comments")
     .select("id, weekly_log_id, author_id, content, parent_comment_id, created_at, updated_at, deleted_at")
     .eq("weekly_log_id", weeklyLogId)
     .order("created_at", { ascending: true });
@@ -24,7 +24,7 @@ export async function getWeeklyLogComments(
   }
 
   const { data: mentionRows, error: mentionsError } = await supabase
-    .from("weeklyplan_weekly_log_comment_mentions")
+    .from("weekly_log_comment_mentions")
     .select("comment_id, mentioned_user_id")
     .in(
       "comment_id",
@@ -47,7 +47,7 @@ export async function getWeeklyLogComments(
   const identityIds = [...new Set([...authorIds, ...mentionedIds])];
 
   const { data: identities, error: identitiesError } = await supabase.rpc(
-    "weeklyplan_get_profile_identities",
+    "get_profile_identities",
     { profile_ids: identityIds },
   );
 

@@ -56,7 +56,7 @@ export async function createCommentAction(
   const content = sanitizeCommentContent(parsed.data.content);
 
   const { data: inserted, error } = await supabase
-    .from("weeklyplan_weekly_log_comments")
+    .from("weekly_log_comments")
     .insert({
       weekly_log_id: weeklyLogId,
       author_id: auth.userId,
@@ -75,10 +75,10 @@ export async function createCommentAction(
   const candidateIds = extractMentionedUserIds(content);
   if (candidateIds.length > 0) {
     // profiles_select_own_or_admin이 본인/관리자 행만 허용하므로, 일반 사용자가 멘션한
-    // 타인의 id는 평범한 .from("weeklyplan_profiles") 조회로는 존재 여부를 확인할 수 없다(RLS가
+    // 타인의 id는 평범한 .from("profiles") 조회로는 존재 여부를 확인할 수 없다(RLS가
     // 조용히 0건으로 걸러냄). get_profile_identities는 이 목적을 위해 만든 SECURITY
     // DEFINER RPC라 RLS와 무관하게 실존 여부를 정확히 판별한다(Task 033).
-    const { data: existingProfiles } = await supabase.rpc("weeklyplan_get_profile_identities", {
+    const { data: existingProfiles } = await supabase.rpc("get_profile_identities", {
       profile_ids: candidateIds,
     });
 
@@ -88,7 +88,7 @@ export async function createCommentAction(
     }));
 
     if (mentionRows.length > 0) {
-      await supabase.from("weeklyplan_weekly_log_comment_mentions").insert(mentionRows);
+      await supabase.from("weekly_log_comment_mentions").insert(mentionRows);
     }
   }
 
@@ -114,7 +114,7 @@ export async function updateCommentAction(
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_weekly_log_comments")
+    .from("weekly_log_comments")
     .update({ content: sanitizeCommentContent(parsed.data.content) })
     .eq("id", id)
     .select("id")
@@ -144,7 +144,7 @@ export async function deleteCommentAction(
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_weekly_log_comments")
+    .from("weekly_log_comments")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
     .select("id")

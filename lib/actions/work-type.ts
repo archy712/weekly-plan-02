@@ -57,7 +57,7 @@ export async function createWorkTypeAction(
   const auth = await requireLoggedIn(supabase);
   if ("error" in auth) return { success: false, error: auth.error };
 
-  const { error } = await supabase.from("weeklyplan_work_types").insert({
+  const { error } = await supabase.from("work_types").insert({
     name: parsed.data.name,
     organization_id: parsed.data.organization_id,
   });
@@ -87,7 +87,7 @@ export async function updateWorkTypeAction(
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_work_types")
+    .from("work_types")
     .update({ name: parsed.data.name, organization_id: parsed.data.organization_id })
     .eq("id", id)
     .select("id")
@@ -112,7 +112,7 @@ export async function archiveWorkTypeAction(id: string): Promise<WorkTypeActionR
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_work_types")
+    .from("work_types")
     .update({ archived_at: new Date().toISOString() })
     .eq("id", id)
     .select("id")
@@ -135,7 +135,7 @@ export async function restoreWorkTypeAction(id: string): Promise<WorkTypeActionR
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_work_types")
+    .from("work_types")
     .update({ archived_at: null })
     .eq("id", id)
     .select("id")
@@ -164,7 +164,7 @@ export async function deleteWorkTypeAction(
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { count: logCount } = await supabase
-    .from("weeklyplan_weekly_logs")
+    .from("weekly_logs")
     .select("id", { count: "exact", head: true })
     .contains("work_type", [name]);
 
@@ -176,7 +176,7 @@ export async function deleteWorkTypeAction(
   }
 
   const { data: deleted, error } = await supabase
-    .from("weeklyplan_work_types")
+    .from("work_types")
     .delete()
     .eq("id", id)
     .select("id")

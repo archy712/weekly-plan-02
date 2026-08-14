@@ -67,7 +67,7 @@ export function MentionInput({
 
     let cancelled = false;
     const timer = window.setTimeout(async () => {
-      const { data, error } = await supabase.rpc("weeklyplan_search_mentionable_profiles", {
+      const { data, error } = await supabase.rpc("search_mentionable_profiles", {
         search_query: escapeLikePattern(trigger.query),
         max_results: 8,
       });

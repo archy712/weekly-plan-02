@@ -128,7 +128,7 @@ export function useNotifications({
         {
           event: "INSERT",
           schema: "public",
-          table: "weeklyplan_notifications",
+          table: "notifications",
           filter: `recipient_id=eq.${userId}`,
         },
         async (payload) => {

@@ -35,7 +35,7 @@ export async function getLogsByDepartment(
   organizationId?: string,
 ): Promise<DepartmentLogStats[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_logs_by_department", {
+  const { data, error } = await supabase.rpc("stats_logs_by_department", {
     from_date: range.from,
     to_date: range.to,
     org_id: organizationId,
@@ -56,7 +56,7 @@ export async function getLogsByStatus(
   organizationId?: string,
 ): Promise<StatusLogStats[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_logs_by_status", {
+  const { data, error } = await supabase.rpc("stats_logs_by_status", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
@@ -78,7 +78,7 @@ export async function getLogsByWorkType(
   organizationId?: string,
 ): Promise<WorkTypeLogStats[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_logs_by_work_type", {
+  const { data, error } = await supabase.rpc("stats_logs_by_work_type", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
@@ -100,7 +100,7 @@ export async function getLogsByImportance(
   organizationId?: string,
 ): Promise<ImportanceLogStats[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_logs_by_importance", {
+  const { data, error } = await supabase.rpc("stats_logs_by_importance", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
@@ -122,7 +122,7 @@ export async function getMonthlyTrend(
   organizationId?: string,
 ): Promise<MonthlyLogTrend[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_logs_monthly_trend", {
+  const { data, error } = await supabase.rpc("stats_logs_monthly_trend", {
     months,
     dept_id: departmentId,
     org_id: organizationId,
@@ -144,7 +144,7 @@ export async function getReactionsSummary(
   organizationId?: string,
 ): Promise<ReactionSummaryStats[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_reactions_summary", {
+  const { data, error } = await supabase.rpc("stats_reactions_summary", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,
@@ -168,7 +168,7 @@ export async function getWorkloadSummary(
   organizationId?: string,
 ): Promise<WorkloadSummary[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("weeklyplan_stats_workload_summary", {
+  const { data, error } = await supabase.rpc("stats_workload_summary", {
     from_date: range.from,
     to_date: range.to,
     dept_id: departmentId,

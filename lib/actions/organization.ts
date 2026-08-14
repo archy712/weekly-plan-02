@@ -56,7 +56,7 @@ export async function createOrganizationAction(
   const auth = await requireLoggedIn(supabase);
   if ("error" in auth) return { success: false, error: auth.error };
 
-  const { error } = await supabase.from("weeklyplan_organizations").insert({ name: parsed.data.name });
+  const { error } = await supabase.from("organizations").insert({ name: parsed.data.name });
 
   if (error) {
     return {
@@ -86,7 +86,7 @@ export async function updateOrganizationAction(
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_organizations")
+    .from("organizations")
     .update({ name: parsed.data.name })
     .eq("id", id)
     .select("id")
@@ -113,7 +113,7 @@ export async function archiveOrganizationAction(id: string): Promise<Organizatio
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_organizations")
+    .from("organizations")
     .update({ archived_at: new Date().toISOString() })
     .eq("id", id)
     .select("id")
@@ -136,7 +136,7 @@ export async function restoreOrganizationAction(id: string): Promise<Organizatio
   if ("error" in auth) return { success: false, error: auth.error };
 
   const { data: updated, error } = await supabase
-    .from("weeklyplan_organizations")
+    .from("organizations")
     .update({ archived_at: null })
     .eq("id", id)
     .select("id")
