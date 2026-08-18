@@ -8,7 +8,7 @@ export function SiteFooter() {
           href="https://github.com/archy712/weekly-plan-02/blob/main/README.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           프로젝트 소개
         </a>
@@ -17,7 +17,7 @@ export function SiteFooter() {
           href="https://github.com/archy712/weekly-plan-02/blob/main/docs/PRD.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           프로젝트 요구사항
         </a>
@@ -26,7 +26,7 @@ export function SiteFooter() {
           href="https://github.com/archy712/weekly-plan-02/blob/main/docs/roadmap/ROADMAP_mvp.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           초기 MVP 과제
         </a>
@@ -35,34 +35,34 @@ export function SiteFooter() {
           href="https://github.com/archy712/weekly-plan-02/blob/main/docs/ROADMAP_v1.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           고도화 1차 과제
         </a>
         <span className="h-3 w-px bg-border" aria-hidden="true" />
         <Link
           href="/component-gallery"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           컴포넌트 갤러리
         </Link>
         <span className="h-3 w-px bg-border" aria-hidden="true" />
         <Link
           href="/icon-gallery"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           아이콘 갤러리
         </Link>
         <span className="h-3 w-px bg-border" aria-hidden="true" />
         <Link
           href="/tech-stack"
-          className="font-bold underline underline-offset-4 hover:text-foreground"
+          className="hover:text-foreground"
         >
           기술 스택
         </Link>
       </div>
       <p className="mt-3">
-        Developed by <span className="font-bold">archy712@gmail.com</span>
+        Developed by <span>archy712@gmail.com</span>
       </p>
     </footer>
   );
