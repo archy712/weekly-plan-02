@@ -1,12 +1,9 @@
 import Link from "next/link";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LogoutButton } from "@/components/logout-button";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell, NotificationsProvider } from "@/components/notification-bell";
-import { getAvatarPreset } from "@/lib/constants/avatars";
+import { UserAccountMenu } from "@/components/user-account-menu";
 import { getRecentNotifications, getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { createClient } from "@/lib/supabase/server";
 import type { NotificationListItem, UserRole } from "@/lib/types";
@@ -90,25 +87,13 @@ export async function HeaderNav() {
             </Link>
           ))}
         {user ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <NotificationBell />
-            <span className="flex items-center gap-1.5">
-              <Avatar size="sm" className={getAvatarPreset(user.avatarKey).bgClass}>
-                <AvatarFallback className="bg-transparent text-xs">
-                  {getAvatarPreset(user.avatarKey).emoji}
-                </AvatarFallback>
-              </Avatar>
-              {user.email}
-              {(user.role === "admin" || user.role === "superadmin") && (
-                <Badge variant="secondary">
-                  {user.role === "superadmin" ? "슈퍼관리자" : "관리자"}
-                </Badge>
-              )}
-            </span>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/protected/profile">프로필</Link>
-            </Button>
-            <LogoutButton />
+            <UserAccountMenu
+              email={user.email}
+              avatarKey={user.avatarKey}
+              role={user.role}
+            />
           </div>
         ) : (
           <div className="flex gap-2">
