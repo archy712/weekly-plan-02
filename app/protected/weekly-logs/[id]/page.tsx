@@ -111,6 +111,16 @@ async function WeeklyLogDetailContent({
 
   return (
     <WeeklyLogDetailView
+      // 이 업무일지에서 저 업무일지로(같은 [id] 라우트 템플릿 내에서) 소프트 내비게이션할
+      // 때는 React가 컴포넌트 위치가 같으면 언마운트하지 않고 props만 갈아끼운다 — 그러면
+      // status/workType/importance/progress/첨부파일/"빠른 편집" 펼침 여부 등 useState로
+      // 관리하는 모든 상태가 이전 업무일지 값 그대로 남는다(재현: 어떤 업무에서 "빠른 편집"을
+      // 펼쳐두거나 완료 상태였다가, 다른 업무로 이동하면 그 상태가 새 업무에 그대로 보임).
+      // key를 log.id로 주면 id가 바뀔 때마다 React가 컴포넌트를 완전히 새로 마운트해
+      // 내부 상태를 전부 초기화한다 — 목록/칸반 뷰의 prevKey 비교 패턴과 달리, 여기서는
+      // 다른 업무로 넘어갈 때 보존해야 할 상태가 전혀 없어 key를 통한 완전 리셋이 더 간단하고
+      // 첨부파일 훅(useWeeklyLogAttachments) 내부 상태까지 빠짐없이 초기화된다.
+      key={log.id}
       log={{
         id: log.id,
         title: log.title,
