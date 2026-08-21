@@ -22,9 +22,9 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 
 ## 아키텍처
 
-### 디렉토리 구조 — `src/` 없음
+### 디렉토리 구조
 
-`app/`, `components/`, `lib/`는 모두 프로젝트 **루트**에 위치합니다 (`src/` 디렉토리 사용 안 함). 경로 별칭 `@/*`는 `tsconfig.json`에서 `./*`(루트)로 매핑됩니다. `docs/guides/`에 아키텍처/스타일/폼 처리/배포·운영에 대한 상세 가이드 6종이 있으니 관련 작업 전에 참고하세요.
+`docs/guides/`에 아키텍처/스타일/폼 처리/배포·운영에 대한 상세 가이드 6종이 있으니 관련 작업 전에 참고하세요.
 
 ### Supabase 클라이언트 3종 — 컨텍스트별로 반드시 구분해서 사용
 
@@ -104,8 +104,7 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 
 ### PDF·Excel 생성
 
-- `lib/pdf/weekly-log-pdf.ts`가 jsPDF + jspdf-autotable로 **클라이언트 사이드**에서 PDF를 생성합니다. jsPDF 기본 폰트가 한글을 지원하지 않아 `/public/fonts/NotoSansKR-Regular.ttf`를 런타임에 fetch해 base64로 임베딩하며, 폰트 용량(~2.5MB) 때문에 `String.fromCharCode`를 청크 단위로 호출해 콜스택 초과를 피합니다. 이 변환 로직은 그대로 유지할 것.
-- `lib/excel/weekly-log-excel.ts`가 `exceljs`로 동일하게 **클라이언트 사이드**에서 Excel(.xlsx)을 생성합니다(제목/부서/시작일/목표종료일/진행상태/업무타입/중요도/예상소요기간·금액/협력업체/내용 컬럼). `weekly_logs.content`는 sanitize된 HTML 문자열이라 `DOMParser`(브라우저 전용 API)로 plain text만 추출해 셀에 넣습니다. `components/weekly-log-list-view.tsx`의 다운로드 버튼이 드롭다운으로 바뀌어 PDF/Excel 중 선택할 수 있습니다. `exceljs`는 번들 크기가 있어 PDF와 마찬가지로 클릭 시점에 `await import("exceljs")`로 동적 로딩합니다.
+- `lib/pdf/weekly-log-pdf.ts`, `lib/excel/weekly-log-excel.ts`가 각각 클라이언트 사이드에서 PDF/Excel을 생성합니다 — 세부 사항은 `lib/pdf/CLAUDE.md`, `lib/excel/CLAUDE.md` 참고. `components/weekly-log-list-view.tsx`의 다운로드 버튼이 드롭다운으로 바뀌어 PDF/Excel 중 선택할 수 있습니다.
 
 ### 리치 텍스트 에디터 (주간업무일지 상세 내용)
 
@@ -206,13 +205,7 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 
 ## Claude Code 커스텀 설정
 
-- `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다(Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다):
-  - `nextjs-supabase-expert`(`dev/nextjs-supabase-developer.md`) — Next.js+Supabase 기능 구현
-  - `ui-markup-specialist`(`dev/ui-markup-specialist.md`) — 정적 마크업/스타일링
-  - `nextjs-app-developer`(`dev/nextjs-app-developer.md`) — 라우팅/레이아웃 구조
-  - `code-reviewer`(`dev/code-reviewer.md`), `development-planner`(`dev/development-planner.md`, `docs/roadmap/ROADMAP_mvp.md`·`docs/ROADMAP_v1.md` 관리), `starter-cleaner`(`dev/starter-cleaner.md`), `notion-api-database-expert`(`dev/notion-api-database-expert.md`)
-  - `prd-generator`, `prd-validator`(`docs/`)
-- `.claude/commands/git/`에 `commit`, `pr`, `merge`, `branch`, `update-roadmap` 슬래시 커맨드가 정의되어 있습니다.
+- `.claude/agents/`에 이 저장소 전용 서브에이전트가 정의되어 있습니다. Agent 도구의 `subagent_type`으로 지정하는 이름은 파일명이 아니라 frontmatter의 `name:` 값입니다.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
