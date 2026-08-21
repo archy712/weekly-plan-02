@@ -162,36 +162,39 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] Playwright로 RPC 실패를 강제(네트워크 가로채기 또는 잘못된 파라미터)했을 때 목록이 정상 렌더링되고 콘솔 에러만 남는지 확인 — 브라우저 `page.route` 가로채기는 서버 사이드 RPC 호출(Server Component → Supabase)에는 적용되지 않아, 대신 `authenticated` 권한을 일시 회수해 강제 실패시킨 뒤 위젯 0/0/0 폴백 + 목록 정상 렌더링 + 콘솔에 `[lib/queries/stats] stats_my_work_summary 조회 실패` 로그만 남는 것을 확인, 이후 권한 즉시 원복
   - **범위 밖 유지**: 부서 단위 요약(관리자 대시보드가 이미 담당), 위젯 커스터마이징(표시 지표 선택), 위젯을 다른 페이지로 확산하는 것, "이번 주 마감"의 정확한 목록 필터를 위한 신규 상한 날짜 필터 축(위 결정 메모 참고 — Task 040 범위 밖)
 
-- **Task 041: 주간업무일지 작성 중 임시저장 구현 (F042)**
-  - [ ] **스코프 확정 (착수 첫 단계)** — 저장 대상은 `WeeklyLogFormData`(`lib/schemas/weekly-log.ts`)의 **9개 필드 전부**(`title`, `work_type`, `importance`, `content`, `start_date`, `target_end_date`, `estimated_mm`, `estimated_cost`, `partner_company`). 이 타입은 전부 문자열·숫자·문자열 배열이라 **JSON 직렬화가 온전히 가능**하다. **첨부파일은 `File` 객체라 직렬화 불가 → 명시적으로 제외**하고, 복원 배너에 "첨부파일은 복원되지 않습니다" 문구를 노출한다
-  - [ ] **적용 범위 결정: 신규 작성 폼만 (`components/weekly-log-new-form.tsx`)** ← 권장. 수정 폼을 제외하는 근거를 주석에 남긴다:
+- **Task 041: 주간업무일지 작성 중 임시저장 구현 (F042)** ✅
+  - [x] **스코프 확정 (착수 첫 단계)** — 저장 대상은 `WeeklyLogFormData`(`lib/schemas/weekly-log.ts`)의 **9개 필드 전부**(`title`, `work_type`, `importance`, `content`, `start_date`, `target_end_date`, `estimated_mm`, `estimated_cost`, `partner_company`). 이 타입은 전부 문자열·숫자·문자열 배열이라 **JSON 직렬화가 온전히 가능**하다. **첨부파일은 `File` 객체라 직렬화 불가 → 명시적으로 제외**하고, 복원 배너에 "첨부파일은 복원되지 않습니다" 문구를 노출한다
+  - [x] **적용 범위 결정: 신규 작성 폼만 (`components/weekly-log-new-form.tsx`)** ← 권장. 수정 폼을 제외하는 근거를 주석에 남긴다:
     - 수정 대상에는 **이미 서버에 저장된 원본**이 있어 데이터 유실 위험 자체가 낮다
     - `weekly_logs`에 낙관적 잠금(버전 컬럼)이 없어, 오래된 draft를 복원해 저장하면 **그 사이의 타인 변경을 조용히 덮어쓴다**
     - 상세 페이지의 진행상태·업무타입·중요도는 이미 **인라인 즉시 저장**이라 draft와 이중으로 어긋난다
-  - [ ] **스토리지 키 규약 확정 (이 프로젝트 최초의 브라우저 스토리지 — 이후 표준이 됨)** — `weekly-log-draft:new:{userId}` 형식. **반드시 사용자 id로 네임스페이스**할 것(공용 PC에서 A의 초안이 B에게 보이면 안 됨). `userId`는 클라이언트에서 세션을 다시 읽지 말고 **서버 컴포넌트(`app/protected/weekly-logs/new/page.tsx`)가 이미 확보한 값을 prop으로 내려준다**
-  - [ ] **자동 저장 구현** — `react-hook-form`의 `watch()` 구독 + **debounce 약 1초**. 값이 초기값과 동일하면(사용자가 아무것도 입력하지 않았으면) 저장하지 않는다. 저장 시각(`savedAt`)을 함께 기록해 배너에 "N분 전 저장됨"을 표시
-  - [ ] **복원은 자동이 아니라 명시적 동의로** — 재진입 시 draft가 있으면 폼 상단에 `ui/card` 배너로 "임시 저장된 내용이 있습니다 (N분 전)" + [복원] / [삭제] 두 버튼. **자동 복원 금지**(사용자가 의도적으로 새로 쓰려는 경우를 방해하고, 무엇이 복원됐는지 인지하지 못함)
-  - [ ] **복원 시 `content` 재sanitize** — `localStorage`는 사용자·확장프로그램이 임의로 쓸 수 있는 저장소이므로, Tiptap 에디터에 주입하기 전 `lib/sanitize-html.ts`의 `sanitizeWeeklyLogContent()`를 한 번 더 통과시킨다(프로젝트의 "저장·렌더링 양쪽 sanitize" 관례를 저장소 경로까지 확장)
-  - [ ] **삭제 시점** — (1) 저장 성공 시(`createWeeklyLogAction` 성공 직후, 첨부 업로드 실패로 재제출되는 경로에서도 **`createdRef`가 채워진 뒤에는 draft를 지운다**), (2) 배너에서 [삭제]를 누를 때, (3) 파싱 실패(스키마 불일치·손상된 JSON) 시 조용히 폐기
-  - [ ] **SSR·예외 안전** — `localStorage` 접근은 전부 `useEffect` 안에서만, 모든 읽기/쓰기를 `try/catch`로 감싼다(프라이빗 모드·스토리지 차단·용량 초과 시 접근 자체가 throw). 실패해도 **에러 토스트로 사용자를 방해하지 않고** 조용히 기능만 비활성화한다(v1 Task 035의 Realtime 폴백 판단과 동일한 원칙 — 보조 기능은 조용히 실패)
-  - [ ] **용량 가드** — `content`는 최대 5000자 제한이 있어 일반적으로 문제없지만, 직렬화 결과가 비정상적으로 크면(예: 1MB 초과) 저장을 건너뛴다
-  - [ ] `hooks/use-weekly-log-draft.ts` 신규 — 저장/복원/삭제/`hasDraft`/`savedAt`을 캡슐화. **F045(프리셋)가 같은 규약을 재사용할 수 있도록** 순수 스토리지 유틸(`lib/storage/local-draft.ts` 등)과 훅을 분리할지 이 Task에서 결정
-  - **관련 파일**: `hooks/use-weekly-log-draft.ts`(신규), `lib/storage/local-storage.ts`(신규, 안전 접근 래퍼), `components/weekly-log-new-form.tsx`, `components/weekly-log-draft-banner.tsx`(신규), `app/protected/weekly-logs/new/page.tsx`(`userId` prop 전달), `components/weekly-log-form.tsx`(복원 값 반영을 위한 `reset` 경로 확인)
+  - [x] **스토리지 키 규약 확정 (이 프로젝트 최초의 브라우저 스토리지 — 이후 표준이 됨)** — `weekly-log-draft:new:{userId}` 형식. **반드시 사용자 id로 네임스페이스**할 것(공용 PC에서 A의 초안이 B에게 보이면 안 됨). `userId`는 클라이언트에서 세션을 다시 읽지 말고 **서버 컴포넌트(`app/protected/weekly-logs/new/page.tsx`)가 이미 확보한 값을 prop으로 내려준다**
+  - [x] **자동 저장 구현** — `react-hook-form`의 `watch()` 구독 + **debounce 약 1초**. 값이 초기값과 동일하면(사용자가 아무것도 입력하지 않았으면) 저장하지 않는다. 저장 시각(`savedAt`)을 함께 기록해 배너에 "N분 전 저장됨"을 표시
+  - [x] **복원은 자동이 아니라 명시적 동의로** — 재진입 시 draft가 있으면 폼 상단에 `ui/card` 배너로 "임시 저장된 내용이 있습니다 (N분 전)" + [복원] / [삭제] 두 버튼. **자동 복원 금지**(사용자가 의도적으로 새로 쓰려는 경우를 방해하고, 무엇이 복원됐는지 인지하지 못함)
+  - [x] **복원 시 `content` 재sanitize** — `localStorage`는 사용자·확장프로그램이 임의로 쓸 수 있는 저장소이므로, Tiptap 에디터에 주입하기 전 `lib/sanitize-html.ts`의 `sanitizeWeeklyLogContent()`를 한 번 더 통과시킨다(프로젝트의 "저장·렌더링 양쪽 sanitize" 관례를 저장소 경로까지 확장)
+  - [x] **삭제 시점** — (1) 저장 성공 시(`createWeeklyLogAction` 성공 직후, 첨부 업로드 실패로 재제출되는 경로에서도 **`createdRef`가 채워진 뒤에는 draft를 지운다**), (2) 배너에서 [삭제]를 누를 때, (3) 파싱 실패(스키마 불일치·손상된 JSON) 시 조용히 폐기
+  - [x] **SSR·예외 안전** — `localStorage` 접근은 전부 `useEffect` 안에서만, 모든 읽기/쓰기를 `try/catch`로 감싼다(프라이빗 모드·스토리지 차단·용량 초과 시 접근 자체가 throw). 실패해도 **에러 토스트로 사용자를 방해하지 않고** 조용히 기능만 비활성화한다(v1 Task 035의 Realtime 폴백 판단과 동일한 원칙 — 보조 기능은 조용히 실패)
+  - [x] **용량 가드** — `content`는 최대 5000자 제한이 있어 일반적으로 문제없지만, 직렬화 결과가 비정상적으로 크면(예: 1MB 초과) 저장을 건너뛴다
+  - [x] `hooks/use-weekly-log-draft.ts` 신규 — 저장/복원/삭제/`hasDraft`/`savedAt`을 캡슐화. **F045(프리셋)가 같은 규약을 재사용할 수 있도록** 순수 스토리지 유틸을 `lib/storage/local-storage.ts`(안전 접근 래퍼: `safeLocalStorageGet`/`Set`/`Remove`, draft 도메인 지식 없음)로 분리하고, draft 전용 스키마·직렬화·debounce·복원 로직은 훅 안에 남겼다
+  - **관련 파일**: `hooks/use-weekly-log-draft.ts`(신규), `lib/storage/local-storage.ts`(신규, 안전 접근 래퍼), `components/weekly-log-new-form.tsx`, `components/weekly-log-draft-banner.tsx`(신규), `app/protected/weekly-logs/new/page.tsx`(`userId` prop 전달), `components/weekly-log-form.tsx`(`onFormReady` prop 추가 — 아래 결정 참고)
   - **DB 마이그레이션 불필요** — 전적으로 클라이언트 기능
-  - **수락 기준**: 작성 중 새로고침·뒤로가기·탭 종료 후 재진입하면 복원 배너가 뜨고, [복원]을 누르면 첨부파일을 제외한 모든 입력값이 그대로 돌아오며, 저장에 성공한 뒤에는 draft가 남지 않는다. 스토리지를 쓸 수 없는 환경에서도 작성 폼이 정상 동작한다
-  - **테스트 체크리스트** (Playwright MCP로 실브라우저 검증. `browser_evaluate`로 `localStorage`를 직접 읽어 저장 내용까지 대조)
-    - [ ] 9개 필드를 모두 채운 뒤 새로고침 → 배너 노출 → [복원] → **모든 값이 정확히 일치**하는지 필드별 확인(특히 `work_type` 배열 다중 선택과 `importance` 슬라이더)
-    - [ ] Tiptap 본문의 서식(굵게·목록 등)이 복원 후에도 유지되는지, 복원 경로의 sanitize가 정상 서식을 제거하지 않는지 확인
-    - [ ] `localStorage`에 `<script>`나 `onerror` 속성이 섞인 `content`를 **직접 주입**한 뒤 복원 → 스크립트가 실행되지 않고 태그가 제거되는지 확인(sanitize 이중 방어 검증)
-    - [ ] 저장 성공 후 목록으로 이동 → 작성 페이지 재진입 시 **배너가 뜨지 않는지**(draft 삭제) 확인
-    - [ ] 첨부파일을 첨부한 상태에서 새로고침 → 텍스트만 복원되고 첨부는 비어 있으며 배너에 안내 문구가 있는지 확인
-    - [ ] **첨부 업로드 실패 → 재제출** 경로에서 `weekly_logs` 행이 중복 생성되지 않고(`createdRef` 가드 유지) draft도 정상 정리되는지 확인 — 이 Task가 건드리는 폼의 가장 취약한 기존 로직
-    - [ ] 아무것도 입력하지 않고 페이지를 떠난 경우 draft가 생성되지 않는지 확인
-    - [ ] [삭제] 버튼 → 배너가 사라지고 `localStorage` 키가 실제로 제거되는지 `browser_evaluate`로 확인
-    - [ ] **사용자 격리**: A 계정으로 draft를 만든 뒤 로그아웃 → B 계정 로그인 → 작성 페이지에서 배너가 뜨지 않는지 확인
-    - [ ] 손상된 JSON(`browser_evaluate`로 임의 문자열 주입) 상태에서 페이지가 크래시하지 않고 조용히 무시하는지 확인
-    - [ ] `localStorage`를 throw하도록 스텁(`browser_evaluate`로 setter 덮어쓰기)한 상태에서 작성·저장이 **끝까지 정상 동작**하는지 확인
-    - [ ] 콘솔 에러 0건 유지
+  - **⚠️ 계획과 다르게 처리한 부분 1 — 복원 경로는 `form.reset()`이 아니라 `WeeklyLogForm` 리마운트**: `components/html-editor.tsx`의 Tiptap 에디터는 `useEditor({ content: value, ... })`의 `content`를 **생성 시점의 초기값으로만** 쓰고, 이후 `value` prop이 바뀌어도 `editor.commands.setContent()`를 호출하는 동기화 로직이 없다(실측 확인 — 기존 코드에 그런 `useEffect`가 없음). 그래서 `form.reset(restoredValues)`만으로는 나머지 8개 필드는 반영되지만 본문만 비어 있는 상태가 된다. `WeeklyLogForm`을 손대지 않고 우회하는 대신, `components/weekly-log-new-form.tsx`가 `key={formInstanceKey}` + `defaultValues={restoredValues}`로 **[복원] 클릭 시 폼 전체를 새 초기값으로 리마운트**하는 방식을 택했다 — 이미 검증된 "신규 마운트 시 defaultValues 반영" 경로(수정 폼과 동일)를 재사용해 Tiptap 동기화 문제를 원천적으로 피한다. `WeeklyLogForm`에는 자동 저장 구독을 걸기 위한 `onFormReady?: (form) => void` prop만 추가했다(수정 폼 경로는 이 prop을 넘기지 않아 영향 없음).
+  - **⚠️ 계획과 다르게 처리한 부분 2 — 자동 저장 게이트는 `formState.isDirty`가 아니라 `getValues()` 스냅샷 비교**: 처음엔 계획대로 `watch()` 콜백 안에서 `form.formState.isDirty`로 "아직 아무것도 안 바뀜"을 걸렀으나, Playwright로 실측한 결과 **디바운스 타이머는 정상 발화하는데 `isDirty`가 항상 `false`라 저장이 전혀 되지 않는 버그**를 발견했다. 원인은 react-hook-form의 `formState`가 렌더 중에 실제로 "읽힌" 필드만 내부적으로 추적을 갱신하는 지연 구독(proxy) 방식인데, `WeeklyLogForm`이 렌더에서 `isDirty`를 한 번도 읽지 않아 `setTimeout` 콜백(렌더 바깥) 안에서 읽는 값이 계속 초기값(`false`)에 고정된 것이었다. RHF 내부 구현에 의존하지 않는 방식으로 바꿔, `watchForm(form)` 구독 시작 시점에 `form.getValues()`를 스냅샷해두고 이후 `watch()` 콜백 값과 `JSON.stringify` 비교하는 방식으로 대체했다.
+  - **⚠️ 계획과 다르게 처리한 부분 3 — 배너용 `hasDraft`/`savedAt`은 `useEffect`+`setState`가 아니라 `useSyncExternalStore`**: 마운트 시 localStorage에 기존 draft가 있는지 확인하는 로직을 처음엔 `useEffect` 안에서 `setState`로 구현했는데, `react-hooks/set-state-in-effect` ESLint 규칙이 에러로 막았다(`npm run lint` 실패). 이 프로젝트가 `lib/dummy-log-overrides.ts` 도입 당시 동일한 문제(브라우저 전용 값을 초기 렌더에서 그대로 읽으면 SSR 결과와 달라져 하이드레이션 불일치 발생)를 겪고 `useSyncExternalStore`로 해결한 전례(`docs/roadmap/ROADMAP_mvp.md` 참고)가 있어 동일 패턴을 재사용했다 — `subscribe`는 리스너를 절대 호출하지 않는 영구 no-op이고(배너는 "재진입 시 1회 확인"이 의도이지 타이핑 중 자동 저장이 발생할 때마다 배너가 튀어나오면 안 되므로 의도적으로 비반응형), `getServerSnapshot`은 항상 `null`을 반환해 SSR·최초 하이드레이션 결과와 일치시키고, React의 하이드레이션 보정 메커니즘이 마운트 직후 클라이언트의 실제 값으로 딱 한 번 재동기화한다. [복원]/[삭제] 클릭에 따른 배너 숨김은 별도의 평범한 `useState`(이벤트 핸들러에서만 호출되므로 lint 문제 없음)로 처리했다.
+  - **수락 기준**: 작성 중 새로고침·뒤로가기·탭 종료 후 재진입하면 복원 배너가 뜨고, [복원]을 누르면 첨부파일을 제외한 모든 입력값이 그대로 돌아오며, 저장에 성공한 뒤에는 draft가 남지 않는다. 스토리지를 쓸 수 없는 환경에서도 작성 폼이 정상 동작한다. **Playwright MCP로 실제 브라우저(계정 2개 생성 후 테스트 완료·정리)에서 전부 실측 확인함.**
+  - **테스트 체크리스트** (Playwright MCP로 실브라우저 검증. `browser_evaluate`로 `localStorage`를 직접 읽어 저장 내용까지 대조 — 전 항목 실행·통과)
+    - [x] 9개 필드를 모두 채운 뒤 새로고침 → 배너 노출 → [복원] → **모든 값이 정확히 일치**하는지 필드별 확인(특히 `work_type` 배열 다중 선택과 `importance` 슬라이더) — `work_type: ["네트워크","시스템 개발"]`, `importance: 5` 포함 9개 필드 전부 정확히 일치 확인
+    - [x] Tiptap 본문의 서식(굵게·목록 등)이 복원 후에도 유지되는지, 복원 경로의 sanitize가 정상 서식을 제거하지 않는지 확인 — `<strong>` 굵게 서식이 복원 후에도 유지되고 툴바 "굵게" 버튼도 pressed 상태로 정확히 반영됨을 확인
+    - [x] `localStorage`에 `<script>`나 `onerror` 속성이 섞인 `content`를 **직접 주입**한 뒤 복원 → 스크립트가 실행되지 않고 태그가 제거되는지 확인(sanitize 이중 방어 검증) — `<script>`·`onerror` 주입 후 복원 시 `window.__xss` 플래그가 설정되지 않았고 에디터에는 텍스트만 남음을 확인
+    - [x] 저장 성공 후 목록으로 이동 → 작성 페이지 재진입 시 **배너가 뜨지 않는지**(draft 삭제) 확인 — 확인 완료
+    - [x] 첨부파일을 첨부한 상태에서 새로고침 → 텍스트만 복원되고 첨부는 비어 있으며 배너에 안내 문구가 있는지 확인 — 확인 완료
+    - [x] **첨부 업로드 실패 → 재제출** 경로에서 `weekly_logs` 행이 중복 생성되지 않고(`createdRef` 가드 유지) draft도 정상 정리되는지 확인 — 이 Task가 건드리는 폼의 가장 취약한 기존 로직 — Playwright `page.route()`로 스토리지 업로드 URL을 강제로 실패시킨 뒤 저장(행 1건 생성 확인, `mcp__supabase__execute_sql`로 실측) → draft 정리 확인 → route 해제 후 "다시 시도" → 업로드 성공 → 재차 "저장" 클릭까지 해도 행이 계속 1건임을 SQL로 재확인
+    - [x] 아무것도 입력하지 않고 페이지를 떠난 경우 draft가 생성되지 않는지 확인 — 확인 완료
+    - [x] [삭제] 버튼 → 배너가 사라지고 `localStorage` 키가 실제로 제거되는지 `browser_evaluate`로 확인 — 확인 완료
+    - [x] **사용자 격리**: A 계정으로 draft를 만든 뒤 로그아웃 → B 계정 로그인 → 작성 페이지에서 배너가 뜨지 않는지 확인 — 실제 계정 2개(e2e-draft-a/b)를 생성해 양방향(A→B 안 보임, B→A 다시 로그인 시 A 배너 그대로 유지) 확인 후 테스트 데이터 정리
+    - [x] 손상된 JSON(`browser_evaluate`로 임의 문자열 주입) 상태에서 페이지가 크래시하지 않고 조용히 무시하는지 확인 — 확인 완료, 손상된 키도 자동으로 정리됨
+    - [x] `localStorage`를 throw하도록 스텁(`browser_evaluate`로 setter 덮어쓰기)한 상태에서 작성·저장이 **끝까지 정상 동작**하는지 확인 — `Object.getPrototypeOf(localStorage).setItem`을 throw하도록 교체한 상태에서 입력·저장까지 정상 동작 확인
+    - [x] 콘솔 에러 0건 유지 — 전 시나리오에서 확인(의도적으로 네트워크를 차단한 첨부 업로드 실패 테스트의 예상된 `Failed to fetch` 로그 제외)
   - **범위 밖 유지**: 수정 폼 draft(위 결정 근거 참고), 서버 측 draft 저장(DB 테이블), 첨부파일 임시 보관, 여러 개의 draft 슬롯, 다른 기기 간 동기화
 
 ---

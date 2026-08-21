@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +42,7 @@ export function WeeklyLogForm({
   onRemovePendingFile,
   onRetryUpload,
   onRemoveAttachment,
+  onFormReady,
 }: {
   defaultValues?: Partial<WeeklyLogFormData>;
   workTypeOptions: WorkTypeOption[];
@@ -54,6 +55,10 @@ export function WeeklyLogForm({
   onRemovePendingFile: (id: string) => void;
   onRetryUpload: (id: string) => void;
   onRemoveAttachment: (attachment: WeeklyLogAttachment) => void;
+  // F042 임시저장(Task 041) 전용 훅 — 신규 작성 폼이 이 react-hook-form 인스턴스를 받아
+  // watch() 자동 저장 구독을 걸 때만 쓴다. 수정 폼(weekly-log-detail-view.tsx)은 넘기지
+  // 않으므로 그 경로에는 아무 영향이 없다.
+  onFormReady?: (form: UseFormReturn<WeeklyLogFormData>) => void;
 }) {
   const form = useForm<WeeklyLogFormData>({
     resolver: zodResolver(weeklyLogSchema),
@@ -69,6 +74,15 @@ export function WeeklyLogForm({
       partner_company: defaultValues?.partner_company ?? "",
     },
   });
+
+  // useForm()이 반환하는 객체는 컴포넌트 생명주기 동안 안정적인 참조이므로, 마운트 시
+  // 1회만 부모에 전달하면 된다(부모가 이 폼이 remount될 때마다 새로 받고 싶다면 key prop으로
+  // WeeklyLogForm 자체를 remount시키면 된다 — components/weekly-log-new-form.tsx의 복원
+  // 흐름 참고).
+  useEffect(() => {
+    onFormReady?.(form);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isSubmitting = form.formState.isSubmitting;
 
