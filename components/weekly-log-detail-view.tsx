@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -95,6 +95,11 @@ export function WeeklyLogDetailView({
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  // 진행상태·업무타입·중요도·진척률 인라인 편집 컨트롤은 기본적으로 숨겨두고, 이 토글을
+  // 눌러야만 펼쳐진다 — 내 부서(canWrite) 업무를 열었을 때 곧바로 Select·Slider가
+  // 나타나 "수정 화면에 들어온 것 같다"는 혼동이 있어, 다른 부서 업무를 볼 때와 동일하게
+  // 항상 읽기 전용 화면으로 먼저 보여준 뒤 명시적으로 편집을 펼치게 한다.
+  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
   const [status, setStatus] = useState<WeeklyLogStatus>(log.status);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [workType, setWorkType] = useState<WeeklyLogWorkType[]>(log.work_type);
@@ -327,7 +332,24 @@ export function WeeklyLogDetailView({
           )}
         </div>
       </div>
-      {canWrite ? (
+      {canWrite && (
+        // 진행상태·업무타입·중요도·진척률을 즉시 편집할 수 있다는 사실 자체를 이 배너로
+        // 명시한다 — 연필 아이콘 + 라벨로 "이 항목들은 편집 가능"임을 표시하고, 실제
+        // 편집 컨트롤은 눌러야만 펼쳐지게 해 읽기 전용 화면과 명확히 구분한다.
+        <button
+          type="button"
+          onClick={() => setIsQuickEditOpen((prev) => !prev)}
+          className="flex items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2 text-left text-sm text-muted-foreground hover:border-primary hover:text-primary"
+          aria-expanded={isQuickEditOpen}
+        >
+          <span className="flex items-center gap-1.5">
+            <Pencil className="size-3.5" aria-hidden />
+            진행상태·업무타입·중요도·진척률을 바로 수정할 수 있습니다
+          </span>
+          <span className="font-medium">{isQuickEditOpen ? "편집 접기" : "빠른 편집"}</span>
+        </button>
+      )}
+      {canWrite && isQuickEditOpen ? (
         <div className="flex flex-col gap-1.5">
           <Label>업무 타입</Label>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -434,7 +456,7 @@ export function WeeklyLogDetailView({
       )}
       {/* 추천/비추천은 부서·쓰기권한과 무관하게 모든 로그인 사용자에게 노출한다(F031). */}
       <WeeklyLogReactionButtons weeklyLogId={log.id} initialSummary={log.reactions} />
-      {canWrite && (
+      {canWrite && isQuickEditOpen && (
         <>
           <div className="flex items-center gap-2">
             <Label htmlFor="status">진행 상태</Label>
@@ -505,33 +527,38 @@ export function WeeklyLogDetailView({
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button type="button" variant="destructive" disabled={isDeleting}>
-                  삭제
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>주간업무일지를 삭제하시겠습니까?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    삭제한 항목은 복구할 수 없습니다.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>취소</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-                    삭제
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Button type="button" onClick={() => setIsEditing(true)}>
-              수정
-            </Button>
-          </div>
         </>
+      )}
+      {/* 삭제·(제목/본문 등 전체) 수정 버튼은 빠른 편집 토글과 무관하게 항상 노출한다 —
+          이 둘은 이미 명확한 버튼이라 인라인 필드(Select·Slider)처럼 "수정 화면에 들어온
+          것 같다"는 혼동을 주지 않는다. */}
+      {canWrite && (
+        <div className="flex justify-end gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="destructive" disabled={isDeleting}>
+                삭제
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>주간업무일지를 삭제하시겠습니까?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  삭제한 항목은 복구할 수 없습니다.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                  삭제
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="button" onClick={() => setIsEditing(true)}>
+            수정
+          </Button>
+        </div>
       )}
       <WeeklyLogChangeHistorySection history={log.history} />
       <WeeklyLogCommentSection
