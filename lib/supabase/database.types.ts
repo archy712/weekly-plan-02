@@ -1517,6 +1517,51 @@ export type Database = {
           },
         ]
       }
+      weekly_log_change_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          field: string
+          id: string
+          new_value: string
+          old_value: string | null
+          weekly_log_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          field: string
+          id?: string
+          new_value: string
+          old_value?: string | null
+          weekly_log_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: string
+          old_value?: string | null
+          weekly_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_log_change_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_change_history_weekly_log_id_fkey"
+            columns: ["weekly_log_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_log_comment_mentions: {
         Row: {
           comment_id: string
@@ -1753,6 +1798,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_weekly_log_reminders: {
+        Args: { target_week_start?: string }
+        Returns: number
+      }
       current_department_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
       get_org_chart_members: {
@@ -2014,3 +2063,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

@@ -80,6 +80,23 @@ export type WeeklyLogAttachment = Pick<
   "id" | "file_name" | "file_path" | "file_size" | "content_type" | "created_at"
 >;
 
+// F043(v2 Task 045) 변경 이력 field 유니온 — DB CHECK 제약(weekly_log_change_history)과
+// 동일하게 상세 페이지에서 즉시 저장되는 3개 속성으로 한정한다.
+export type WeeklyLogChangeHistoryField = "status" | "work_type" | "importance";
+
+export type WeeklyLogChangeHistory = Omit<Tables<"weekly_log_change_history">, "field"> & {
+  field: WeeklyLogChangeHistoryField;
+};
+
+// 상세 페이지 접이식 이력 섹션에 표시할 이력 1건 — get_profile_identities RPC로 변경자
+// 신원을 배치 조회해 붙인다(profiles_select_own_or_admin 때문에 embed 불가, 댓글/알림과
+// 동일 패턴). changed_by가 NULL(직접 DB 접속으로 변경된 경우)이면 이름/이메일도 null이 되어
+// "시스템"으로 렌더링한다.
+export type WeeklyLogChangeHistoryItem = WeeklyLogChangeHistory & {
+  changed_by_name: string | null;
+  changed_by_email: string | null;
+};
+
 export type WeeklyLogDetail = Pick<
   WeeklyLog,
   | "id"
@@ -102,6 +119,8 @@ export type WeeklyLogDetail = Pick<
   // F031 상세 페이지 추천/비추천(익명 집계 + 내 반응). 상호작용이 있는 화면이라 목록과
   // 달리 my_reaction까지 포함한다.
   reactions: WeeklyLogReactionSummary;
+  // F043(Task 045) 변경 이력 — 최신순, 최근 HISTORY_PAGE_SIZE(50)건까지.
+  history: WeeklyLogChangeHistoryItem[];
 };
 
 export const ALL_DEPARTMENTS_FILTER = "all" as const;

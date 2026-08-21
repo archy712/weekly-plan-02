@@ -10,6 +10,19 @@ export function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
+// 한글 명사 뒤에 붙는 을/를 목적격 조사를 마지막 글자의 받침 유무로 정확히 고른다
+// (F043 변경 이력 문구처럼 필드 라벨을 동적으로 조합할 때 필요 — "업무타입를"처럼 받침이
+// 있는 단어에 "를"을 잘못 붙이는 실수를 막는다). 한글 완성형 범위(가~힣) 밖의 문자로
+// 끝나면(영문/숫자 등) 받침 판정이 무의미하므로 "를"로 폴백한다.
+export function getObjectParticle(word: string): "을" | "를" {
+  const lastChar = word.trim().at(-1);
+  if (!lastChar) return "를";
+  const code = lastChar.charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) return "를";
+  const hasFinalConsonant = (code - 0xac00) % 28 !== 0;
+  return hasFinalConsonant ? "을" : "를";
+}
+
 // 숫자만 남기고 3-4-4자리로 끊어 "-"를 자동 삽입한다 (예: 01012345678 -> 010-1234-5678).
 export function formatPhoneNumberInput(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);

@@ -7,6 +7,7 @@ import { WeeklyLogDetailView } from "@/components/weekly-log-detail-view";
 import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton";
 import { getWeeklyLogComments } from "@/lib/queries/comments";
 import { getWeeklyLogReactionSummary } from "@/lib/queries/reactions";
+import { getWeeklyLogChangeHistory } from "@/lib/queries/weekly-log-history";
 import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 
 async function WeeklyLogDetailContent({
@@ -59,11 +60,11 @@ async function WeeklyLogDetailContent({
   // 쓰기(수정/삭제/완료토글)는 RLS에서 소속 부서 또는 admin으로만 허용된다.
   const canWrite = profile.role === "admin" || log.department_id === profile.department_id;
 
-  // 로그 존재가 확정된 뒤 필요한 4개 조회(첨부·댓글·추천비추천·업무타입)는 서로 독립적이라
-  // 순차로 await하면 왕복만 늘어난다 — 한 번에 병렬로 실행한다. 넷 모두 weekly_logs SELECT
-  // 공개 범위를 그대로 따르는 부서 무관 조회이고, 업무타입은 조직 필터를 SQL이 아니라 아래
-  // JS에서 걸므로(전 조직 조회 후 필터) 로그 조직 id와 무관하게 미리 조회해도 안전하다.
-  const [attachmentsResult, comments, reactions, workTypesResult] = await Promise.all([
+  // 로그 존재가 확정된 뒤 필요한 5개 조회(첨부·댓글·추천비추천·업무타입·변경이력)는 서로
+  // 독립적이라 순차로 await하면 왕복만 늘어난다 — 한 번에 병렬로 실행한다. 전부 weekly_logs
+  // SELECT 공개 범위를 그대로 따르는 부서 무관 조회이고, 업무타입은 조직 필터를 SQL이 아니라
+  // 아래 JS에서 걸므로(전 조직 조회 후 필터) 로그 조직 id와 무관하게 미리 조회해도 안전하다.
+  const [attachmentsResult, comments, reactions, workTypesResult, history] = await Promise.all([
     // 첨부파일도 weekly_logs와 동일하게 SELECT는 전 부서 공개다.
     supabase
       .from("weekly_log_attachments")
@@ -75,6 +76,8 @@ async function WeeklyLogDetailContent({
     // 추천/비추천도 부서 무관 조회(F031). 익명 집계 + 로그인 사용자의 내 반응까지 함께 받는다.
     getWeeklyLogReactionSummary(supabase, id, data.claims.sub),
     supabase.from("work_types").select("name, archived_at, organization_id").order("name"),
+    // 상태·업무타입·중요도 변경 이력(F043, v2 Task 045). 역시 부서 무관 SELECT 공개.
+    getWeeklyLogChangeHistory(supabase, id),
   ]);
 
   if (attachmentsResult.error) {
@@ -125,6 +128,7 @@ async function WeeklyLogDetailContent({
         attachments: attachments ?? [],
         comments,
         reactions,
+        history,
       }}
       canWrite={canWrite}
       currentUserId={data.claims.sub}

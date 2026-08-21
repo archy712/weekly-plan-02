@@ -1,4 +1,10 @@
-import type { NotificationListItem, WeeklyLogStatus } from "@/lib/types";
+import { formatImportanceLabel, IMPORTANCE_LEVELS } from "@/lib/constants/importance";
+import type { WeeklyLogImportance } from "@/lib/constants/importance";
+import type {
+  NotificationListItem,
+  WeeklyLogChangeHistoryField,
+  WeeklyLogStatus,
+} from "@/lib/types";
 
 export function formatDate(value: string | Date): string {
   if (value instanceof Date) {
@@ -76,6 +82,37 @@ export function formatNotificationMessage(notification: NotificationListItem): s
     default:
       return `${actor}님이 "${logTitle}"에 댓글을 남겼습니다.`;
   }
+}
+
+const CHANGE_HISTORY_FIELD_LABELS: Record<WeeklyLogChangeHistoryField, string> = {
+  status: "진행상태",
+  work_type: "업무타입",
+  importance: "업무 중요도",
+};
+
+export function getChangeHistoryFieldLabel(field: WeeklyLogChangeHistoryField): string {
+  return CHANGE_HISTORY_FIELD_LABELS[field];
+}
+
+// 변경 이력(F043)의 old_value/new_value는 DB에 원시값(status 코드, "N" 문자열, work_type을
+// ', '로 합친 문자열)으로 저장돼 있고, 화면과 동일한 한글 라벨은 렌더링 시점에 입힌다
+// (라벨 문구가 나중에 바뀌어도 과거 이력이 깨지지 않도록). work_type은 이미 사람이 읽을 수
+// 있는 이름이 그대로 저장돼 있어 추가 변환이 필요 없다.
+export function formatChangeHistoryValue(
+  field: WeeklyLogChangeHistoryField,
+  value: string | null,
+): string {
+  if (value === null) return "없음";
+  if (field === "status") {
+    return getStatusLabel(value as WeeklyLogStatus);
+  }
+  if (field === "importance") {
+    const level = Number(value);
+    return (IMPORTANCE_LEVELS as readonly number[]).includes(level)
+      ? formatImportanceLabel(level as WeeklyLogImportance)
+      : value;
+  }
+  return value;
 }
 
 export function formatFileSize(bytes: number): string {

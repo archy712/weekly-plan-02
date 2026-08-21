@@ -44,6 +44,7 @@ const WeeklyLogForm = dynamic(
   },
 );
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
+import { WeeklyLogChangeHistorySection } from "@/components/weekly-log-change-history";
 import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
 import { WeeklyLogReactionButtons } from "@/components/weekly-log-reaction-buttons";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
@@ -411,6 +412,7 @@ export function WeeklyLogDetailView({
           </div>
         </>
       )}
+      <WeeklyLogChangeHistorySection history={log.history} />
       <WeeklyLogCommentSection
         weeklyLogId={log.id}
         comments={log.comments}
