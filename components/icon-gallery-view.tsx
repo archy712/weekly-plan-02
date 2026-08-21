@@ -1,15 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import { Search } from "lucide-react";
-import { DynamicIcon } from "lucide-react/dynamic";
+import * as LucideIcons from "lucide-react";
+import { toast } from "sonner";
 
-import { iconDocsUrl, type IconCategory } from "@/lib/constants/icon-gallery";
+import { type IconCategory } from "@/lib/constants/icon-gallery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const ALL_CATEGORY_ID = "all";
+
+// "arrow-up" -> "ArrowUp" — lucide-react 배럴이 export하는 PascalCase 이름으로 변환한다.
+// 아이콘 개수가 2천 개가 넘어 lucide-react/dynamic의 컴포넌트별 개별 dynamic import를
+// 쓰면 전체 보기 시 수천 개의 청크를 동시에 요청하게 되므로, 이 화면만은 정적 배럴
+// import(lucide-react)를 그대로 써서 한 번에 로드한다(대신 이 페이지 코드에만 국한되고
+// 나머지 앱 번들에는 영향 없음 — 라우트별 코드 분할).
+function toPascalCase(kebabName: string): string {
+  return kebabName
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+}
 
 type Props = {
   categories: IconCategory[];
@@ -50,6 +63,14 @@ export function IconGalleryView({ categories }: Props) {
     0,
   );
 
+  const handleCopy = (pascalName: string) => {
+    const snippet = `import { ${pascalName} } from "lucide-react";`;
+    navigator.clipboard
+      .writeText(snippet)
+      .then(() => toast.success(`복사되었습니다: ${snippet}`))
+      .catch(() => toast.error("클립보드 복사에 실패했습니다."));
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* 카테고리 선택 */}
@@ -86,13 +107,15 @@ export function IconGalleryView({ categories }: Props) {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="아이콘 이름 검색…"
+          placeholder="아이콘 이름으로 검색 (예: arrow, user, file)"
           className="pl-9"
           aria-label="아이콘 검색"
         />
       </div>
 
-      <p className="text-sm text-muted-foreground">{visibleCount}개 아이콘</p>
+      <p className="text-sm text-muted-foreground">
+        전체 {totalCount}개 중 {visibleCount}개 표시 · 클릭하면 import 구문이 복사됩니다
+      </p>
 
       {/* 결과 */}
       {visibleCategories.length === 0 ? (
@@ -110,28 +133,37 @@ export function IconGalleryView({ categories }: Props) {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                {category.icons.map((name) => (
-                  <a
-                    key={`${category.id}-${name}`}
-                    href={iconDocsUrl(name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={`lucide.dev에서 "${name}" 보기`}
-                    className={cn(
-                      "group flex flex-col items-center justify-center gap-2 rounded-lg border bg-card p-4 text-card-foreground transition-colors",
-                      "hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    )}
-                  >
-                    <DynamicIcon
-                      name={name}
-                      className="size-6 text-foreground transition-transform group-hover:scale-110"
-                      aria-hidden="true"
-                    />
-                    <span className="w-full truncate text-center text-xs text-muted-foreground group-hover:text-foreground">
-                      {name}
-                    </span>
-                  </a>
-                ))}
+                {category.icons.map((name) => {
+                  const pascalName = toPascalCase(name);
+                  const Icon = (
+                    LucideIcons as unknown as Record<
+                      string,
+                      ComponentType<{ className?: string; "aria-hidden"?: boolean }>
+                    >
+                  )[pascalName];
+                  if (!Icon) return null;
+
+                  return (
+                    <button
+                      key={`${category.id}-${name}`}
+                      type="button"
+                      onClick={() => handleCopy(pascalName)}
+                      title={`클릭하면 "${pascalName}" import 구문이 복사됩니다`}
+                      className={cn(
+                        "group flex flex-col items-center justify-center gap-2 rounded-lg border bg-card p-4 text-card-foreground transition-colors",
+                        "hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      )}
+                    >
+                      <Icon
+                        className="size-6 text-foreground transition-transform group-hover:scale-110"
+                        aria-hidden
+                      />
+                      <span className="w-full truncate text-center text-xs text-muted-foreground group-hover:text-foreground">
+                        {name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </section>
           ))}

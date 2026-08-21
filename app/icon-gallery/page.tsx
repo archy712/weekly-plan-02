@@ -10,7 +10,7 @@ import { ICON_GALLERY } from "@/lib/constants/icon-gallery";
 
 export const metadata = {
   title: "아이콘 갤러리",
-  description: "lucide 아이콘을 카테고리별로 살펴보고 lucide.dev로 이동합니다.",
+  description: "lucide-react의 모든 아이콘을 검색하고 바로 import 구문을 복사합니다.",
 };
 
 export default function IconGalleryPage() {
@@ -30,9 +30,8 @@ export default function IconGalleryPage() {
         <div className="mt-8 flex flex-col gap-3">
           <h1 className="text-2xl font-bold sm:text-3xl">아이콘 갤러리</h1>
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-            이 프로젝트가 사용하는 <span className="font-medium">lucide</span>{" "}
-            아이콘을 카테고리별로 모아 보여줍니다. 각 아이콘을 누르면 해당 아이콘의{" "}
-            lucide.dev 페이지가 새 탭에서 열립니다.
+            이 프로젝트에 포함된 <span className="font-medium">lucide-react</span>의
+            모든 아이콘을 검색하고 바로 import 구문을 복사할 수 있습니다.
           </p>
         </div>
 
