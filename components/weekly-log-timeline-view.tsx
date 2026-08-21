@@ -37,10 +37,13 @@ import type {
 
 const STATUS_FILTER_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
 
-// 라벨(제목) 열 너비와 날짜 1칸 너비(px) — 날짜 수만큼 그리드 열이 늘어나므로 인라인
-// style로 gridTemplateColumns를 계산한다(Tailwind는 동적 열 개수를 표현할 수 없다).
+// 라벨(제목) 열 너비(px)와 날짜 1칸의 최소 너비(px) — 날짜 수만큼 그리드 열이 늘어나므로
+// 인라인 style로 gridTemplateColumns를 계산한다(Tailwind는 동적 열 개수를 표현할 수 없다).
+// 날짜 열은 DAY_MIN_WIDTH를 최솟값으로 하는 minmax(..., 1fr)라 컨테이너가 넓으면(예: 넓은
+// 화면에서 한 달 범위) 남는 폭을 균등하게 나눠 가져 스크롤 없이 꽉 채우고, 컨테이너가
+// 이 최솟값의 합보다 좁을 때만(기간이 길거나 화면이 좁을 때) overflow-x-auto로 스크롤된다.
 const LABEL_WIDTH = 200;
-const DAY_WIDTH = 28;
+const DAY_MIN_WIDTH = 28;
 const ROW_HEIGHT = 40;
 
 export function WeeklyLogTimelineView({
@@ -177,7 +180,7 @@ export function WeeklyLogTimelineView({
     return { item, startOffset, spanDays, overdue, clippedStart, clippedEnd };
   });
 
-  const gridTemplateColumns = `${LABEL_WIDTH}px repeat(${totalDays}, ${DAY_WIDTH}px)`;
+  const gridTemplateColumns = `${LABEL_WIDTH}px repeat(${totalDays}, minmax(${DAY_MIN_WIDTH}px, 1fr))`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -288,8 +291,8 @@ export function WeeklyLogTimelineView({
           // 책임진다).
           <div className="overflow-x-auto rounded-lg border">
             <div
-              className="relative"
-              style={{ width: `${LABEL_WIDTH + totalDays * DAY_WIDTH}px` }}
+              className="relative w-full"
+              style={{ minWidth: `${LABEL_WIDTH + totalDays * DAY_MIN_WIDTH}px` }}
             >
               <div
                 className="grid border-b bg-muted/30 text-xs text-muted-foreground"
@@ -338,8 +341,11 @@ export function WeeklyLogTimelineView({
                         overdue && "ring-2 ring-destructive",
                       )}
                       style={{
-                        left: `${startOffset * DAY_WIDTH}px`,
-                        width: `${spanDays * DAY_WIDTH}px`,
+                        // 날짜 열이 minmax(..., 1fr)라 실제 렌더 폭이 화면마다 달라지므로,
+                        // 고정 px 대신 이 wrapper(정확히 totalDays개 열의 폭 = 100%) 기준
+                        // 백분율로 위치·너비를 계산해야 열 경계와 항상 정확히 일치한다.
+                        left: `${(startOffset / totalDays) * 100}%`,
+                        width: `${(spanDays / totalDays) * 100}%`,
                         backgroundColor: STATUS_CHART_COLORS[item.status],
                       }}
                     />
@@ -349,7 +355,11 @@ export function WeeklyLogTimelineView({
               {showTodayLine && (
                 <div
                   className="pointer-events-none absolute inset-y-0 border-l-2 border-primary"
-                  style={{ left: `${LABEL_WIDTH + todayOffset * DAY_WIDTH}px` }}
+                  // 날짜 영역(라벨 열을 제외한 나머지 100% - LABEL_WIDTH)의 todayOffset/totalDays
+                  // 지점 — 위 막대와 동일한 이유로 고정 px 대신 calc 기반 백분율을 쓴다.
+                  style={{
+                    left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px) * ${todayOffset / totalDays})`,
+                  }}
                   aria-hidden
                 />
               )}

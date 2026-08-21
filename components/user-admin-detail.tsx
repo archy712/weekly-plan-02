@@ -92,7 +92,7 @@ export function UserAdminDetail({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex w-full max-w-2xl flex-col gap-6">
       <Link
         href="/protected/admin/users"
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
