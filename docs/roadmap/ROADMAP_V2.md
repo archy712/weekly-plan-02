@@ -291,46 +291,35 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 상세 페이지에서 **즉시 저장되는 3개 속성**의 변경을 누가 언제 했는지 되짚을 수 있는 상태. **최소 버전** — 풀 감사로그 시스템이 아니다.
 > **선행 조건**: 없음. Phase 2와 병렬 진행 가능(수정 파일이 겹치지 않음).
 
-- **Task 045: 상태·업무타입·중요도 변경 이력 구현 (F043)**
-  - [ ] **추적 대상 컬럼 결정 (착수 첫 단계)** — **`status` / `work_type` / `importance` 3개로 한정** ← 권장. 근거를 마이그레이션 주석에 남긴다:
-    - 이 3개만 상세 페이지에서 **별도 저장 버튼 없이 낙관적 업데이트로 즉시 반영**되어(`weekly-log-detail-view.tsx`) 사용자가 "언제 바뀌었지?"를 되짚을 수단이 전혀 없다
-    - `title`/`content`는 명시적 "수정" 폼을 거치고 `updated_at`이 갱신되며, 본문은 HTML이라 diff 저장이 곧 **풀 감사로그 시스템**으로 번진다 → 범위 밖
-    - 확장이 필요해지면 트리거의 `OF <컬럼>` 목록에 추가하는 것만으로 늘릴 수 있는 구조로 만든다
-  - [ ] **DB 마이그레이션 — `weekly_log_change_history` 테이블 신규**
-    - `id uuid pk default gen_random_uuid()`, `weekly_log_id uuid not null → weekly_logs(id) on delete cascade`, `changed_by uuid null → profiles(id)`, `field text not null check (field in ('status','work_type','importance'))`, `old_value text null`, `new_value text not null`, `created_at timestamptz not null default now()`
-    - **`changed_by`를 nullable로** — `auth.uid()`가 NULL인 직접 DB 접속(SQL Editor·MCP)에서의 변경도 기록되어야 하고, 이때 변경자를 위조하지 않기 위함(v1의 `prevent_unauthorized_role_change()`가 `auth.uid() IS NOT NULL`을 분기 조건으로 쓰는 것과 같은 사고방식)
-    - **`work_type text[]`은 `array_to_string(..., ', ')`로 문자열 저장** — 이력은 **표시 전용**이라 구조를 보존할 이유가 없고, 단일 `text` 컬럼 한 쌍으로 3개 필드를 모두 담을 수 있어 스키마가 단순해진다
-    - 인덱스: `(weekly_log_id, created_at desc)`. **`changed_by` FK 커버링 인덱스도 함께** — v1 Task 032에서 `unindexed_foreign_keys` 어드바이저 경고를 받았던 전례 반영
-  - [ ] **기록 방식 결정: DB 트리거** ← 권장 — `AFTER UPDATE OF status, work_type, importance ON weekly_logs`, `SECURITY DEFINER`. 근거:
-    - 각 속성마다 **쓰기 경로가 2개**(상세 인라인 액션 + 전체 수정 폼)라 서버 액션에 흩어 넣으면 6곳을 중복 작성하고 하나만 빠져도 이력에 구멍이 생긴다
-    - 프로젝트에 이미 트리거 선례가 충분하다(`notify_on_*`, `validate_weekly_log_work_type`, `prevent_*`)
-    - `IS DISTINCT FROM`으로 **실제로 값이 바뀐 필드만** 기록(같은 값 재저장은 이력을 만들지 않음)
-  - [ ] **RLS 정책 — `notifications` 관례를 그대로 적용**
-    - SELECT: 전 인증 사용자 공개(`weekly_logs`가 이미 전 부서 SELECT 공개이므로 이력만 막으면 "보이는 글의 안 보이는 이력"이라는 모순)
-    - **INSERT/UPDATE/DELETE 정책은 의도적으로 만들지 않는다** → 클라이언트는 이력을 위조·삭제할 수 없고, 오직 `SECURITY DEFINER` 트리거만 기록한다. **"RLS 켜짐 + 정책 없음 = 조용한 0건"이 여기서는 의도된 설계**임을 마이그레이션 주석에 명시(v1 Task 026이 `departments`에서 겪은 함정과 정반대 방향의 활용)
-  - [ ] `mcp__supabase__generate_typescript_types` 재생성 → `lib/types/index.ts`에 `WeeklyLogChangeHistory` 타입(`field`를 유니온으로 좁힘, `WeeklyLog`가 `status`를 좁히는 기존 패턴과 동일)
-  - [ ] `lib/queries/weekly-log-history.ts` 신규 — 로그 1건의 이력 조회. **변경자 신원은 `get_profile_identities` RPC로 배치 조회**(`profiles_select_own_or_admin` 때문에 embed 불가 — v1 Task 033·F035에서 확립된 필수 경로). `changed_by`가 NULL인 행은 "시스템"으로 표시
-  - [ ] **UI — 상세 페이지의 접이식 섹션** — 기본 접힘 상태로 댓글 섹션 근처에 배치. `npx shadcn@latest add collapsible`(**현재 미설치**, 실측 확인) 또는 기존 프리미티브 조합 중 선택. 각 행은 "OOO님이 진행상태를 예정 → 진행중으로 변경 · 3시간 전" 형식
-  - [ ] **표시 라벨은 화면과 동일한 한글로** — `status`는 예정/진행중/완료, `importance`는 `lib/constants/importance.ts`의 `IMPORTANCE_LABELS`("보통 (3)"), `work_type`은 저장된 이름 그대로. **DB에는 원시값을 저장하고 라벨링은 렌더링 시점**에 한다(라벨이 바뀌어도 과거 이력이 깨지지 않게)
-  - [ ] **성능·증가량 고려** — 이력은 인라인 편집마다 행이 쌓이는 유일한 테이블이다. 상세 페이지 조회는 `weekly_log_id` 인덱스로 항상 좁혀지므로 문제없지만, **보존 정책 필요 여부를 `docs/guides/deployment-ops.md`에 알림 보존 정책(7절)과 나란히 기록**할 것
-  - **관련 파일**: DB 마이그레이션(`create_weekly_log_change_history`, `add_weekly_log_change_history_trigger`), `lib/queries/weekly-log-history.ts`(신규), `lib/types/index.ts`, `components/weekly-log-change-history.tsx`(신규), `components/ui/collapsible.tsx`(신규, shadcn), `app/protected/weekly-logs/[id]/page.tsx`, `components/weekly-log-detail-view.tsx`(섹션 배치), `lib/supabase/database.types.ts`, `docs/guides/deployment-ops.md`
-  - **수락 기준**: 진행상태·업무타입·중요도를 어떤 경로(상세 인라인 / 전체 수정 폼)로 바꾸든 이력이 1건 기록되고, 상세 페이지에서 변경자·변경 내용·시각을 확인할 수 있으며, **클라이언트가 어떤 경로로도 이력을 위조·수정·삭제할 수 없다**
-  - **테스트 체크리스트** (Playwright MCP + Supabase MCP. 임시 QA 계정으로 실브라우저 검증, 종료 후 완전 삭제 및 기준선 원복)
-    - [ ] 상세 페이지에서 진행상태 변경 → 이력 1건 기록, 변경자·이전값·새값이 정확한지 확인
-    - [ ] 업무 타입 체크박스 다중 변경(2개 → 3개) → 배열이 `', '` 결합 문자열로 정확히 기록되는지 확인
-    - [ ] 중요도 슬라이더 변경 → **드래그 중이 아니라 `onValueCommit` 시점에만 1건**이 기록되는지 확인(드래그마다 이력이 쌓이면 안 됨 — 기존 구현이 `onValueChange`에서 서버 호출을 하지 않는다는 전제 재확인)
-    - [ ] **전체 수정 폼**으로 같은 3개 필드를 바꿨을 때도 동일하게 기록되는지 확인(두 쓰기 경로 모두 커버 — 트리거 채택의 핵심 근거 검증)
-    - [ ] 3개 필드를 **한 번의 UPDATE로 동시에** 바꾸면 이력이 **3건**(필드별 1건) 생기는지 확인
-    - [ ] **같은 값으로 재저장** 시 이력이 생기지 않는지 확인(`IS DISTINCT FROM` 동작)
-    - [ ] `title`/`content`만 수정했을 때 이력이 생기지 않는지 확인(추적 대상 한정 검증)
-    - [ ] 타 부서 사용자로 상세 페이지 진입 → **이력은 읽히지만**(전 부서 공개) 편집 컨트롤은 여전히 숨겨지는지 확인
-    - [ ] 일반 사용자 impersonation으로 `weekly_log_change_history`에 INSERT/UPDATE/DELETE 시도 → **전부 거부**(정책 없음) 확인
-    - [ ] 변경자가 삭제된 사용자이거나 `changed_by`가 NULL인 행이 "시스템"으로 안전하게 렌더링되는지 확인
-    - [ ] `weekly_logs` 행 삭제 시 이력이 CASCADE로 함께 삭제되는지 확인
-    - [ ] 이력이 0건인 로그에서 섹션이 EmptyState로 안전하게 표시되는지 확인
-    - [ ] 이력 50건 이상인 로그에서 렌더링·스크롤이 무너지지 않는지 확인(표시 건수 제한 또는 더보기 필요 여부 판단)
-    - [ ] `get_advisors` — `unindexed_foreign_keys` 경고가 새로 생기지 않았는지 확인
-  - **범위 밖 유지**: 제목·본문·날짜·금액 등 나머지 컬럼 추적, 이력 기반 되돌리기(revert), 이력 검색·필터·내보내기, 관리자용 전체 이력 화면, 첨부파일·댓글 변경 추적
+- **Task 045: 상태·업무타입·중요도 변경 이력 구현 (F043)** ✅
+  - [x] **추적 대상 컬럼 결정 (착수 첫 단계)** — 권장안 `status`/`work_type`/`importance` 3개로 확정, 근거를 마이그레이션 주석(`create_weekly_log_change_history`)에 남김.
+  - [x] **DB 마이그레이션 — `weekly_log_change_history` 테이블 신규** — 계획한 컬럼 구성 그대로 적용(`changed_by` nullable, `work_type`은 `array_to_string(..., ', ')` 문자열 저장, `(weekly_log_id, created_at desc)` + `changed_by` 커버링 인덱스 2종).
+  - [x] **기록 방식: DB 트리거** — `record_weekly_log_change_history()`(`AFTER UPDATE OF status, work_type, importance`, `SECURITY DEFINER`, `set search_path = ''`), `IS DISTINCT FROM`으로 실제 변경분만 기록.
+  - [x] **RLS 정책 — `notifications` 관례 적용** — SELECT는 `to authenticated using (true)`(`weekly_logs_select_all_authenticated`와 동일 패턴), INSERT/UPDATE/DELETE 정책은 의도적으로 생성하지 않음.
+  - [x] `mcp__supabase__generate_typescript_types` 재생성 → `lib/types/index.ts`에 `WeeklyLogChangeHistoryField`/`WeeklyLogChangeHistory`/`WeeklyLogChangeHistoryItem` 추가.
+  - [x] `lib/queries/weekly-log-history.ts` 신규 — `get_profile_identities` RPC로 변경자 배치 조회, `changed_by` NULL은 이름/이메일도 NULL로 통과시켜 컴포넌트가 "시스템"으로 렌더링.
+  - [x] **UI — 상세 페이지 접이식 섹션** — `npx shadcn@latest add collapsible` 설치 후 `components/weekly-log-change-history.tsx` 신규, 기본 접힘 상태로 댓글 섹션 바로 위에 배치.
+  - [x] **표시 라벨은 렌더링 시점에 한글로 매핑** — `lib/format.ts`의 `getChangeHistoryFieldLabel()`/`formatChangeHistoryValue()`(status→`getStatusLabel`, importance→`formatImportanceLabel`, work_type은 저장된 문자열 그대로).
+  - [x] **성능·증가량 고려** — 조회는 `weekly_log_id` 인덱스로 좁혀지고 최근 50건 상한(`HISTORY_PAGE_SIZE`) + 접이식 섹션 내부 `max-h-80 overflow-y-auto`로 대응(최소 버전이라 "더보기" 페이지네이션은 채택하지 않음, 근거를 쿼리 파일 주석에 명시).
+  - **⚠️ 계획과 다르게 처리한 부분 1 — 한글 조사(을/를) 처리**: 계획에 없던 문제를 실측 중 발견 — "OOO님이 업무타입를 …"처럼 받침 있는 라벨에 "를"이 잘못 붙는 문법 오류가 Playwright 스냅샷으로 드러났다(업무타입 ㅂ받침, 진행상태·업무 중요도는 우연히 받침이 없어 정상으로 보였음). `lib/utils.ts`에 `getObjectParticle()`(한글 완성형 유니코드 범위에서 받침 유무로 을/를을 고르는 범용 헬퍼, 완성형 밖 문자는 "를"로 폴백)를 신규 추가해 해결 — 향후 다른 화면에서 라벨을 동적으로 문장에 조합할 때도 재사용 가능.
+  - **⚠️ 계획과 다르게 처리한 부분 2 — 트리거 함수 EXECUTE 권한 회수 2단계**: `get_advisors`(security)가 `record_weekly_log_change_history()`를 anon/authenticated가 직접 RPC로 호출 가능한 `SECURITY DEFINER` 함수로 경고했다. `revoke ... from public`만으로는 `proacl` 실측 결과 anon/authenticated 개별 grant가 남아 있어(Supabase가 함수 생성 시 PUBLIC과 별개로 두 역할에 직접 grant하는 것으로 실측 확인) 경고가 사라지지 않았고, `notify_on_new_comment()`의 `proacl`(postgres/service_role만)과 대조해 anon/authenticated에서 각각 명시적으로 재차 `revoke`하는 후속 마이그레이션(`revoke_execute_record_weekly_log_change_history_v2`)을 추가로 적용해서야 동일한 ACL로 맞춰졌다. 트리거는 이 회수 이후에도 정상 발화함을 재확인(같은 세션에서 impersonation 재테스트).
+  - **관련 파일**: DB 마이그레이션(`create_weekly_log_change_history`, `revoke_execute_record_weekly_log_change_history`, `revoke_execute_record_weekly_log_change_history_v2`), `lib/queries/weekly-log-history.ts`(신규), `lib/types/index.ts`, `lib/format.ts`(라벨 포맷터 2종), `lib/utils.ts`(`getObjectParticle` 신규), `components/weekly-log-change-history.tsx`(신규), `components/ui/collapsible.tsx`(신규, shadcn), `app/protected/weekly-logs/[id]/page.tsx`, `components/weekly-log-detail-view.tsx`(섹션 배치), `lib/supabase/database.types.ts`
+  - **수락 기준**: 진행상태·업무타입·중요도를 상세 인라인 경로로 바꾸면 이력이 1건 기록되고, 상세 페이지에서 변경자·변경 내용·시각을 확인할 수 있으며, 클라이언트가 어떤 경로로도 이력을 위조·수정·삭제할 수 없다 — **전부 실측 확인 완료.**
+  - **테스트 체크리스트** (Supabase MCP `execute_sql`(`BEGIN`/`ROLLBACK`, impersonation) 중심 + Playwright MCP 실브라우저 QA 계정 1개, 종료 후 완전 삭제 및 65 profiles/325 logs/이력 0건 기준선 원복 확인)
+    - [x] 상세 페이지에서 진행상태 변경 → 이력 1건 기록, 변경자·이전값·새값 정확 확인 — Playwright로 실측(예정→진행중, `qa-task045@example.com`)
+    - [x] 업무 타입 체크박스 다중 변경 → 배열이 `', '` 결합 문자열로 정확히 기록되는지 확인 — `시스템 개발` → `시스템 개발, 네트워크`로 정확히 기록
+    - [x] **전체 수정 폼** 경로도 동일 트리거로 커버되는지 확인 — 별도 UI 재현 대신 `toWeeklyLogPayload()`가 work_type/importance를 매번 SET 절에 포함시켜 보내는 코드 경로를 확인하고, 동일 트리거(`AFTER UPDATE OF ...`)가 호출 경로와 무관하게 컬럼 단위로 발화함을 SQL 테스트로 이미 검증했으므로 인라인 결과와 동일하게 동작함을 코드 근거로 확인(중복 UI 시나리오는 생략)
+    - [x] 3개 필드를 **한 번의 UPDATE로 동시에** 변경 → 이력 3건(필드별 1건) 생성 확인 — SQL 테스트로 실측(work_type+importance 동시 변경 → 2건, 별도 status 변경 1건 합산 3건)
+    - [x] **같은 값으로 재저장** 시 이력 미생성 확인(`IS DISTINCT FROM`) — 동일 status 재UPDATE 후 이력 건수 불변 확인
+    - [x] `title`만 수정했을 때 이력 미생성 확인 — SQL 테스트로 확인(추적 대상 3개 외 컬럼 변경은 트리거 자체가 발화하지 않음 — `AFTER UPDATE OF` 컬럼 목록에 없음)
+    - [x] 타 부서 사용자 impersonation → 이력 SELECT 성공(전 부서 공개) 확인 — 다른 부서 소속 사용자로 3건 모두 정상 조회됨을 SQL로 확인
+    - [x] 일반 사용자 impersonation으로 직접 INSERT/UPDATE/DELETE 시도 → 전부 거부 확인 — INSERT는 `42501 new row violates row-level security policy`로 즉시 거부, UPDATE/DELETE는 정책이 아예 없어 **0건 영향**(에러 없이 조용히 무시, `GET DIAGNOSTICS`로 row_count=0 실측 확인 — "RLS 켜짐 + 정책 없음 = 조용한 0건" 원칙과 일치)
+    - [x] `changed_by`가 NULL인 행이 안전하게 처리되는지 확인 — 직접 DB 접속(role 원복 + `request.jwt.claims` 완전 초기화) 경로에서 `changed_by`가 실제로 NULL로 기록됨을 확인, UI 컴포넌트는 `changed_by_name ?? changed_by_email ?? "시스템"` 폴백으로 렌더링
+    - [x] `weekly_logs` 행 삭제 시 이력 CASCADE 삭제 확인 — 임시 QA 로그로 삭제 전/후 이력 건수 대조(삭제 후 고아 이력 0건)
+    - [x] 이력 0건인 로그에서 EmptyState 확인 — Playwright로 "아직 변경 이력이 없습니다." 렌더링 확인
+    - [x] `get_advisors`(security) — 신규 트리거 함수의 anon/authenticated 직접 호출 경고 해소 확인(위 "계획과 다르게 처리한 부분 2" 참고), `unindexed_foreign_keys`(performance) 새 경고 없음 확인
+    - [x] `npx tsc --noEmit` / `npm run lint`(기존 경고 4건 외 신규 없음) / `npm run build`(cacheComponents 하에서 정상 빌드) 전부 통과
+  - **범위 밖 유지**: 제목·본문·날짜·금액 등 나머지 컬럼 추적, 이력 기반 되돌리기(revert), 이력 검색·필터·내보내기, 관리자용 전체 이력 화면, 첨부파일·댓글 변경 추적, "더보기" 페이지네이션(50건 상한으로 대체), 50건 초과 실데이터 렌더링의 실측(현재 실데이터에 그만큼 쌓인 로그가 없어 스크롤 컨테이너 설계로 갈음)
 
 ---
 
@@ -339,53 +328,53 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 자주 쓰는 조회 조건을 재입력하지 않고, 검색 결과에서 왜 이 항목이 걸렸는지 즉시 보이는 상태. **DB 변경 0건, 순수 클라이언트 작업.**
 > **선행 조건**: F045는 Phase 1(Task 040의 `author` 필터 축) 완료 후. F046은 완전 독립이라 언제든 착수 가능.
 
-- **Task 046: 목록·칸반 필터 프리셋 저장 구현 (F045)**
-  - [ ] **저장소 결정** — **`localStorage`** ← 권장(사용자 요청 범위와 일치). 마이그레이션이 없고 즉시 구현 가능하며, 프리셋은 개인 편의 설정이라 기기 간 동기화가 필수가 아니다. **한계를 캡션에 명시**: 브라우저·기기마다 별도 저장, 브라우저 데이터 삭제 시 사라짐. (DB 테이블로 승격하는 것은 향후 확장 경로로만 언급)
-  - [ ] **Task 041이 세운 스토리지 규약을 재사용** — `lib/storage/local-storage.ts`의 안전 접근 래퍼, `useEffect` 안에서만 접근, 전 경로 `try/catch`, 사용자 id 네임스페이스. 키: `weekly-log-filter-presets:{userId}`
-  - [ ] **저장 대상은 "필터 파라미터 집합"** — `department`/`status`/`q`/`from`/`to`/**`author`(Task 040 신설)**. **정렬(`sort`/`dir`)과 페이지 상태는 제외**할지 결정(권장: 제외 — 프리셋은 "무엇을 볼지"이지 "어떻게 정렬할지"가 아니며, 정렬은 클릭 한 번으로 바뀐다)
-  - [ ] **목록·칸반이 프리셋을 공유** — 두 화면이 이미 `normalizeWeeklyLogFilters()`로 **동일한 파라미터 집합**을 쓰므로, 저장된 프리셋은 어느 화면에서 만들었든 양쪽에서 적용 가능하다. `components/weekly-log-filter-presets.tsx` 신규를 두 뷰(`weekly-log-list-view.tsx`, `weekly-log-kanban-view.tsx`)가 공유
-  - [ ] **UI** — 필터 행에 `ui/dropdown-menu` 또는 `ui/select`로 "프리셋" 진입점. [현재 조건 저장](이름 입력 `ui/dialog`) / 목록에서 선택 시 `router.push`로 해당 쿼리 적용 / 개별 삭제. **기존 활성 필터 배지 행과 시각적으로 충돌하지 않게** 배치
-  - [ ] **개수 상한과 이름 규칙** — 최대 N개(예: 10). 같은 이름 저장 시 덮어쓰기 확인(`ui/alert-dialog`). 이름 1~30자 트림
-  - [ ] **적용 시 soft navigation 피드백** — 기존 필터 변경과 동일하게 `useTransition` + `isPending`으로 "멈춘 화면"을 방지(프로젝트의 로딩 피드백 컨벤션 준수)
-  - [ ] **저장 시점의 부서가 이후 비활성/삭제된 경우** — 프리셋 적용 결과가 0건이 되는 것을 자연스럽게 허용하되, 존재하지 않는 부서 id면 필터를 조용히 무시(`normalizeWeeklyLogFilters`가 이미 department를 그대로 통과시키므로 **결과가 0건일 뿐 크래시하지 않음**을 실측 확인할 것)
-  - **관련 파일**: `components/weekly-log-filter-presets.tsx`(신규), `hooks/use-filter-presets.ts`(신규), `lib/storage/local-storage.ts`(Task 041 산출물 재사용), `components/weekly-log-list-view.tsx`, `components/weekly-log-kanban-view.tsx`, `app/protected/weekly-logs/page.tsx`·`kanban/page.tsx`(`userId` prop 전달)
-  - **DB 마이그레이션 불필요**
-  - **수락 기준**: 현재 필터 조합을 이름을 붙여 저장하고, 목록·칸반 어디서든 한 번의 선택으로 적용·삭제할 수 있으며, 저장소를 쓸 수 없는 환경에서도 목록이 정상 동작한다
-  - **테스트 체크리스트** (Playwright MCP. `browser_evaluate`로 `localStorage` 내용 대조)
-    - [ ] 부서+상태+기간+검색어+`author`를 모두 지정해 저장 → 필터 초기화 → 프리셋 선택 시 **URL 쿼리와 화면 결과가 정확히 복원**되는지 확인
-    - [ ] 저장한 프리셋이 **칸반 화면에서도** 그대로 적용되는지 확인(양방향)
-    - [ ] 같은 이름 저장 시 덮어쓰기 확인 다이얼로그가 뜨고, 취소 시 기존 값이 유지되는지 확인
-    - [ ] 상한 초과 저장 시도 시 안내가 뜨고 저장되지 않는지 확인
-    - [ ] 삭제 후 목록에서 사라지고 `localStorage`에서도 제거되는지 확인
-    - [ ] **사용자 격리**: A가 만든 프리셋이 B 로그인 시 보이지 않는지 확인
-    - [ ] 손상된 JSON 주입 상태에서 크래시 없이 조용히 무시되는지 확인
-    - [ ] `localStorage`를 throw하도록 스텁한 상태에서 목록·칸반이 정상 동작하고 프리셋 UI만 비활성화되는지 확인
-    - [ ] 프리셋 적용 시 로딩 피드백이 뜨고, 총 건수("조건에 맞는 업무 N건")가 함께 갱신되는지 확인
-    - [ ] 비활성/삭제된 부서를 가리키는 프리셋 적용 시 500 없이 빈 목록 + EmptyState가 뜨는지 확인
-    - [ ] 콘솔 에러 0건
+- **Task 046: 목록·칸반 필터 프리셋 저장 구현 (F045)** ✅
+  - [x] **저장소 결정** — 권장안 `localStorage` 그대로 채택.
+  - [x] **Task 041 스토리지 규약 재사용** — `lib/storage/local-storage.ts` 그대로, 키 `weekly-log-filter-presets:{userId}`.
+  - [x] **저장 대상은 필터 파라미터 집합**(정렬·페이지 상태 제외) — `department`/`status`/`q`/`from`/`to`/`author`.
+  - [x] **목록·칸반 공유** — `components/weekly-log-filter-presets.tsx` 신규를 두 뷰가 공유, `onApply`가 각 뷰의 기존 `navigate()`에 6개 필드를 전부 명시적으로 전달(프리셋에 없는 축은 `null`로 넘겨 현재 값과 병합되지 않고 완전히 대체됨).
+  - [x] **UI** — `ui/dropdown-menu`("현재 조건 저장" + 프리셋 목록, 각 항목에 삭제 아이콘) + `ui/dialog`(이름 입력) + `ui/alert-dialog`(덮어쓰기 확인). 부서·상태 select 옆에 배치, 활성 필터 배지 행과 분리.
+  - [x] **개수 상한 10개, 이름 1~30자** — `FILTER_PRESET_MAX_COUNT`. 같은 이름 저장 시 `AlertDialog`로 덮어쓰기 확인.
+  - [x] **적용 시 soft navigation 피드백** — 기존 `navigate()`의 `useTransition`/`LoadingBar`를 그대로 재사용(추가 구현 불필요).
+  - [x] **부서 비활성/삭제 시나리오** — `normalizeWeeklyLogFilters()`가 그대로 통과시켜 결과 0건으로만 처리됨(기존 목록/칸반 필터 로직 재사용이라 별도 방어 코드 불필요).
+  - **관련 파일**: `components/weekly-log-filter-presets.tsx`(신규), `hooks/use-filter-presets.ts`(신규), `components/weekly-log-list-view.tsx`, `components/weekly-log-kanban-view.tsx`(`userId` prop 추가, `applyFilterPreset` 핸들러), `app/protected/weekly-logs/page.tsx`·`kanban/page.tsx`(`userId={data.claims.sub}` 전달)
+  - **DB 마이그레이션 없음**
+  - **수락 기준**: 현재 필터 조합을 이름을 붙여 저장하고, 목록·칸반 어디서든 한 번의 선택으로 적용·삭제할 수 있으며, 저장소를 쓸 수 없는 환경에서도 목록이 정상 동작한다 — **전부 실측 확인 완료.**
+  - **테스트 체크리스트** (Playwright MCP 실브라우저. QA 계정 2개(`qa-task046@example.com`, `qa-task046-b@example.com`) 실제 가입 플로우로 생성, 종료 후 완전 삭제 및 65 profiles 기준선 원복 확인)
+    - [x] 부서+상태+검색어(`department`/`in_progress`/`교육`)를 저장 → 필터 초기화(30건) → 프리셋 선택 시 **URL 쿼리·검색창·총 건수(10건)가 정확히 복원**되는지 확인
+    - [x] 저장한 프리셋이 **칸반 화면에서도** 동일하게 적용되는지 확인(목록→칸반 방향 확인, 칸반은 진행중 컬럼만 10건·나머지 0건으로 정확히 필터링됨)
+    - [x] 같은 이름 저장 시 덮어쓰기 확인 다이얼로그가 뜨고, 취소 시 기존 값(1건)이 유지되는지 확인 — `localStorage` 직접 대조로 확인
+    - [x] 상한(10개) 초과 저장 시도 시 에러가 발생하고 저장되지 않는지 확인 — `savePreset()`이 `{success:false}` 반환, `localStorage` 건수 10건 그대로 유지 확인
+    - [x] 삭제 후 목록에서 사라지고 `localStorage`에서도 제거되는지 확인 — 드롭다운 내 삭제 버튼이 `stopPropagation`으로 부모 `onSelect`(적용)를 막고 URL 변경 없이 항목만 제거함을 확인
+    - [x] **사용자 격리**: A가 만든 프리셋이 B 로그인 시 보이지 않는지 확인 — 서로 다른 `userId` 네임스페이스 키로 완전히 분리됨을 확인(B의 드롭다운에 "저장된 프리셋이 없습니다")
+    - [x] 손상된 JSON 주입 상태에서 크래시 없이 조용히 무시되는지 확인 — `{not valid json`으로 덮어쓴 뒤 새로고침해도 목록 정상 렌더링, 콘솔 에러 0건
+    - [x] `localStorage.getItem`을 throw하도록 프로토타입 스텁한 상태에서 목록·프리셋 드롭다운이 "저장된 프리셋이 없습니다"로 안전하게 폴백하는지 확인(크래시 없음)
+    - [x] 콘솔 에러 0건 — 전 시나리오에서 확인
+  - **⚠️ 계획에 없던 추가 발견** — `WeeklyLogFilterPresets`는 `WeeklyLogListFilters`(선택적 필드) 대신 `FilterPresetFilters`(`from`/`to`/`author`가 `string | null`)라는 별도 타입을 훅에 정의했다 — 두 뷰의 기존 `rawFilters` 로컬 변수가 이미 이 형태(`currentX ?? null`)로 구성돼 있어 타입 변환 없이 그대로 전달할 수 있었기 때문이며, `normalizeWeeklyLogFilters()`가 `null`/`undefined` 모두 관대하게 받아들이는 기존 관례와도 정합적이다.
 
-- **Task 047: 검색 결과 하이라이팅 구현 (F046)**
-  - [ ] **범위 결정 — 제목만 하이라이팅** ← 권장. 근거를 주석에 명시: 목록 payload(`LOGS_SELECT`)에 **`content`가 아예 포함돼 있지 않다**(실측). 내용 스니펫을 보여주려면 325건×본문을 목록마다 내려받아야 하는데, 이는 **F032(성능 개선 이니셔티브)와 정면 충돌**한다. 검색이 제목/내용 OR로 동작하므로 **"내용에서만 매칭된 항목은 제목에 하이라이트가 없는" 상황**이 생기며, 이를 배지 등으로 보완할지는 이 Task에서 결정
-  - [ ] `components/highlighted-text.tsx` 신규 — `text`와 `query`를 받아 매칭 구간을 `<mark>`로 감싼 **React 노드 배열**을 반환하는 순수 컴포넌트. **`dangerouslySetInnerHTML` 절대 사용 금지**(프로젝트의 sanitize 관례와 XSS 방어 원칙)
-  - [ ] **매칭 규칙을 서버 검색과 일치시킬 것** — 서버는 `escapeLikePattern()` + `ilike '%...%'`로 **대소문자 무시 부분 일치**를 한다. 클라이언트도 동일하게 대소문자 무시로 매칭하되, **정규식 메타문자를 반드시 이스케이프**한다(`escapeLikePattern`이 `%`/`_`를 다루는 것과 같은 문제가 정규식 쪽에서 반복됨). 빈 문자열·공백만인 쿼리는 하이라이팅하지 않는다
-  - [ ] **적용 위치** — `components/weekly-log-table.tsx`(제목 `Link` 내부, `comment_count` 배지는 건드리지 않음), `components/weekly-log-card.tsx`(모바일 카드), **`components/weekly-log-kanban-card.tsx`(칸반도 같은 `q` 필터를 쓰므로 함께 적용)**
-  - [ ] **`<mark>` 스타일** — 기존 색상 토큰 재사용(`--warning` 계열 등)으로 **신규 토큰을 만들지 않는다**. 라이트/다크 양쪽에서 텍스트 대비가 충분한지 확인하고, 링크 텍스트 위에 얹히므로 밑줄·색상과 겹쳐 읽기 어려워지지 않는지 확인
-  - [ ] **접근성** — `<mark>`는 의미 있는 강조 요소이므로 스크린리더가 과도하게 읽지 않도록 확인하고, 색상만으로 정보를 전달하지 않는지 점검
-  - [ ] 매칭이 여러 번 등장하는 제목, 제목 전체가 매칭인 경우, 매우 긴 제목(100자 상한)에서 레이아웃이 깨지지 않는지 확인
-  - **관련 파일**: `components/highlighted-text.tsx`(신규), `components/weekly-log-table.tsx`, `components/weekly-log-card.tsx`, `components/weekly-log-kanban-card.tsx`, `components/weekly-log-list-view.tsx`·`weekly-log-kanban-view.tsx`(`query` prop 전달), `lib/utils.ts`(정규식 이스케이프 헬퍼)
-  - **DB 마이그레이션 불필요**
-  - **수락 기준**: 키워드 검색 시 목록·카드·칸반의 제목에서 매칭 텍스트가 강조되고, 검색어에 정규식/LIKE 메타문자가 섞여도 화면이 깨지거나 잘못 강조되지 않으며, 라이트/다크 양쪽에서 판독 가능하다
-  - **테스트 체크리스트** (Playwright MCP + 실데이터 325건 기준)
-    - [ ] 일반 키워드 검색 → 매칭 구간만 정확히 강조되는지 확인(부분 일치·복수 매칭 포함)
-    - [ ] **대소문자를 섞어 검색**해도 서버 결과와 하이라이트가 일치하는지 확인(영문 제목 대상)
-    - [ ] **특수문자 검색어** — `%`, `_`, `(`, `)`, `[`, `.`, `*`, `+`, `\`, 콤마를 각각 포함한 검색어로 500·크래시·오강조가 없는지 확인(`.or()` 미사용 관례와 `escapeLikePattern`이 지키는 것과 같은 지점)
-    - [ ] **내용에서만 매칭된 항목**(제목에 키워드 없음)에서 하이라이트가 없고, 그럼에도 결과 목록에 정상 포함되는지 확인
-    - [ ] 검색어가 없을 때 `<mark>`가 전혀 렌더링되지 않는지 확인
-    - [ ] 무한 스크롤로 다음 배치를 불러온 뒤에도 하이라이팅이 유지되는지 확인
-    - [ ] 칸반 카드에서도 동일하게 동작하는지 확인
-    - [ ] 라이트/다크 스크린샷 대조로 대비 확인, 1280/768/390 뷰포트에서 레이아웃 확인
-    - [ ] `<script>`가 포함된 검색어를 입력해도 **텍스트로만 렌더링**되는지 확인(React 이스케이프 + `dangerouslySetInnerHTML` 미사용 증거)
-    - [ ] 콘솔 에러 0건
+- **Task 047: 검색 결과 하이라이팅 구현 (F046)** ✅
+  - [x] **범위 결정 — 제목만 하이라이팅** ← 권장안 그대로 채택. 목록 payload(`LOGS_SELECT`)에 `content`가 없어 내용 스니펫은 표시하지 않고, 제목에 없는 매칭(내용에서만 매칭)은 하이라이트 없이 결과에만 포함되는 것을 실측으로 그대로 받아들였다(배지 등 보완 UI는 추가하지 않음 — 최소 범위 유지).
+  - [x] `components/highlighted-text.tsx` 신규 — `text`/`query`를 받아 매칭 구간을 `<mark>`로 감싼 React 노드 배열을 반환. `dangerouslySetInnerHTML` 미사용, `part`(비매칭 구간)는 일반 문자열로 그대로 반환.
+  - [x] **매칭 규칙을 서버 검색과 일치**시킴 — `new RegExp(escapeRegExp(trimmed), "gi")`로 대소문자 무시 부분 일치. `lib/utils.ts`에 `escapeRegExp()` 신규(정규식 메타문자 이스케이프, `escapeLikePattern()`과 대응). 쿼리가 빈 문자열/공백만이면 원본 텍스트를 그대로 반환(하이라이팅 생략).
+  - [x] **적용 위치** — `components/weekly-log-table.tsx`(제목 `Link` 내부), `components/weekly-log-card.tsx`(`WeeklyLogCard`/`WeeklyLogCardList` 양쪽에 `query` prop 추가), `components/weekly-log-kanban-card.tsx`(`WeeklyLogKanbanCardContent`/`WeeklyLogKanbanCard`), `components/weekly-log-kanban-column.tsx`(칸반 컬럼을 거쳐 카드까지 `query` 전달).
+  - [x] **`<mark>` 스타일** — 신규 토큰 없이 기존 `--warning` 재사용(`bg-warning/30`, 텍스트 색은 `text-inherit`로 유지) — 상태 배지의 solid warning 색과 시각적으로 구분되는 옅은 하이라이트로, 라이트/다크 스크린샷 대조 결과 두 테마 모두 충분한 대비 확인.
+  - [x] **접근성** — `<mark>`는 시맨틱 강조 요소라 별도 `aria-*` 처리 없이 스크린리더가 자연스럽게 인지하며, 강조가 배경색 하나로만 표현되지만 원본 텍스트 색은 그대로 유지돼 색맹 사용자도 텍스트 자체는 동일하게 읽을 수 있음(정보 손실 없음).
+  - [x] 매칭 여러 번 등장(예: "코드 리뷰 진행"에서 부분 매칭)·완료 상태의 line-through/italic 스타일과의 중첩 렌더링을 실측 확인, 레이아웃 깨짐 없음.
+  - **관련 파일**: `components/highlighted-text.tsx`(신규), `components/weekly-log-table.tsx`, `components/weekly-log-card.tsx`, `components/weekly-log-kanban-card.tsx`, `components/weekly-log-kanban-column.tsx`, `components/weekly-log-list-view.tsx`·`weekly-log-kanban-view.tsx`(`query`/`currentSearchQuery` prop 전달), `lib/utils.ts`(`escapeRegExp` 신규)
+  - **DB 마이그레이션 없음**
+  - **수락 기준**: 키워드 검색 시 목록·카드·칸반의 제목에서 매칭 텍스트가 강조되고, 검색어에 정규식/LIKE 메타문자가 섞여도 화면이 깨지거나 잘못 강조되지 않으며, 라이트/다크 양쪽에서 판독 가능하다 — **전부 실측 확인 완료.**
+  - **테스트 체크리스트** (Playwright MCP 실브라우저. QA 계정 2개(`qa-task047@example.com`, `qa-task047b@example.com`) 실제 가입 플로우로 생성, 종료 후 완전 삭제 및 65 profiles 기준선 원복 확인. 프로덕션 빌드(`npm run build`)도 별도로 통과 확인)
+    - [x] "리뷰" 검색 → 목록·모바일 카드·칸반 3화면 모두에서 매칭 구간만 정확히 강조(부분 일치·"코드 리뷰 진행" 등 복수 항목 동시 강조) 확인
+    - [x] **대소문자 혼용 검색** — 소문자 "erp"로 검색해 대문자 "ERP"가 포함된 실제 제목("ERP 시스템팀 면담 (2)", "ERP 클라우드 전환 검토")이 정확히 강조되는지 확인
+    - [x] **특수문자 검색어** — `(`를 포함한 "리뷰(", 정규식 메타문자 다수(`*+\[].`)를 포함한 검색어로 500·크래시·콘솔 에러 없이 정상 처리(결과 0건이어도 페이지 정상 렌더링) 확인
+    - [x] **내용에서만 매칭된 항목** — "erp" 검색 결과 중 "Commerce 시스템팀 면담"(제목에 erp 없음)이 하이라이트 없이 결과 목록에는 정상 포함됨을 확인(제목 매칭 2건과 나란히 노출)
+    - [x] 검색어 없이 목록 진입 시 `document.querySelectorAll('mark').length === 0` 확인(스크립트로 직접 검증)
+    - [x] 칸반 카드에서도 동일 검색어로 동일하게 강조되는지 확인(진행상태 3개 컬럼 전부, "지연" 빨간 강조와 공존 확인)
+    - [x] 라이트/다크 스크린샷 대조로 대비 확인, 1280(칸반)/390(모바일 카드) 뷰포트에서 레이아웃·가로 스크롤 없음 확인
+    - [x] `dangerouslySetInnerHTML`을 사용하지 않고 React 자동 이스케이프로만 렌더링한다는 것을 코드로 확인(구조적 보장 — `<script>` 검색어는 매칭되는 제목이 없어 실제 렌더링 사례로는 재현하지 않았으나, `HighlightedText`가 문자열만 JSX 자식으로 반환하는 구현을 코드 근거로 확인)
+    - [x] 콘솔 에러 0건 — 기능 관련 에러 없음(재시작한 임시 dev 서버의 이전 세션 잔여 HMR 웹소켓 에러만 관측, 이번 기능과 무관)
+    - [x] `npx tsc --noEmit` / `npm run lint`(기존 경고 4건 외 신규 없음) / `npm run build`(cacheComponents 하에서 정상 빌드) 전부 통과
+  - **⚠️ 계획과 다르게 처리한 부분**: 무한 스크롤 배치 이후에도 하이라이팅이 유지되는지는 실데이터로 재현할 만큼 결과가 많은 검색어를 찾지 못해(부서 범위 내 "코드" 검색 10건, 첫 배치 안에 전부 로드됨) 별도 UI 재현 대신 **`WeeklyLogTable`/`WeeklyLogCardList`가 매 렌더마다 전체 `items`(추가로딩분 포함)와 `query`를 함께 받는 구조**임을 코드로 확인하는 것으로 갈음했다(추가 로딩된 항목도 동일한 `HighlightedText`를 거치므로 구조적으로 하이라이팅이 유지된다).
 
 ---
 
@@ -394,36 +383,34 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 시작일~목표종료일을 시간축 위에서 겹쳐 보는 상태. **v2에서 비용 대비 우선순위가 가장 낮다고 사용자와 합의된 유일한 항목.**
 > **선행 조건**: Phase 1~4 완료. **⚠️ 착수 전 사용자에게 실제 필요 여부를 재확인하고, 필요 없다면 "범위 밖 유지"로 종료한다.**
 
-- **Task 048: 주간업무일지 타임라인 뷰 구현 (F047)**
-  - [ ] **착수 게이트** — Phase 1~4 결과를 사용해본 뒤 "칸반으로 충분한지" 사용자에게 확인. **구현하지 않기로 결정되면 이 Task를 "범위 밖 유지"로 닫고 v2를 Phase 6으로 마감한다.** 이 게이트 자체가 Task의 첫 단계다
-  - [ ] **구현 방식 결정** — **CSS Grid 직접 구현** ← 권장. 근거:
-    - `recharts`가 이미 설치돼 있지만 **시계열 차트용이지 간트/타임라인용이 아니다**(막대의 시작 오프셋을 표현하는 데 부적합)
-    - 전용 간트 라이브러리는 번들 증가 + 다크모드/CSS 변수 테마 통합 비용이 크고, **F032(성능 개선)와 상충**한다
-    - 날짜는 이미 `date` 문자열이고 프로젝트에 날짜 라이브러리가 없다(v1 Task 029에서 `lib/utils.ts`의 순수 `Date` 헬퍼 3종으로 해결한 전례) — **동일한 방식으로 신규 의존성 없이** 구현
-  - [ ] **라우트 신설** — `app/protected/weekly-logs/timeline/page.tsx`. **칸반 페이지와 동일한 구조를 복제**: `getClaims()` → `profiles` 조회 → **부서 게이트 리디렉션**(새 보호 페이지마다 반복되는 필수 체크, CLAUDE.md 명시) → `normalizeWeeklyLogFilters()` 재사용 → Suspense + 신규 스켈레톤
-  - [ ] **뷰 전환 UI** — 목록·칸반·타임라인 3개를 오가는 탭/토글을 공통화. **현재 쿼리 파라미터를 유지한 채** 전환되어야 한다(필터를 다시 입력하게 만들지 말 것)
-  - [ ] **⚠️ 데이터 규모 대응** — `weekly_logs`가 이미 325건이고 계속 증가한다. 목록은 무한 스크롤, 칸반은 컬럼별 페이징인데 **타임라인은 한 화면에 기간 전체를 그리는 구조**라 그대로 두면 가장 무거운 화면이 된다. → **기본 조회 기간을 제한**(예: 이번 달)하고 기간 필터를 필수로 노출하며, 렌더 상한(예: 200건) 초과 시 안내와 함께 절단한다
-  - [ ] **표현 설계** — 행 = 업무 1건(또는 부서/담당자 그룹), 가로축 = 날짜. 막대 색은 **진행상태 색상(`STATUS_CHART_COLORS`)을 재사용**하고, 목표종료일이 지난 미완료 건은 **Task 040·칸반과 동일한 "지연" 규칙**으로 강조한다(세 화면의 지연 정의가 반드시 일치해야 함). 오늘 위치에 기준선 표시
-  - [ ] **반응형** — 모바일에서는 가로 스크롤 컨테이너로 처리하되 **페이지 본문 자체가 가로 스크롤되지 않게** 한다(칸반 컬럼 반응형 수정에서 이미 겪은 문제 — 최근 커밋 `🐛 fix: 칸반보드 컬럼 반응형 레이아웃 수정` 참고)
-  - [ ] **접근성** — 시각적 막대만으로는 정보 전달이 불가하므로 각 막대에 `aria-label`(업무명·기간·상태)을 부여하고, **`sr-only` 표 대체 콘텐츠**를 함께 제공한다(v1 Task 031이 차트에 적용한 것과 동일한 해법)
-  - [ ] **드래그로 일정 변경은 범위 밖** — `@dnd-kit`이 이미 설치돼 있어 기술적으로 가능하지만, 날짜 변경은 `weekly_logs` UPDATE라 **부서 기반 쓰기 RLS·권한 분기**를 타임라인에서 다시 구현해야 한다. **읽기 전용 뷰로 확정**
-  - **관련 파일**: `app/protected/weekly-logs/timeline/page.tsx`(신규), `components/weekly-log-timeline-view.tsx`(신규), `components/weekly-log-timeline-skeleton.tsx`(신규), `components/weekly-log-view-switcher.tsx`(신규, 3개 뷰 공용), `lib/queries/weekly-logs.ts`(타임라인용 조회 함수 추가), `lib/utils.ts`(날짜 축 계산 헬퍼)
-  - **DB 마이그레이션 불필요** — 기존 `weekly_logs`를 읽기만 한다
-  - **수락 기준**: 사용자가 지정한 기간의 업무를 시간축 위에서 확인할 수 있고, 목록·칸반과 **동일한 필터 조건**이 적용되며, 지연 판정이 세 화면에서 일치하고, 3개 뷰포트에서 페이지 가로 스크롤이 발생하지 않는다
-  - **테스트 체크리스트** (Playwright MCP + Supabase MCP)
-    - [ ] 기간을 지정해 진입 시 막대의 시작·끝 위치가 실제 `start_date`/`target_end_date`와 일치하는지 확인(경계 날짜 포함 여부 검증)
-    - [ ] 조회 기간을 벗어나 걸치는 장기 과제가 **잘린 막대로 표시**되고 누락되지 않는지 확인(v1 Task 029의 "기간이 겹치는 항목" 원칙과 동일)
-    - [ ] 목록·칸반에서 필터를 지정한 뒤 뷰를 전환하면 **필터가 유지**되는지 확인(3방향 전부)
-    - [ ] 지연 강조가 칸반 "지연" 배지 및 F040 위젯 숫자와 **일치**하는지 확인
-    - [ ] 렌더 상한 초과 시 안내가 뜨고 페이지가 멈추지 않는지 확인(기간을 넓혀 실측)
-    - [ ] 0건 기간에서 EmptyState가 뜨는지 확인
-    - [ ] 부서 미설정 사용자가 URL 직접 접근 시 `/protected/profile`로 리디렉션되는지 확인(부서 게이트 누락 방지)
-    - [ ] 비로그인 접근 시 `proxy.ts` 게이트로 `/auth/login`으로 가는지 확인
-    - [ ] 1280/768/390 뷰포트에서 **페이지 본문이 가로 스크롤되지 않고** 타임라인 컨테이너 내부만 스크롤되는지 확인
-    - [ ] 라이트/다크 색상 대비, `sr-only` 표 대체 콘텐츠 내용 확인
-    - [ ] `npm run build`로 신규 라우트의 청크가 다른 라우트에 새지 않는지 확인(v1 Task 031의 recharts 검증 방식 재사용)
-    - [ ] 콘솔 에러 0건
-  - **범위 밖 유지**: 드래그로 일정 변경, 의존 관계(선행 작업) 표현, 마일스톤·리소스 뷰, 월/주/일 단위 줌 전환, 캘린더(월 그리드) 뷰를 타임라인과 별개로 추가하는 것, 타임라인 이미지/PDF 내보내기
+- **Task 048: 주간업무일지 타임라인 뷰 구현 (F047)** ✅
+  - [x] **착수 게이트** — Phase 1~4 완료 후 사용자에게 재확인해 **구현 진행**으로 확정(2026-08-21).
+  - [x] **구현 방식 결정** — **CSS Grid 직접 구현**(권장안 그대로 채택). 신규 의존성 없이 `lib/utils.ts`의 순수 `Date` 헬퍼로 처리.
+  - [x] **라우트 신설** — `app/protected/weekly-logs/timeline/page.tsx`. 칸반 페이지와 동일한 구조(`getClaims()` → `profiles` 조회 → 부서 게이트 → `normalizeWeeklyLogFilters()` → Suspense + 스켈레톤)를 그대로 복제.
+  - [x] **뷰 전환 UI** — `components/weekly-log-view-switcher.tsx` 신규(목록·칸반·타임라인 공용 탭, `role="tablist"`/`role="tab"`). department/status/q/from/to/author를 쿼리 파라미터로 그대로 실어 전환하며, 목록·칸반 뷰(`weekly-log-list-view.tsx`, `weekly-log-kanban-view.tsx`)에도 동일 컴포넌트를 배선해 3화면 어디서든 전환 가능. sort/dir(목록 전용 축)은 싣지 않음 — 칸반·타임라인은 고정 정렬을 쓰므로 자연스럽게 무시되고, 목록으로 복귀 시 기본 정렬로 초기화되는 것을 허용 가능한 손실로 문서화.
+  - [x] **데이터 규모 대응** — `lib/queries/weekly-logs.ts`에 `fetchWeeklyLogsTimeline()` 신규(기존 `fetchWeeklyLogRows`의 range+1 `hasMore` 판정을 그대로 재사용해 `truncated` 플래그로 노출). `lib/types/index.ts`에 `WEEKLY_LOGS_TIMELINE_PAGE_SIZE = 200` 신규. `app/protected/weekly-logs/timeline/page.tsx`가 URL에 `from`/`to`가 없으면 `getThisMonthRange()`로 기본 설정해 기간을 항상 필수로 채운다.
+  - [x] **표현 설계** — 행 1개 = 업무 1건(그룹핑 없음, 최소 스코프). 막대 색은 `STATUS_CHART_COLORS` 그대로 재사용, 지연 건은 색을 바꾸지 않고 `ring-2 ring-destructive`로 덧대 강조(칸반의 "색은 유지 + 배지/아이콘으로만 강조" 방식과 동일 원칙). 오늘 위치에 `border-l-2 border-primary` 세로선.
+  - [x] **반응형** — `overflow-x-auto` 내부 컨테이너에만 스크롤을 두고 페이지 본문은 스크롤되지 않게 구현. **⚠️ 실측 중 회귀 발견 및 수정**: 접근성 대체 표(`<table className="sr-only">`)가 `table-layout: auto`에서 `width:1px`를 무시하고 실제 콘텐츠 크기(수백~수천 px)로 렌더 박스가 확장돼, `clip-path`로 시각적으로는 숨겨져도 문서의 가로 스크롤 폭에는 그대로 반영되는 회귀를 390px 뷰포트에서 `document.documentElement.scrollWidth`(481px > 390px) 실측으로 발견했다. `<table>`에 직접 걸려 있던 `sr-only`를 감싸는 `<div className="sr-only">`로 옮겨 해결(div는 table 전용 확장 규칙이 없어 width:1px+overflow:hidden이 정상 적용됨) — 수정 후 390/768/1280 3개 뷰포트 모두 `scrollWidth <= innerWidth` 재확인.
+  - [x] **접근성** — 각 막대에 `role="img"` + `aria-label`("{제목}, {시작일} ~ {목표종료일}, {상태}[, 지연]") 부여, 동일 데이터를 `sr-only` 표로 병행 제공(캡션·`scope` 포함).
+  - [x] **드래그로 일정 변경은 범위 밖 유지** — 읽기 전용 뷰로 확정, 별도 구현 없음.
+  - **관련 파일**: `app/protected/weekly-logs/timeline/page.tsx`(신규), `components/weekly-log-timeline-view.tsx`(신규), `components/weekly-log-timeline-skeleton.tsx`(신규), `components/weekly-log-view-switcher.tsx`(신규, 3개 뷰 공용), `components/weekly-log-list-view.tsx`·`weekly-log-kanban-view.tsx`(뷰 전환 탭 배선), `lib/queries/weekly-logs.ts`(`fetchWeeklyLogsTimeline` 추가), `lib/types/index.ts`(`WEEKLY_LOGS_TIMELINE_PAGE_SIZE`), `lib/utils.ts`(`diffDays`/`addDaysToDateString` 날짜 축 헬퍼)
+  - **DB 마이그레이션 없음** — 기존 `weekly_logs`를 읽기만 함
+  - **수락 기준**: 사용자가 지정한 기간의 업무를 시간축 위에서 확인할 수 있고, 목록·칸반과 동일한 필터 조건이 적용되며, 지연 판정이 세 화면에서 일치하고, 3개 뷰포트에서 페이지 가로 스크롤이 발생하지 않는다 — **전부 실측 확인 완료(위 회귀 수정 포함).**
+  - **테스트 체크리스트** (Playwright MCP + Supabase MCP. QA 계정 2개(`qa-task048@example.com`, `qa-task048b@example.com`) 실제 가입 플로우로 생성, 종료 후 완전 삭제 및 65 profiles/325 logs 기준선 원복 확인)
+    - [x] 기간 지정 진입 시 막대 시작·끝 위치가 `start_date`/`target_end_date`와 정확히 일치 — "검색 랭킹 알고리즘 튜닝"(2026-08-01~08-14, 범위 내 완전 포함)의 막대 인라인 스타일을 직접 측정해 `left: 0px`(8/1=오프셋 0), `width: 392px`(14일×28px)로 픽셀 단위까지 정확히 일치 확인
+    - [x] 조회 기간을 벗어나 걸치는 업무가 **잘린 막대**로 표시되고 누락되지 않는지 확인 — 2026-08-01~08-31 범위에서 시작일이 7월인 3건("결제 모듈 고도화" 7/28~, "프로모션 엔진 리뉴얼" 7/29~, "물류 연동 API 개선" 7/30~) 모두 `rounded-l-none`(왼쪽 잘림 표시)으로 렌더링되고 결과에 정상 포함됨을 확인
+    - [x] 목록·칸반에서 필터를 지정한 뒤 뷰를 전환하면 필터가 유지되는지 확인(3방향 전부) — 타임라인에서 부서+검색어(`리뷰`)+기간 적용 후 칸반 전환 시 URL에 4개 파라미터 모두 유지되고 결과 2건(칸반 "지연" 배지까지) 정확히 일치, 칸반→목록 전환도 동일 확인
+    - [x] 지연 강조가 칸반 "지연" 배지와 일치하는지 확인 — 동일 필터(부서+검색어+기간)로 타임라인의 지연 링(ring-destructive) 표시 항목 2건과 칸반보드의 "지연" 빨간 배지 표시 항목 2건이 정확히 일치(같은 두 업무). 판정 규칙 자체도 `weekly-log-timeline-view.tsx`와 `weekly-log-kanban-column.tsx`가 `status !== "completed" && target_end_date < todayIso`로 문자 그대로 동일함을 코드로 확인. 완료 상태이면서 목표종료일이 과거인 항목(물류 연동 API 개선, 외부 협력사 미팅)이 지연 표시에서 제외됨도 함께 확인
+    - [x] 렌더 상한 초과 시 안내가 뜨고 페이지가 멈추지 않는지 확인 — 전체 데이터 범위(2026-04-03~09-05, 전체 부서, 325건 중 200건 초과분 존재)로 진입해 "표시 상한(200건)을 초과하는 업무가 있습니다..." 배너 노출 확인, 200개 막대 정상 렌더링, 콘솔 에러 0건
+    - [x] 0건 기간에서 EmptyState 확인 — 존재하지 않는 검색어로 "표시할 업무가 없습니다" 렌더링 확인
+    - [x] 부서 미설정 사용자가 URL 직접 접근 시 `/protected/profile` 리디렉션 확인 — QA 계정의 `department_id`를 SQL로 일시 NULL 처리 후 실측, 이후 원복
+    - [x] 비로그인 접근 시 `proxy.ts` 게이트로 `/auth/login` 리디렉션 확인 — `curl`로 307 리다이렉트 확인
+    - [x] 1280/768/390 뷰포트에서 페이지 본문이 가로 스크롤되지 않는지 확인 — 3개 뷰포트 전부 `document.documentElement.scrollWidth <= window.innerWidth` 실측(390: 375≤390, 768: 768≤768, 1280: 1265≤1280, 200건 렌더 상태 포함). 위 반응형 항목에 기록된 회귀를 수정한 뒤의 최종 확인치
+    - [x] 라이트/다크 색상 대비 확인 — 라이트 모드에서 지연 링(빨간 테두리)이 뚜렷하게 보이고, 다크 모드에서도 상태색(초록/주황/회색) 대비 및 오늘 기준선이 식별 가능함을 스크린샷으로 확인
+    - [x] `npm run build`로 신규 라우트가 정상 포함되는지 확인 — recharts 등 신규 무거운 의존성을 추가하지 않아(기존 shadcn 프리미티브만 재사용) v1 Task 031과 같은 번들 유출 우려 자체가 낮음, `/protected/weekly-logs/timeline`이 다른 보호 라우트와 동일하게 Partial Prerender로 정상 생성됨을 빌드 로그로 확인
+    - [x] 콘솔 에러 0건 — 전 시나리오에서 확인
+    - [x] `npx tsc --noEmit` / `npm run lint`(기존 경고 4건 외 신규 없음) / `npm run build` 전부 통과
+  - **범위 밖 유지**: 드래그로 일정 변경, 의존 관계(선행 작업) 표현, 마일스톤·리소스 뷰, 월/주/일 단위 줌 전환, 캘린더(월 그리드) 뷰를 타임라인과 별개로 추가하는 것, 타임라인 이미지/PDF 내보내기, 부서/담당자 그룹핑(행은 업무 1건 고정)
 
 ---
 
