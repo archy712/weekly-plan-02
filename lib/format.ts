@@ -67,6 +67,11 @@ export function formatNotificationMessage(notification: NotificationListItem): s
       return `${actor}님이 "${logTitle}"에서 회원님을 멘션했습니다.`;
     case "reply":
       return `${actor}님이 "${logTitle}"의 댓글에 답글을 남겼습니다.`;
+    // 리마인더(F041)는 actor_id/weekly_log_id가 둘 다 null인 스케줄 알림이라(Task 042 결정)
+    // actor/logTitle을 쓰지 않는다 — 아래 default(comment)로 흘려보내면 "알 수 없는
+    // 사용자님이 삭제된 업무일지에 댓글을 남겼습니다"라는 오해의 소지가 있는 문구가 나간다.
+    case "reminder":
+      return "이번 주 주간업무일지를 아직 작성하지 않았습니다.";
     case "comment":
     default:
       return `${actor}님이 "${logTitle}"에 댓글을 남겼습니다.`;

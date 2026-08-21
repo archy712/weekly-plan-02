@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, CalendarClock } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -135,11 +135,22 @@ export function NotificationBell() {
                     !notification.read_at && "bg-accent/60",
                   )}
                 >
-                  <Avatar size="sm" className={getAvatarPreset(notification.actor_avatar_key).bgClass}>
-                    <AvatarFallback className="bg-transparent text-xs">
-                      {getAvatarPreset(notification.actor_avatar_key).emoji}
-                    </AvatarFallback>
-                  </Avatar>
+                  {notification.type === "reminder" ? (
+                    // 리마인더는 행위자가 없는 스케줄 알림(Task 042 결정)이라, 임의의 프리셋
+                    // 아바타(fox 폴백)를 사람처럼 보여주는 대신 명확한 시스템 아이콘을 쓴다.
+                    <span
+                      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                      aria-hidden="true"
+                    >
+                      <CalendarClock className="size-3.5" />
+                    </span>
+                  ) : (
+                    <Avatar size="sm" className={getAvatarPreset(notification.actor_avatar_key).bgClass}>
+                      <AvatarFallback className="bg-transparent text-xs">
+                        {getAvatarPreset(notification.actor_avatar_key).emoji}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm leading-snug">{formatNotificationMessage(notification)}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">

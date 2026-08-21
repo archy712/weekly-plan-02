@@ -17,9 +17,9 @@ import type { ProfileFormData } from "@/lib/schemas/profile";
  *
  * - "댓글" 스위치는 대댓글 알림도 함께 제어한다(별도 컬럼 없이 notify_on_comment를 따르는
  *   DB 트리거 매핑, Task 042 참고) — 캡션으로 이 매핑을 사용자에게 명시한다.
- * - "리마인더" 스위치는 이 시점엔 값만 저장되고 실제로 소비하는 스케줄러(Task 044,
- *   pg_cron)가 아직 없다. 값 저장 자체는 지금부터 동작하므로 나중에 스케줄러가
- *   붙어도 추가 UI 작업이 필요 없다.
+ * - "리마인더" 스위치는 Task 044(pg_cron)의 `create_weekly_log_reminders()`가 매주 금요일
+ *   15:00 KST에 이 값을 직접 조회해 알림 생성 여부를 결정한다(`notify_on_reminder = true`인
+ *   사용자만 대상). Task 043 시점엔 값만 저장했으나 이제 실제로 소비된다.
  */
 export function NotificationPreferencesField({
   control,

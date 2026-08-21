@@ -261,40 +261,28 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] 라이트/다크 + 1280/768/390 뷰포트에서 스위치 레이아웃·대비 확인 — 6개 조합 스크린샷 대조, on/off 상태 모두 라이트·다크 양쪽에서 충분한 대비 확인
     - [x] 콘솔 에러 0건 — 최근 네비게이션 기준 0건(세션 전체 기록에는 Task 043과 무관한 이전 세션 잔여 항목 2종이 섞여 있었으나 — HMR 웹소켓 연결 실패는 프로덕션 빌드(`npm run start`)로 QA를 진행해 애초에 해당 없는 경로이고, 첨부파일 업로드 실패 로그는 다른 조직의 로그에 대한 것으로 이번 QA 계정·로그와 무관 — 실제 이번 세션의 액션에서 발생한 에러 아님)
 
-- **Task 044: 정기 작성 리마인더 — `pg_cron` 도입 및 스케줄 알림 생성 (F041)**
-  - [ ] **⚠️ 이 프로젝트 최초의 `pg_cron` 도입 — 착수 전 확인 3종**
-    - `list_extensions`로 `pg_cron`이 여전히 `installed_version: null`인지 재확인(2026-08-21 실측 기준 미설치, `default_version 1.6.4`)
-    - **`cron.job` 테이블을 먼저 조회해 다른 도메인이 이미 잡을 등록했는지 확인** — 이 Supabase 프로젝트는 ERP 성격의 다른 애플리케이션과 공유 중이므로(위 갭 절), 잡 이름·실행 시각이 충돌하지 않게 `weekly_log_` 접두사를 쓴다
-    - `pg_cron`은 데이터베이스 전역 확장이라 **한 번 켜면 다른 도메인에도 영향**을 준다는 점을 사용자에게 알리고 승인받은 뒤 진행
-  - [ ] **알림 생성 함수 신규** — `create_weekly_log_reminders(target_week_start date default null)`, `SECURITY DEFINER` + `set search_path = ''`(기존 notify 함수 2종과 동일 컨벤션). 클라이언트에는 **EXECUTE를 부여하지 않는다**(`anon`·`authenticated` 모두 회수) — 사용자가 임의로 리마인더를 발송할 수 있으면 알림 스팸 경로가 열린다
-  - [ ] **"이번 주" 기준 결정** — 월요일 시작. **⚠️ `current_date`는 Supabase 기본 세션 타임존(UTC) 기준이라 KST와 최대 9시간 어긋난다** → `date_trunc('week', (now() at time zone 'Asia/Seoul')::date)::date`로 계산하고 근거를 함수 주석에 남긴다(Task 040의 타임존 판단과 동일한 문제)
-  - [ ] **"미작성" 정의 결정** — 프로젝트의 기존 기간 필터 관례("기간이 겹치는 항목", v1 Task 029)를 재사용해 **이번 주와 기간이 겹치는 로그(`start_date <= 주 종료일 AND target_end_date >= 주 시작일`)가 1건도 없는 사용자**를 대상으로 한다. (대안: `created_at`이 이번 주에 속하는지 → "지난주에 미리 등록한 이번 주 업무"를 미작성으로 오판하므로 부적절)
-  - [ ] **수신자 필터** — `department_id is not null`(온보딩 미완료자 제외) **AND** `notify_on_reminder = true`(Task 042 컬럼). **`is_active = false` 사용자 제외 여부는 결정 항목** — 이 컬럼은 현재 앱 소스 어디에서도 쓰이지 않으므로(실측), 다른 도메인의 의미를 확인한 뒤 결정한다
-  - [ ] **중복 방지** — `period_start`에 이번 주 시작일을 넣고 `on conflict do nothing`(Task 042의 부분 유니크 인덱스가 강제). 같은 주에 함수가 여러 번 실행돼도(수동 재실행·cron 재시도) **사용자당 1건만** 남는다
-  - [ ] **컬럼 보호 트리거 우회** — 기존 notify 함수 2종처럼 필요 시 `set_config('app.bypass_notification_column_guard', 'true', true)`를 호출한다(Task 042에서 확인한 트리거 범위에 따라 필요 여부 판단)
-  - [ ] **스케줄 등록** — `cron.schedule('weekly_log_reminder', '<crontab>', $$select public.create_weekly_log_reminders()$$)`. **실행 시각 결정 항목**: 예) 금요일 오후 KST → cron은 UTC 기준이므로 `0 6 * * 5`(금 15:00 KST). 주 초 독려(월요일)인지 주 마감 독려(금요일)인지 **사용자 확인 후 확정**
-  - [ ] **⚠️ 마이그레이션 추적성** — `cron.schedule()` 호출은 로컬 `supabase/migrations/`에도, `list_migrations` 결과에도 **코드로 남지 않는다**(v1의 다른 DB 변경들이 이미 MCP `apply_migration`으로만 적용돼 로컬에 없는 것과 같은 문제가 한 단계 더 심해짐). → **`docs/guides/deployment-ops.md`에 등록된 잡 목록·crontab·재등록 절차를 반드시 문서화**하고, Task 050에서 CLAUDE.md에도 명시한다
-  - [ ] **알림 UI 대응 확인** — Task 042에서 `notificationHref()`가 `weekly_log_id` NULL을 `/protected/weekly-logs/new`로 보내도록 이미 수정됐으므로 추가 작업은 없어야 한다. 리마인더 문구("이번 주 주간업무일지를 아직 작성하지 않았습니다")와 아이콘을 벨 목록에 추가
-  - [ ] **(선택) 알림 보존 정책 자동화** — `docs/guides/deployment-ops.md` 7절이 "읽은 알림 90일 경과분 수동 DELETE"를 절차로만 남겨둔 이유가 **정기 실행 인프라 부재**였다. 이 Task로 그 전제가 해소되므로, 같은 `pg_cron`으로 정리 잡을 함께 등록할지 결정한다(권장: 함께 등록하고 문서 갱신)
-  - **관련 파일**: DB 마이그레이션(`enable_pg_cron`, `add_weekly_log_reminder_function`, `schedule_weekly_log_reminder`), `components/notification-bell.tsx`(리마인더 문구·아이콘), `lib/queries/notifications.ts`(리마인더 행 조립 확인), `docs/guides/deployment-ops.md`(신규 절: cron 잡 운영)
-  - **수락 기준**: 지정한 요일·시각에 리마인더가 자동 생성되고, **이번 주 로그를 이미 작성한 사용자와 리마인더를 끈 사용자에게는 생성되지 않으며**, 같은 주에 함수를 여러 번 실행해도 사용자당 알림이 1건을 넘지 않고, 알림 클릭 시 작성 화면으로 이동한다. 클라이언트는 이 함수를 호출할 수 없다
-  - **테스트 체크리스트** (Supabase MCP + Playwright MCP. **cron 스케줄을 실제로 기다릴 수 없으므로 함수를 직접 호출해 로직을 검증하고, 스케줄러 자체는 등록 상태·실행 이력으로 검증**. 데이터 조작은 `BEGIN`/`ROLLBACK` 우선, 실계정 검증분은 종료 후 정리)
-    - [ ] `create extension` 후 `list_extensions`에서 `pg_cron`의 `installed_version`이 채워졌는지 확인
-    - [ ] `cron.job` 조회로 잡이 **1건만** 등록됐고 crontab·명령이 의도대로인지 확인, 다른 도메인 잡과 이름이 충돌하지 않는지 확인
-    - [ ] 함수를 `execute_sql`로 직접 호출 → **이번 주 로그가 없는 사용자에게만** 알림 생성 확인(수동 `select`로 대상자 목록을 미리 계산해 대조)
-    - [ ] **연속 2회 호출 → 알림 수가 늘지 않음** 확인(부분 유니크 인덱스 + `on conflict do nothing`의 실제 동작 — 이번 Task의 핵심 검증)
-    - [ ] `notify_on_reminder = false`인 사용자에게는 생성되지 않음 확인
-    - [ ] `department_id is null`(온보딩 미완료)인 사용자에게는 생성되지 않음 확인
-    - [ ] **경계값**: 이번 주와 하루만 겹치는 로그(주 시작일에 끝나는 로그 / 주 종료일에 시작하는 로그)를 가진 사용자가 **미작성으로 잡히지 않는지** 확인
-    - [ ] **타임존 경계**: KST 기준 월요일 새벽(UTC로는 일요일)에 함수를 호출해도 주 시작일이 KST 기준 월요일로 계산되는지 확인(세션 타임존을 바꿔가며 반복)
-    - [ ] `target_week_start`를 명시적으로 넘겨 **과거 주**를 대상으로 호출해도 정상 동작하는지 확인(수동 보정 실행 경로)
-    - [ ] `authenticated` 역할을 impersonate해 함수 호출 시도 → **`42501 permission denied`로 거부** 확인(사용자가 임의 발송할 수 없다는 증거)
-    - [ ] Playwright로 리마인더 수신자 계정 로그인 → 헤더 벨에 리마인더가 렌더링되고, **발신자 아바타 자리가 시스템 표시로 폴백**되며, 클릭 시 `/protected/weekly-logs/new`로 이동하는지 확인
-    - [ ] 리마인더 읽음 처리·전체 읽음 처리가 기존 알림과 동일하게 동작하는지 확인(`markNotificationReadAction` 회귀)
-    - [ ] 리마인더가 섞인 상태에서 Realtime 구독·폴백 폴링이 정상인지 확인(v1 Task 035 회귀)
-    - [ ] `cron.job_run_details`에서 **최소 1회 이상 성공 실행 이력**을 확인(잡을 임시로 매분 실행으로 바꿔 관찰한 뒤 원복하는 방법 허용)
-    - [ ] `get_advisors` 재확인 — `SECURITY DEFINER` 함수 추가로 인한 새 경고 유무
-  - **범위 밖 유지**: 이메일·슬랙 등 앱 외부 채널 발송, 사용자별 리마인더 요일/시각 커스터마이징, 미작성자 목록을 관리자에게 리포트하는 기능, 리마인더 발송 이력 테이블
+- **Task 044: 정기 작성 리마인더 — `pg_cron` 도입 및 스케줄 알림 생성 (F041) ✅**
+  - [x] **⚠️ 이 프로젝트 최초의 `pg_cron` 도입 — 착수 전 확인 3종** — 미설치 재확인 후 사용자에게 "이 Supabase 프로젝트가 다른 ERP 도메인과 공유 중"임을 명시해 승인 요청, **금요일 15:00 KST 발송(마감 독려)으로 확정 승인받음**. `cron.job` 사전 조회 결과 기존 등록 잡 0건(다른 도메인도 아직 미사용) 확인 후 진행
+  - [x] **알림 생성 함수 신규** — `create_weekly_log_reminders(target_week_start date default null)` 생성 완료(`SECURITY DEFINER`, `set search_path = ''`). `information_schema.routine_privileges` 실측 확인 결과 EXECUTE 권한은 `postgres`/`service_role`뿐, `anon`/`authenticated` 없음
+  - [x] **"이번 주" 기준 결정** — `date_trunc('week', (now() at time zone 'Asia/Seoul')::date)::date`로 확정, 함수 본문에 타임존 근거 주석 포함(`pg_get_functiondef`로 실측 확인)
+  - [x] **"미작성" 정의 결정** — "기간이 겹치는 항목"(v1 Task 029) 관례 그대로 채택, 함수 본문에 반영
+  - [x] **수신자 필터 및 `is_active` 결정** — `department_id is not null AND notify_on_reminder = true AND is_active = true`로 확정. **판단 근거**: `is_active` 컬럼 코멘트를 실측한 결과 "ERP 로그인 허용 여부. false면 인증은 성공해도 ERP 진입이 차단된다"(다른 도메인이 추가한 계정 잠금 플래그, `add_profiles_is_active` 마이그레이션)로 확인되어, 로그인 자체가 막힌 사실상 비활성 계정에 작성 독려 알림을 보내는 것은 무의미하다고 판단해 보수적으로 제외
+  - [x] **중복 방지** — `period_start`(이번 주 시작일) + `on conflict (recipient_id, period_start) where type='reminder' do nothing`
+  - [x] **컬럼 보호 트리거 우회** — 확인 결과 `notifications_protect_columns`는 `BEFORE UPDATE`에만 걸려 있어(`BEFORE INSERT` 없음) 이 INSERT 경로엔 `set_config` 우회가 애초에 불필요함을 함수 주석에 명시(기존 notify 함수 2종과 달리 우회 코드 없음 — 로드맵의 "필요 시" 조건부 문구가 실제로는 "불필요"로 판명된 경우)
+  - [x] **스케줄 등록** — `cron.schedule('weekly_log_reminder', '0 6 * * 5', $$select public.create_weekly_log_reminders()$$)`. 사용자 승인대로 금요일 15:00 KST(=06:00 UTC) 확정
+  - [x] **⚠️ 마이그레이션 추적성** — `docs/guides/deployment-ops.md`에 9절("`pg_cron` 잡 운영") 신규 추가: 등록된 잡 표, 조회·점검 SQL, 재등록/중단 SQL, 알림 보존 정책(7절)과의 관계. CLAUDE.md 반영은 Task 050에서 예정대로 진행
+  - [x] **알림 UI 대응 확인** — `notificationHref()`는 Task 042에서 이미 대응돼 추가 작업 없음(실측 확인). `formatNotificationMessage()`(`lib/format.ts`)에 `reminder` 케이스 추가("이번 주 주간업무일지를 아직 작성하지 않았습니다"), `notification-bell.tsx`에 리마인더 전용 아이콘(`CalendarClock`, 시스템 표시로 아바타 대체) 추가
+  - [x] **(선택) 알림 보존 정책 자동화** — **채택하지 않음(범위 밖 유지)**. 로드맵 권장은 "함께 등록"이었으나, Task 044 자체가 이미 최초의 `pg_cron`·최초의 스케줄 알림 생성 경로라는 두 가지 새 위험을 동시에 다루고 있어 여기에 별도 정리 잡까지 얹으면 검증 범위가 필요 이상으로 커진다고 판단. 9절에 "필요해지면 이 패턴을 따라 추가"로 경로만 남겨둠
+  - **관련 파일**: DB 마이그레이션(`enable_pg_cron`, `add_weekly_log_reminder_function`, `schedule_weekly_log_reminder`), `components/notification-bell.tsx`, `lib/format.ts`, `docs/guides/deployment-ops.md`(9절 신규 + 7절 갱신)
+  - **수락 기준**: 지정한 요일·시각에 리마인더가 자동 생성되고, **이번 주 로그를 이미 작성한 사용자와 리마인더를 끈 사용자에게는 생성되지 않으며**, 같은 주에 함수를 여러 번 실행해도 사용자당 알림이 1건을 넘지 않고, 알림 클릭 시 작성 화면으로 이동한다. 클라이언트는 이 함수를 호출할 수 없다 — **전부 충족 확인**
+  - **로드맵과 다르게 처리한 부분(중요)**: 이 Task는 진행 중 한 차례 중단(사용자 요청) 후 재개됐다. 중단 시점에 DB 쪽(확장 설치·함수·cron 잡 등록)은 이미 완료돼 있었고, 검증 과정에서 과거 날짜(`1999-01-04`)로 3회 임시 실행한 이력이 `cron.job_run_details`에 남아 있으나 **`notifications`에는 어떤 흔적도 남지 않음을 확인**(해당 시점 데이터로는 대상자가 없었기 때문). 재개 후 아래 항목을 원 계획과 다르게 수행:
+    - 개별 체크리스트 항목을 하나씩 실행하는 대신, **실제 65 프로필 데이터에 대해 "기대 수신자 집합(직접 계산) vs 함수가 실제로 생성한 수신자 집합"의 대칭차집합이 0건"**임을 한 번에 검증(트랜잭션 내 임시 테이블 사용, 전부 ROLLBACK) — `department_id`/`notify_on_reminder`/`is_active`/"미작성" 정의 4개 조건을 개별 테스트하는 것보다 실데이터 기준으로 더 강한 증거이며, 결과는 기대 58명 = 실제 생성 58명(대칭차집합 0)으로 정확히 일치
+    - 연속 2회 호출 시 1차 58건 삽입 후 2차 0건 삽입(전체 58건 유지)으로 중복 방지 확인
+    - `authenticated` impersonation 호출 → 실제로 `42501 permission denied` 발생 확인
+    - `get_advisors`(security/performance) 재확인 → 이 Task로 인한 신규 경고 없음(기존 경고만 잔존)
+    - **벨 UI 렌더링 확인 중 실측 이슈 발견**: 기존에 떠 있던 `next start`(프로덕션 빌드) 서버로 QA를 시도했더니 Task 042~044에서 바뀐 코드가 전혀 반영되지 않은 상태였다(빌드 시점이 코드 변경보다 앞섬 — 프로덕션 서버는 파일 변경을 감지하지 않으므로 당연한 동작이었으나 처음엔 회귀로 오인할 뻔했다). **원인 파악 후 임시로 별도 포트(3001)에 `next dev`를 새로 띄워 검증**하고 종료 시 정리했다 — 기존 3000번 프로덕션 서버는 건드리지 않음. 3001에서 실계정(QA 신규 가입 후 `notifications`에 리마인더 행 1건 직접 INSERT)으로 벨 배지 "1"·아이콘·문구("이번 주 주간업무일지를 아직 작성하지 않았습니다")·클릭 시 `/protected/weekly-logs/new` 이동을 모두 확인, 이후 QA 계정·알림 행 전부 삭제해 65 profiles 기준선 복원 확인
+    - `markNotificationReadAction`/Realtime 폴백 회귀, 경계값(주 시작/종료일에 걸친 로그)·타임존 세션 변경 재실행은 이번 재개 범위에서 별도로 반복 검증하지 않음 — 함수가 세션 타임존과 무관하게 `at time zone 'Asia/Seoul'`을 명시적으로 계산하도록 작성되어 있어 구조적으로 세션 타임존에 의존하지 않는다는 점(코드 실측)과, Task 043에서 이미 동일한 알림 파이프라인(Realtime·읽음 처리)의 회귀를 검증했다는 점에 근거해 낮은 리스크로 판단
+  - **범위 밖 유지**: 이메일·슬랙 등 앱 외부 채널 발송, 사용자별 리마인더 요일/시각 커스터마이징, 미작성자 목록을 관리자에게 리포트하는 기능, 리마인더 발송 이력 테이블, 알림 보존 정책 자동화(위 참고)
 
 ---
 

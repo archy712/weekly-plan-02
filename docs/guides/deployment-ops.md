@@ -103,7 +103,7 @@ update departments set archived_at = null where id = '<department-id>';
 
 ## 7. 알림(notifications) 보존 정책
 
-멘션·댓글·대댓글 발생 시 `notifications` 테이블에 알림이 자동 생성됩니다(`docs/ROADMAP_v1.md` Task 034, DB 트리거로만 생성되고 클라이언트 직접 INSERT는 불가능). 활동량에 비례해 무한히 쌓이는 테이블이라 보존 정책이 필요하지만, 이 프로젝트는 아직 정기 실행 인프라(pg_cron 등)를 도입하지 않았으므로 **자동 정리는 구현하지 않고, 아래 절차를 수동/주기적으로 실행하는 것으로 정책만 확정**해둡니다.
+멘션·댓글·대댓글 발생 시 `notifications` 테이블에 알림이 자동 생성됩니다(`docs/ROADMAP_v1.md` Task 034, DB 트리거로만 생성되고 클라이언트 직접 INSERT는 불가능). 활동량에 비례해 무한히 쌓이는 테이블이라 보존 정책이 필요합니다. 이 프로젝트는 v2 Task 044(F041)에서 `pg_cron`을 최초로 도입했으므로(9절 참고) 아래 절차를 잡으로 자동화하는 것도 가능하지만, **현재는 여전히 수동/주기적 실행**으로만 정책을 확정해둔 상태입니다(9절 "알림 보존 정책과의 관계" 참고).
 
 **정책**: `read_at`이 채워진(읽은) 알림 중 **90일이 지난 것만** 삭제합니다. **읽지 않은 알림은 아무리 오래돼도 삭제하지 않습니다** — 사용자가 아직 확인하지 못한 알림을 시간 경과만으로 지우면 알림 시스템의 목적(놓친 멘션·댓글을 알려주는 것) 자체가 훼손되기 때문입니다.
 
@@ -151,3 +151,64 @@ MVP 이후 누적된 애플리케이션 전반의 성능을 **실측 기반**으
 
 - `npm run build` green, `npx tsc --noEmit` 0오류. 미인증 보호 경로 → `/auth/login` 307 리다이렉트 유지(proxy matcher 변경이 인증을 깨지 않음 실측).
 - **인증 계정이 필요한 전 플로우 Playwright E2E 회귀와 2계정 교차 사용자 누수 확인은 6절 프로덕션 스모크와 동일하게 사용자 작업으로 대기** — 배포 도메인 또는 테스트 로그인을 제공하면 Playwright MCP로 함께 수행 가능.
+
+## 9. `pg_cron` 잡 운영 (Task 044, F041)
+
+이 프로젝트 최초로 `pg_cron` 확장을 사용하는 기능(정기 작성 리마인더)이 도입됐습니다. `cron.schedule()` 호출은 테이블·함수 마이그레이션과 달리 로컬 `supabase/migrations/`나 `mcp__supabase__list_migrations` 이력에 코드로 남지 않고 **DB 내부 `cron.job` 테이블에만 존재**하므로, 이 문서가 사실상 유일한 기록입니다.
+
+**⚠️ 이 Supabase 프로젝트는 ERP 성격의 다른 애플리케이션과 공유 중입니다.** `pg_cron`은 데이터베이스 전역 확장이므로, 새 잡을 등록/수정/삭제하기 전에는 항상 아래 조회로 기존 잡과 이름·시각이 충돌하지 않는지 먼저 확인하세요.
+
+### 등록된 잡
+
+| jobname | schedule (UTC) | KST 환산 | 명령 | 목적 |
+|---|---|---|---|---|
+| `weekly_log_reminder` | `0 6 * * 5` (매주 금요일 06:00) | 매주 금요일 15:00 | `select public.create_weekly_log_reminders()` | 이번 주(월~일)와 기간이 겹치는 로그가 하나도 없는 사용자에게 `notifications`(`type='reminder'`) 생성. 수신자는 `department_id`가 있고 `notify_on_reminder=true`이며 `is_active=true`(ERP 로그인 허용 계정)인 사람으로 한정 |
+
+### 조회·점검
+
+```sql
+-- 등록된 잡 목록(다른 도메인 잡과의 충돌 확인용으로도 사용)
+select jobid, jobname, schedule, command, active from cron.job order by jobid;
+
+-- 최근 실행 이력(성공/실패, 반환 메시지)
+select jobid, runid, status, return_message, start_time, end_time
+from cron.job_run_details
+order by start_time desc
+limit 20;
+```
+
+- `status`가 `failed`인 행이 있으면 `return_message`로 원인을 확인합니다. `create_weekly_log_reminders()`는 `SECURITY DEFINER`이고 `anon`/`authenticated`에는 EXECUTE 권한이 없으므로, 실패는 대개 권한 문제가 아니라 제약 위반입니다.
+- 정상 동작이면 매주 금요일 06:00 UTC 직후 `runid`가 증가하는 `succeeded` 행이 쌓입니다.
+
+### 재등록·중단 절차
+
+```sql
+-- 잡을 삭제하지 않고 일시 중단
+select cron.alter_job(
+  job_id := (select jobid from cron.job where jobname = 'weekly_log_reminder'),
+  active := false
+);
+
+-- 재개
+select cron.alter_job(
+  job_id := (select jobid from cron.job where jobname = 'weekly_log_reminder'),
+  active := true
+);
+
+-- 완전 삭제
+select cron.unschedule('weekly_log_reminder');
+
+-- 재등록(발송 요일·시각을 바꿀 때도 동일 — 같은 jobname으로 다시 호출하면 기존 잡을 대체)
+select cron.schedule(
+  'weekly_log_reminder',
+  '0 6 * * 5',
+  $$select public.create_weekly_log_reminders()$$
+);
+```
+
+- **수동으로 즉시 실행**하려면 `select public.create_weekly_log_reminders();`을 직접 호출하세요. 과거/특정 주를 대상으로 하려면 `select public.create_weekly_log_reminders('2026-08-10'::date);`처럼 그 주의 월요일 날짜를 `target_week_start`로 명시적으로 넘기면 됩니다. `anon`/`authenticated`에는 EXECUTE 권한이 없으므로 반드시 `mcp__supabase__execute_sql`(또는 Supabase 대시보드 SQL Editor)로 실행해야 합니다.
+- 같은 주에 여러 번 실행해도 `notifications_recipient_period_start_unique` 부분 유니크 인덱스(`(recipient_id, period_start) where type='reminder'`)와 `on conflict do nothing`이 사용자당 1건으로 막아주므로 안전합니다.
+
+### 알림 보존 정책(7절)과의 관계
+
+7절의 "읽은 알림 90일 경과분 삭제"는 여전히 **수동 실행**입니다. `pg_cron`이 이제 설치되어 있으므로 이 DELETE 문도 별도 잡(예: `weekly_log_notification_cleanup`이라는 다른 jobname)으로 등록해 자동화할 수 있지만, Task 044 범위에서는 리마인더 잡만 등록했습니다. 자동화가 필요해지면 위 "등록된 잡" 절의 패턴을 그대로 따라 새 잡을 추가하세요(잡 이름 접두사 `weekly_log_`를 유지해 공유 DB의 다른 도메인 잡과 구분할 것).
