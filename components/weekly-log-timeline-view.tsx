@@ -298,50 +298,6 @@ export function WeeklyLogTimelineView({
           />
         ) : (
           <>
-            {/* 막대 색상 3종·지연 테두리(+아이콘)·오늘 세로선이 무엇을 뜻하는지 화면 어디에도
-                설명이 없다는 피드백에 따른 범례. 목록이 길어 페이지를 세로로 스크롤해도
-                사라지지 않도록 sticky로 고정한다 — 이 프로젝트에서 position: sticky를 쓰는
-                첫 지점. 아래 날짜 헤더 행도 같은 이유로 sticky이며, 이 범례 높이(h-8=32px)
-                만큼 top을 내려 겹치지 않게 한다 — 범례 높이를 바꾸면 날짜 헤더의 top-8도
-                함께 맞춰야 한다. flex-wrap을 쓰지 않는 것도 이 고정 높이를 보장하기 위함
-                (좁은 화면에서 줄바꿈되면 날짜 헤더와 겹친다).
-                bg-background로 완전 불투명하게 둬야 스크롤되는 아래 내용이 비쳐 보이지
-                않는다. */}
-            <div className="bg-background sticky top-0 z-20 flex h-8 shrink-0 items-center gap-x-4 text-xs text-muted-foreground">
-              {STATUS_LEGEND_ORDER.map((status) => (
-                <span key={status} className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block size-3 rounded-sm"
-                    style={{ backgroundColor: STATUS_CHART_COLORS[status] }}
-                    aria-hidden
-                  />
-                  {getStatusLabel(status)}
-                </span>
-              ))}
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="bg-muted relative inline-flex size-3 items-center justify-center rounded-sm border-2 border-destructive"
-                  aria-hidden
-                >
-                  <AlertTriangle className="size-2 text-destructive" aria-hidden />
-                </span>
-                지연
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="relative inline-flex size-3 overflow-hidden rounded-sm"
-                  style={{ backgroundColor: STATUS_CHART_COLORS.in_progress }}
-                  aria-hidden
-                >
-                  <span className="absolute inset-y-0 left-0 w-1/2 bg-black/25" />
-                </span>
-                진척률(입력 시 진하게)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="bg-primary inline-block h-3 w-0.5" aria-hidden />
-                오늘
-              </span>
-            </div>
             {/* 페이지 본문 자체는 가로 스크롤되지 않고, 이 컨테이너 내부만 스크롤된다(칸반
                 컬럼 반응형 수정에서 겪은 문제와 동일한 원칙 — overflow는 항상 안쪽 컨테이너가
                 책임진다). */}
@@ -350,28 +306,75 @@ export function WeeklyLogTimelineView({
                 className="relative w-full"
                 style={{ minWidth: `${LABEL_WIDTH + totalDays * DAY_MIN_WIDTH}px` }}
               >
-                {/* 업무 행이 많으면 세로로 길어져 스크롤해야 하는데, 그때마다 어느 날짜
-                    열인지 알 수 없어지는 문제를 막기 위해 날짜 헤더도 sticky로 고정한다.
-                    바로 위 범례와 겹치지 않도록 top을 범례 높이(32px)만큼 내린다. */}
-                <div
-                  className="sticky top-8 z-10 grid border-b bg-muted text-xs text-muted-foreground"
-                  style={{ gridTemplateColumns }}
-                >
-                  <div className="px-2 py-1.5 font-medium text-foreground">업무</div>
-                  {Array.from({ length: totalDays }).map((_, index) => {
-                    const dateStr = addDaysToDateString(currentFrom, index);
-                    const day = Number(dateStr.slice(8, 10));
-                    const isMonthStart = day === 1;
-                    return (
-                      <div
-                        key={dateStr}
-                        className="flex items-center justify-center border-l py-1.5 tabular-nums"
+                {/* 범례(막대 색상 3종·지연 테두리(+아이콘)·오늘 세로선·진척률이 무엇을
+                    뜻하는지 화면 어디에도 설명이 없다는 피드백에 따라 추가)와 날짜 헤더를
+                    "하나의" sticky 블록으로 묶는다 — 이 프로젝트에서 position: sticky를 쓰는
+                    첫 지점. 처음엔 범례(top-0)와 날짜 헤더(top-8, 범례 높이만큼 내림)를
+                    따로 sticky 처리했는데, 두 요소가 독립적으로 고정되다 보니 스크롤 중
+                    경계에서 아주 살짝 어긋나(브라우저 서브픽셀 반올림 등) 그 틈으로 바로 위
+                    행이 비쳐 보이는 버그가 실제로 있었다 — 범례와 헤더를 한 wrapper 안에
+                    넣고 wrapper 하나에만 sticky top-0을 걸면 둘 사이에 애초에 "이가 맞아야
+                    하는 경계"가 없어져 이 문제가 구조적으로 발생할 수 없다.
+                    범례는 이 wrapper가 가로 스크롤 컨테이너 안에 있어 그대로 두면 오른쪽으로
+                    스크롤할 때 함께 밀려나므로, sticky left-0을 추가로 걸어 왼쪽 끝에도
+                    고정한다. bg-background로 완전 불투명하게 둬야 스크롤되는 아래 내용이
+                    비쳐 보이지 않는다. */}
+                <div className="bg-background sticky top-0 z-20">
+                  <div className="sticky left-0 flex h-8 w-fit shrink-0 items-center gap-x-4 px-2 text-xs text-muted-foreground">
+                    {STATUS_LEGEND_ORDER.map((status) => (
+                      <span key={status} className="flex items-center gap-1.5">
+                        <span
+                          className="inline-block size-3 rounded-sm"
+                          style={{ backgroundColor: STATUS_CHART_COLORS[status] }}
+                          aria-hidden
+                        />
+                        {getStatusLabel(status)}
+                      </span>
+                    ))}
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="bg-muted relative inline-flex size-3 items-center justify-center rounded-sm border-2 border-destructive"
                         aria-hidden
                       >
-                        {isMonthStart ? formatDate(dateStr).slice(5) : day}
-                      </div>
-                    );
-                  })}
+                        <AlertTriangle className="size-2 text-destructive" aria-hidden />
+                      </span>
+                      지연
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="relative inline-flex size-3 overflow-hidden rounded-sm"
+                        style={{ backgroundColor: STATUS_CHART_COLORS.in_progress }}
+                        aria-hidden
+                      >
+                        <span className="absolute inset-y-0 left-0 w-1/2 bg-black/25" />
+                      </span>
+                      진척률(입력 시 진하게)
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="bg-primary inline-block h-3 w-0.5" aria-hidden />
+                      오늘
+                    </span>
+                  </div>
+                  <div
+                    className="grid border-b bg-muted text-xs text-muted-foreground"
+                    style={{ gridTemplateColumns }}
+                  >
+                    <div className="px-2 py-1.5 font-medium text-foreground">업무</div>
+                    {Array.from({ length: totalDays }).map((_, index) => {
+                      const dateStr = addDaysToDateString(currentFrom, index);
+                      const day = Number(dateStr.slice(8, 10));
+                      const isMonthStart = day === 1;
+                      return (
+                        <div
+                          key={dateStr}
+                          className="flex items-center justify-center border-l py-1.5 tabular-nums"
+                          aria-hidden
+                        >
+                          {isMonthStart ? formatDate(dateStr).slice(5) : day}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
                 {bars.map(
                   ({
