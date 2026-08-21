@@ -21,11 +21,10 @@ function getNavLinks(user: NavUser): { href: string; label: string }[] {
   if (!user) {
     return [];
   }
-  // 칸반보드는 관리자 전용이 아니라 주간업무 목록과 동일하게 전 로그인 사용자가 볼 수
-  // 있으므로, "관리자 콘솔" 조건부 push보다 앞에 무조건 넣는다(요청상 배치 순서이기도 함).
-  const links: { href: string; label: string }[] = [
-    { href: "/protected/weekly-logs/kanban", label: "칸반보드" },
-  ];
+  // 칸반보드는 F047(v2 Task 048)의 WeeklyLogViewSwitcher(목록/칸반/타임라인 탭)로 진입할 수
+  // 있어 헤더의 고정 링크는 제거했다 — 스위처는 필터 조건을 유지한 채 전환되지만 이 고정
+  // 링크는 항상 필터가 초기화된다는 차이가 있었다.
+  const links: { href: string; label: string }[] = [];
   if (user.role === "admin" || user.role === "superadmin") {
     links.push({ href: "/protected/admin", label: "관리자 콘솔" });
   }
