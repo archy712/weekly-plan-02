@@ -44,7 +44,7 @@ export function WeeklyLogKanbanColumn({
   return (
     <div
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 rounded-lg border border-t-4 bg-muted/30 p-3",
+        "flex min-w-0 flex-col gap-3 rounded-lg border border-t-4 bg-muted/30 p-3",
         STATUS_ACCENT[status],
       )}
     >

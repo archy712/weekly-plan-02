@@ -373,7 +373,12 @@ export function WeeklyLogKanbanView({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          {/* 상태 컬럼은 항상 3개로 고정이라 가변 개수의 가로 스크롤 대신 그리드로 배치한다.
+              lg 미만(태블릿·모바일)에서는 1열로 쌓아 각 컬럼이 화면 폭을 꽉 채우고, lg
+              이상(데스크탑)에서는 3열이 컨테이너 폭 전체를 균등하게 채운다 — 컬럼 폭을
+              고정값(w-72)으로 두면 모바일에서 다음 컬럼이 애매하게 잘려 보이고, 데스크탑
+              에서는 넓은 화면에서 오른쪽에 빈 여백이 남는 문제가 있었다. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {STATUS_ORDER.map((status) => (
               <WeeklyLogKanbanColumn
                 key={status}
