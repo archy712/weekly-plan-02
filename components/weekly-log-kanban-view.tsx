@@ -34,7 +34,7 @@ import { LoadingBar } from "@/components/loading-bar";
 import { cn } from "@/lib/utils";
 import { updateWeeklyLogStatusAction } from "@/lib/actions/weekly-log";
 import { loadMoreKanbanColumnAction } from "@/lib/actions/weekly-log-list";
-import { formatDate, getStatusLabel } from "@/lib/format";
+import { getStatusLabel } from "@/lib/format";
 import type { FilterPresetFilters } from "@/hooks/use-filter-presets";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
@@ -266,10 +266,6 @@ export function WeeklyLogKanbanView({
   };
 
   const scopeLabel = currentDepartmentName ?? "전체 부서";
-  const dateRangeLabel =
-    currentFrom || currentTo
-      ? `${currentFrom ? formatDate(currentFrom) : "제한없음"} ~ ${currentTo ? formatDate(currentTo) : "제한없음"}`
-      : undefined;
 
   type ActiveFilterBadge = { key: string; label: string; onRemove: () => void };
   const activeFilters: ActiveFilterBadge[] = [];
@@ -297,13 +293,8 @@ export function WeeklyLogKanbanView({
       },
     });
   }
-  if (currentFrom || currentTo) {
-    activeFilters.push({
-      key: "date",
-      label: `기간: ${dateRangeLabel}`,
-      onRemove: () => navigate({ from: null, to: null }),
-    });
-  }
+  // 기간은 배지로 다시 보여주지 않는다 — 바로 위 날짜 입력창이 이미 같은 값을 항상
+  // 보여주고 있어(초기화 버튼도 그 옆에 있음) 배지로 한 번 더 표시하면 순수 중복이다.
   // author는 "내 업무" 위젯의 "지연" 링크만 이 값을 채운다(본인 id 고정) — 라벨을 항상
   // "나"로 고정한다(목록 페이지 weekly-log-list-view.tsx와 동일한 결정).
   if (currentAuthorId) {
@@ -322,7 +313,10 @@ export function WeeklyLogKanbanView({
     <div className="flex flex-col gap-4">
       <LoadingBar active={isPending} />
       <WeeklyLogViewSwitcher current="kanban" filters={rawFilters} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* 필터 컨트롤 전체를 카드 하나로 감싸 아래 칸반보드와 시각적으로 분리한다 —
+          배경 없이 여백만으로 구분되던 이전 레이아웃은 "필터 영역이 어디까지인지"
+          스캔하기 어렵다는 피드백에 따른 개선. */}
+      <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
             <Input
@@ -358,7 +352,7 @@ export function WeeklyLogKanbanView({
               <SelectValue placeholder="진행상태 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_STATUSES_FILTER}>전체</SelectItem>
+              <SelectItem value={ALL_STATUSES_FILTER}>전체 상태</SelectItem>
               {STATUS_FILTER_OPTIONS.map((status) => (
                 <SelectItem key={status} value={status}>
                   {getStatusLabel(status)}
@@ -372,39 +366,39 @@ export function WeeklyLogKanbanView({
             onApply={applyFilterPreset}
           />
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <DateRangeFilter
-          from={currentFrom}
-          to={currentTo}
-          onFromChange={(value) => navigate({ from: value || null })}
-          onToChange={(value) => navigate({ to: value || null })}
-          onReset={() => navigate({ from: null, to: null })}
-          onPreset={(range) => navigate({ from: range.from, to: range.to })}
-        />
-        <p className="text-muted-foreground ml-auto text-sm">
-          {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
-          <span className="text-foreground font-medium">{totalCount.toLocaleString()}</span>건
-        </p>
-      </div>
-      {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground text-sm">적용된 필터:</span>
-          {activeFilters.map((filter) => (
-            <Badge key={filter.key} variant="secondary" className="gap-1 pr-1">
-              {filter.label}
-              <button
-                type="button"
-                onClick={filter.onRemove}
-                aria-label={`${filter.label} 필터 해제`}
-                className="hover:bg-muted-foreground/20 rounded-full p-0.5"
-              >
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
+          <DateRangeFilter
+            from={currentFrom}
+            to={currentTo}
+            onFromChange={(value) => navigate({ from: value || null })}
+            onToChange={(value) => navigate({ to: value || null })}
+            onReset={() => navigate({ from: null, to: null })}
+            onPreset={(range) => navigate({ from: range.from, to: range.to })}
+          />
+          <p className="text-muted-foreground ml-auto text-sm">
+            {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
+            <span className="text-foreground font-medium">{totalCount.toLocaleString()}</span>건
+          </p>
         </div>
-      )}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground text-sm">적용된 필터:</span>
+            {activeFilters.map((filter) => (
+              <Badge key={filter.key} variant="secondary" className="gap-1 pr-1">
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.onRemove}
+                  aria-label={`${filter.label} 필터 해제`}
+                  className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
       <div
         className={cn("transition-opacity", isPending && "pointer-events-none opacity-60")}
         aria-busy={isPending}

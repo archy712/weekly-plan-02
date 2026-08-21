@@ -385,13 +385,8 @@ export function WeeklyLogListView({
       },
     });
   }
-  if (currentFrom || currentTo) {
-    activeFilters.push({
-      key: "date",
-      label: `기간: ${dateRangeLabel}`,
-      onRemove: handleDateRangeReset,
-    });
-  }
+  // 기간은 배지로 다시 보여주지 않는다 — 바로 위 날짜 입력창이 이미 같은 값을 항상
+  // 보여주고 있어(초기화 버튼도 그 옆에 있음) 배지로 한 번 더 표시하면 순수 중복이다.
   // author는 "내 업무" 위젯이 본인 id로만 링크를 만들기 때문에(다른 사용자를 지정하는
   // UI가 없음) 라벨을 항상 "나"로 고정한다.
   if (currentAuthorId) {
@@ -405,8 +400,30 @@ export function WeeklyLogListView({
   return (
     <div className="flex flex-col gap-4">
       <LoadingBar active={isPending} />
-      <WeeklyLogViewSwitcher current="list" filters={rawFilters} />
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <WeeklyLogViewSwitcher current="list" filters={rawFilters} />
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" disabled={isDownloading}>
+                {isDownloading ? "생성 중..." : "다운로드"}
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleDownloadPdf}>PDF 다운로드</DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleDownloadExcel}>Excel 다운로드</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button asChild>
+            <Link href="/protected/weekly-logs/new">신규 작성</Link>
+          </Button>
+        </div>
+      </div>
+      {/* 필터 컨트롤 전체를 카드 하나로 감싸 아래 목록/카드 콘텐츠와 시각적으로
+          분리한다 — 배경 없이 여백만으로 구분되던 이전 레이아웃은 "필터 영역이
+          어디까지인지" 스캔하기 어렵다는 피드백에 따른 개선. */}
+      <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
             <Input
@@ -439,7 +456,7 @@ export function WeeklyLogListView({
               <SelectValue placeholder="진행상태 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_STATUSES_FILTER}>전체</SelectItem>
+              <SelectItem value={ALL_STATUSES_FILTER}>전체 상태</SelectItem>
               {STATUS_FILTER_OPTIONS.map((status) => (
                 <SelectItem key={status} value={status}>
                   {getStatusLabel(status)}
@@ -453,60 +470,43 @@ export function WeeklyLogListView({
             onApply={applyFilterPreset}
           />
         </div>
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" disabled={isDownloading}>
-                {isDownloading ? "생성 중..." : "다운로드"}
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleDownloadPdf}>PDF 다운로드</DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleDownloadExcel}>Excel 다운로드</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button asChild>
-            <Link href="/protected/weekly-logs/new">신규 작성</Link>
-          </Button>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <DateRangeFilter
-          from={currentFrom}
-          to={currentTo}
-          onFromChange={handleFromChange}
-          onToChange={handleToChange}
-          onReset={handleDateRangeReset}
-          onPreset={applyDatePreset}
-        />
-        {/* 현재 필터 조건에 맞는 총 건수 — 기간 프리셋("최근 3개월") 오른쪽에 우측 정렬. */}
-        <p className="text-muted-foreground ml-auto text-sm">
-          {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
-          <span className="text-foreground font-medium">
-            {totalCount.toLocaleString()}
-          </span>
-          건
-        </p>
-      </div>
-      {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground text-sm">적용된 필터:</span>
-          {activeFilters.map((filter) => (
-            <Badge key={filter.key} variant="secondary" className="gap-1 pr-1">
-              {filter.label}
-              <button
-                type="button"
-                onClick={filter.onRemove}
-                aria-label={`${filter.label} 필터 해제`}
-                className="hover:bg-muted-foreground/20 rounded-full p-0.5"
-              >
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
+          <DateRangeFilter
+            from={currentFrom}
+            to={currentTo}
+            onFromChange={handleFromChange}
+            onToChange={handleToChange}
+            onReset={handleDateRangeReset}
+            onPreset={applyDatePreset}
+          />
+          {/* 현재 필터 조건에 맞는 총 건수 — 기간 프리셋("최근 3개월") 오른쪽에 우측 정렬. */}
+          <p className="text-muted-foreground ml-auto text-sm">
+            {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
+            <span className="text-foreground font-medium">
+              {totalCount.toLocaleString()}
+            </span>
+            건
+          </p>
         </div>
-      )}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground text-sm">적용된 필터:</span>
+            {activeFilters.map((filter) => (
+              <Badge key={filter.key} variant="secondary" className="gap-1 pr-1">
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.onRemove}
+                  aria-label={`${filter.label} 필터 해제`}
+                  className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
       {/* 재조회 중에는 이전 결과를 흐리게+비활성화해 "갱신 중"임을 알리되, 컨텍스트(무엇을
           보고 있었는지)는 유지한다. 필터 UI는 위에 있어 이 dim의 영향을 받지 않는다. */}
       <div

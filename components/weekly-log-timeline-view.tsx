@@ -186,7 +186,10 @@ export function WeeklyLogTimelineView({
     <div className="flex flex-col gap-4">
       <LoadingBar active={isPending} />
       <WeeklyLogViewSwitcher current="timeline" filters={rawFilters} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* 필터 컨트롤 전체를 카드 하나로 감싸 아래 타임라인과 시각적으로 분리한다 —
+          배경 없이 여백만으로 구분되던 이전 레이아웃은 "필터 영역이 어디까지인지"
+          스캔하기 어렵다는 피드백에 따른 개선. */}
+      <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
             <Input
@@ -222,7 +225,7 @@ export function WeeklyLogTimelineView({
               <SelectValue placeholder="진행상태 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_STATUSES_FILTER}>전체</SelectItem>
+              <SelectItem value={ALL_STATUSES_FILTER}>전체 상태</SelectItem>
               {STATUS_FILTER_OPTIONS.map((status) => (
                 <SelectItem key={status} value={status}>
                   {getStatusLabel(status)}
@@ -231,39 +234,39 @@ export function WeeklyLogTimelineView({
             </SelectContent>
           </Select>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <DateRangeFilter
-          from={currentFrom}
-          to={currentTo}
-          onFromChange={(value) => navigate({ from: value || null })}
-          onToChange={(value) => navigate({ to: value || null })}
-          onReset={() => navigate({ from: null, to: null })}
-          onPreset={(range) => navigate({ from: range.from, to: range.to })}
-        />
-        <p className="text-muted-foreground ml-auto text-sm">
-          {dateRangeLabel} ·{" "}
-          <span className="text-foreground font-medium">{items.length.toLocaleString()}</span>건
-        </p>
-      </div>
-      {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground text-sm">적용된 필터:</span>
-          {activeFilters.map((filter) => (
-            <Badge key={filter.key} variant="secondary" className="gap-1 pr-1">
-              {filter.label}
-              <button
-                type="button"
-                onClick={filter.onRemove}
-                aria-label={`${filter.label} 필터 해제`}
-                className="hover:bg-muted-foreground/20 rounded-full p-0.5"
-              >
-                <X className="size-3" />
-              </button>
-            </Badge>
-          ))}
+          <DateRangeFilter
+            from={currentFrom}
+            to={currentTo}
+            onFromChange={(value) => navigate({ from: value || null })}
+            onToChange={(value) => navigate({ to: value || null })}
+            onReset={() => navigate({ from: null, to: null })}
+            onPreset={(range) => navigate({ from: range.from, to: range.to })}
+          />
+          <p className="text-muted-foreground ml-auto text-sm">
+            {dateRangeLabel} ·{" "}
+            <span className="text-foreground font-medium">{items.length.toLocaleString()}</span>건
+          </p>
         </div>
-      )}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground text-sm">적용된 필터:</span>
+            {activeFilters.map((filter) => (
+              <Badge key={filter.key} variant="secondary" className="gap-1 pr-1">
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.onRemove}
+                  aria-label={`${filter.label} 필터 해제`}
+                  className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
       {truncated && (
         <div className="flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
           <AlertTriangle className="size-4 shrink-0 text-warning" aria-hidden />
