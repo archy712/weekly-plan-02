@@ -533,8 +533,9 @@ export function WeeklyLogListView({
               sortKey={currentSortKey}
               sortDirection={currentSortDirection}
               onSort={handleSort}
+              query={currentSearchQuery}
             />
-            <WeeklyLogCardList items={items} showAuthor />
+            <WeeklyLogCardList items={items} showAuthor query={currentSearchQuery} />
             {/* 더 있으면 하단 센티넬을 두고, 화면에 들어오면 다음 배치를 로딩한다. 진행률을
                 알 수 없는 조회라 비결정형 인디케이터 바로 "불러오는 중"만 알린다. */}
             {hasMore && (

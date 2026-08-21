@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
+import { HighlightedText } from "@/components/highlighted-text";
 import { formatDate, getStatusLabel } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
@@ -29,10 +30,13 @@ export function WeeklyLogKanbanCardContent({
   item,
   overdue,
   interactive = true,
+  query,
 }: {
   item: WeeklyLogListItem;
   overdue: boolean;
   interactive?: boolean;
+  // F046 검색 결과 하이라이팅 — 칸반도 목록과 같은 q 필터를 쓰므로 함께 적용한다.
+  query?: string;
 }) {
   const titleClassName = cn(
     "text-sm font-medium leading-snug",
@@ -47,10 +51,12 @@ export function WeeklyLogKanbanCardContent({
             href={`/protected/weekly-logs/${item.id}`}
             className={cn(titleClassName, "hover:underline")}
           >
-            {item.title}
+            <HighlightedText text={item.title} query={query} />
           </Link>
         ) : (
-          <span className={titleClassName}>{item.title}</span>
+          <span className={titleClassName}>
+            <HighlightedText text={item.title} query={query} />
+          </span>
         )}
         {item.comment_count > 0 && (
           <span className="shrink-0 text-xs text-muted-foreground">
@@ -95,11 +101,13 @@ export function WeeklyLogKanbanCard({
   canWrite,
   overdue,
   onMoveStatus,
+  query,
 }: {
   item: WeeklyLogListItem;
   canWrite: boolean;
   overdue: boolean;
   onMoveStatus: (target: WeeklyLogStatus) => void;
+  query?: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -139,7 +147,7 @@ export function WeeklyLogKanbanCard({
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <WeeklyLogKanbanCardContent item={item} overdue={overdue} />
+          <WeeklyLogKanbanCardContent item={item} overdue={overdue} query={query} />
         </div>
         {canWrite && (
           <DropdownMenu>

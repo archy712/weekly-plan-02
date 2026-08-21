@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
+import { HighlightedText } from "@/components/highlighted-text";
 import { formatDate } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
@@ -12,9 +13,11 @@ import type { WeeklyLogListItem } from "@/lib/types";
 export function WeeklyLogCard({
   item,
   showAuthor = false,
+  query,
 }: {
   item: WeeklyLogListItem;
   showAuthor?: boolean;
+  query?: string;
 }) {
   return (
     <Card>
@@ -27,7 +30,7 @@ export function WeeklyLogCard({
               item.status === "completed" && "italic line-through text-muted-foreground",
             )}
           >
-            {item.title}
+            <HighlightedText text={item.title} query={query} />
             {item.comment_count > 0 && (
               <span className="ml-1 font-normal text-muted-foreground">
                 ({item.comment_count})
@@ -60,14 +63,16 @@ export function WeeklyLogCard({
 export function WeeklyLogCardList({
   items,
   showAuthor = false,
+  query,
 }: {
   items: WeeklyLogListItem[];
   showAuthor?: boolean;
+  query?: string;
 }) {
   return (
     <div className="flex flex-col gap-2 md:hidden">
       {items.map((item) => (
-        <WeeklyLogCard key={item.id} item={item} showAuthor={showAuthor} />
+        <WeeklyLogCard key={item.id} item={item} showAuthor={showAuthor} query={query} />
       ))}
     </div>
   );

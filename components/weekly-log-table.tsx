@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
+import { HighlightedText } from "@/components/highlighted-text";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { formatDate } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
@@ -25,12 +26,16 @@ export function WeeklyLogTable({
   sortKey,
   sortDirection,
   onSort,
+  query,
 }: {
   items: WeeklyLogListItem[];
   showAuthor?: boolean;
   sortKey: WeeklyLogSortKey | null;
   sortDirection: SortDirection;
   onSort: (key: WeeklyLogSortKey) => void;
+  // F046 검색 결과 하이라이팅 — 제목 payload만 있어 제목에만 적용된다(목록 payload에
+  // content가 없어 내용 스니펫은 표시하지 않음, F032 성능 개선과의 충돌 회피).
+  query?: string;
 }) {
   return (
     <div className="hidden md:block overflow-hidden rounded-lg border shadow-sm">
@@ -88,7 +93,7 @@ export function WeeklyLogTable({
                     item.status === "completed" && "italic line-through text-muted-foreground",
                   )}
                 >
-                  {item.title}
+                  <HighlightedText text={item.title} query={query} />
                   {item.comment_count > 0 && (
                     <span className="ml-1 font-normal text-muted-foreground">
                       ({item.comment_count})

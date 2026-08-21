@@ -435,6 +435,7 @@ export function WeeklyLogKanbanView({
                 currentUserDepartmentId={currentUserDepartmentId}
                 isAdmin={isAdmin}
                 todayIso={todayIso}
+                query={currentSearchQuery}
               />
             ))}
           </div>
@@ -445,6 +446,7 @@ export function WeeklyLogKanbanView({
                   item={activeItem}
                   overdue={activeOverdue}
                   interactive={false}
+                  query={currentSearchQuery}
                 />
               </Card>
             ) : null}

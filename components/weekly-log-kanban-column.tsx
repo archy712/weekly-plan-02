@@ -27,6 +27,7 @@ export function WeeklyLogKanbanColumn({
   currentUserDepartmentId,
   isAdmin,
   todayIso,
+  query,
 }: {
   status: WeeklyLogStatus;
   items: WeeklyLogListItem[];
@@ -38,6 +39,7 @@ export function WeeklyLogKanbanColumn({
   currentUserDepartmentId: string;
   isAdmin: boolean;
   todayIso: string;
+  query?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -76,6 +78,7 @@ export function WeeklyLogKanbanColumn({
                 canWrite={canWrite}
                 overdue={overdue}
                 onMoveStatus={(target) => onMoveStatus(item, target)}
+                query={query}
               />
             );
           })

@@ -10,6 +10,13 @@ export function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
+// 정규식 메타문자를 이스케이프해 사용자 입력을 리터럴 문자열로 안전하게 정규식에 포함시킨다
+// (F046 검색 결과 하이라이팅이 검색어를 매칭용 정규식으로 쓸 때 필요 — escapeLikePattern이
+// ilike 패턴(%, _)을 다루는 것과 같은 문제가 정규식 쪽에서 반복된다).
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // 한글 명사 뒤에 붙는 을/를 목적격 조사를 마지막 글자의 받침 유무로 정확히 고른다
 // (F043 변경 이력 문구처럼 필드 라벨을 동적으로 조합할 때 필요 — "업무타입를"처럼 받침이
 // 있는 단어에 "를"을 잘못 붙이는 실수를 막는다). 한글 완성형 범위(가~힣) 밖의 문자로
