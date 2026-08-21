@@ -189,6 +189,21 @@ export function WeeklyLogTimelineView({
     // 무관하게 100%로 간주한다 — 상세 페이지의 displayProgress와 동일한 규칙
     // (weekly-log-detail-view.tsx 참고). 목록/칸반 카드도 이 규칙을 공유한다.
     const displayProgress = item.status === "completed" ? 100 : item.progress;
+    // 막대 안 채움 너비는 "막대 자체(=화면에 보이는, 조회 기간으로 잘렸을 수 있는 구간)"가
+    // 아니라 "업무 전체 기간(start_date~target_end_date)" 대비 진척률로 계산해야 한다.
+    // 예: 7/28~8/10(14일)짜리 업무를 8월 1일부터 조회하면 막대는 8/1~8/10(10일)만
+    // 보이는데, 여기서 displayProgress%를 그 10일짜리 막대 폭에 그대로 적용하면 실제
+    // "업무 시작일 기준 75%" 지점보다 채움이 더 길어 보인다(잘려나간 4일만큼 기준이
+    // 달라지므로) — 전체 기간 기준으로 계산한 뒤 화면에 보이는 구간(spanDays)에 대한
+    // 비율로 환산해야 잘린 막대에서도 채움 위치가 정확하다.
+    const totalTaskSpanDays = diffDays(item.target_end_date, item.start_date) + 1;
+    const daysCompleted = totalTaskSpanDays * (displayProgress / 100);
+    const visibleStartOffsetFromTrueStart = diffDays(clampedStart, item.start_date);
+    const visibleFillDays = Math.min(
+      Math.max(daysCompleted - visibleStartOffsetFromTrueStart, 0),
+      spanDays,
+    );
+    const progressFillPercent = (visibleFillDays / spanDays) * 100;
     return {
       item,
       startOffset,
@@ -199,6 +214,7 @@ export function WeeklyLogTimelineView({
       authorLabel,
       dateRangeText,
       displayProgress,
+      progressFillPercent,
     };
   });
 
@@ -401,6 +417,7 @@ export function WeeklyLogTimelineView({
                     authorLabel,
                     dateRangeText,
                     displayProgress,
+                    progressFillPercent,
                   }) => {
                     // 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
                     // 구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
@@ -458,11 +475,15 @@ export function WeeklyLogTimelineView({
                             {/* 간트 차트의 흔한 관례 — 막대 안에 진척률만큼 더 어둡게 채워
                                 "기간 대비 실제 완료분"을 한눈에 보이게 한다. 0%(미입력)는
                                 표시하지 않는다. 완료 업무는 실제 저장값과 무관하게 100%로
-                                간주한다(displayProgress, weekly-log-detail-view.tsx와 동일). */}
+                                간주한다(displayProgress, weekly-log-detail-view.tsx와 동일).
+                                너비는 displayProgress를 이 막대(화면에 보이는, 조회 기간으로
+                                잘렸을 수 있는 구간)의 폭에 그대로 적용하지 않고
+                                progressFillPercent(업무 전체 기간 기준으로 환산한 값)를
+                                쓴다 — 안 그러면 막대가 잘려 보일 때 채움 위치가 어긋난다. */}
                             {displayProgress > 0 && (
                               <div
                                 className="absolute inset-y-0 left-0 bg-black/25"
-                                style={{ width: `${displayProgress}%` }}
+                                style={{ width: `${progressFillPercent}%` }}
                                 aria-hidden
                               />
                             )}
