@@ -252,12 +252,18 @@ export function WeeklyLogDetailView({
     }
   };
 
+  const isCompleted = status === "completed";
   // 목표진척률: 시작일~목표종료일 대비 오늘 위치(%, 100 초과分은 클램프). 저장하지 않고
   // 매 렌더링마다 계산한다 — DB에 별도 컬럼을 두지 않는 이유는 lib/utils.ts 참고.
   const targetProgress = computeTargetProgress(log.start_date, log.target_end_date, todayIso);
+  // 완료 처리된 업무는 실제 슬라이더 값이 100%에 못 미쳐도(사용자가 마지막으로 저장한
+  // 값 그대로 남아있을 수 있음) 진척률 비교 자체를 무시하고 100%로 간주한다 — "완료"인데
+  // 진척률 막대가 0%로 보이는 모순을 없애기 위함. DB의 실제 progress 값은 건드리지
+  // 않는다(상태를 다시 진행중으로 되돌리면 원래 값이 그대로 남아 있어야 하므로).
+  const displayProgress = isCompleted ? 100 : progress;
   // 완료된 업무는 진척률이 목표에 못 미쳐도 "지연"으로 보지 않는다 — 칸반·타임라인의
   // 기존 지연 판정(status !== "completed")과 동일한 원칙.
-  const delayed = status !== "completed" && progress < targetProgress;
+  const delayed = !isCompleted && progress < targetProgress;
 
   const backLink = (
     <Link
@@ -366,12 +372,20 @@ export function WeeklyLogDetailView({
       {/* 진척률 대 목표진척률 — 열람 권한과 무관하게 항상 노출한다(중요도·진행상태
           배지와 동일한 공개 범위). 목표진척률은 타임라인 뷰의 "오늘" 세로선과 동일한
           시각 언어(세로 마커)로 실제 진척률 막대 위에 겹쳐 그려 한눈에 비교할 수 있게
-          한다 — 숫자 두 개를 각각 읽고 암산으로 비교하게 하는 것보다 직관적이다. */}
+          한다 — 숫자 두 개를 각각 읽고 암산으로 비교하게 하는 것보다 직관적이다.
+          완료 처리된 업무는 목표 대비 비교 자체가 의미 없으므로(displayProgress가
+          항상 100) 마커 없이 꽉 찬 막대만 보여준다. */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">진척률</span>
           <span className="text-muted-foreground">
-            진척률 {progress}% · 목표진척률 {targetProgress}%
+            {isCompleted ? (
+              "진척률 100% (완료)"
+            ) : (
+              <>
+                진척률 {progress}% · 목표진척률 {targetProgress}%
+              </>
+            )}
           </span>
         </div>
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-primary/20">
@@ -380,14 +394,16 @@ export function WeeklyLogDetailView({
               "h-full rounded-full transition-all",
               delayed ? "bg-destructive" : "bg-primary",
             )}
-            style={{ width: `${progress}%` }}
+            style={{ width: `${displayProgress}%` }}
           />
-          <div
-            className="bg-foreground/70 absolute inset-y-0 w-0.5"
-            style={{ left: `${targetProgress}%` }}
-            title={`목표진척률 ${targetProgress}%`}
-            aria-hidden
-          />
+          {!isCompleted && (
+            <div
+              className="bg-foreground/70 absolute inset-y-0 w-0.5"
+              style={{ left: `${targetProgress}%` }}
+              title={`목표진척률 ${targetProgress}%`}
+              aria-hidden
+            />
+          )}
         </div>
       </div>
       {(log.estimated_mm != null || log.estimated_cost != null || log.partner_company) && (
@@ -460,26 +476,35 @@ export function WeeklyLogDetailView({
           </div>
           {/* 진척률 계산 방법이 마땅치 않아(자동 산출 대신) 사용자가 직접 슬라이더로
               입력한다 — 업무 중요도 슬라이더와 동일한 드래그 중 로컬 반영 + 손을 뗄 때만
-              저장(onValueCommit) 패턴. */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="progress">진척률 {progress}%</Label>
-            <Slider
-              id="progress"
-              min={PROGRESS_MIN}
-              max={PROGRESS_MAX}
-              step={PROGRESS_STEP}
-              value={[progress]}
-              disabled={isUpdatingProgress}
-              onValueChange={([next]) => setProgress(next)}
-              onValueCommit={([next]) => handleProgressCommit(next)}
-              aria-label="진척률"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
+              저장(onValueCommit) 패턴. 완료 처리된 업무는 진척률 계산 자체를 무시하고
+              완료로 간주하므로(위 displayProgress) 슬라이더를 감추고 안내만 남긴다 —
+              진행중으로 되돌리면 마지막으로 저장했던 값 그대로 슬라이더가 다시 보인다. */}
+          {isCompleted ? (
+            <p className="text-sm text-muted-foreground">
+              완료 처리된 업무는 진척률을 100%로 간주합니다. 진척률을 다시 조정하려면
+              진행 상태를 먼저 되돌려주세요.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="progress">진척률 {progress}%</Label>
+              <Slider
+                id="progress"
+                min={PROGRESS_MIN}
+                max={PROGRESS_MAX}
+                step={PROGRESS_STEP}
+                value={[progress]}
+                disabled={isUpdatingProgress}
+                onValueChange={([next]) => setProgress(next)}
+                onValueCommit={([next]) => handleProgressCommit(next)}
+                aria-label="진척률"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex justify-end gap-2">
             <AlertDialog>
               <AlertDialogTrigger asChild>
