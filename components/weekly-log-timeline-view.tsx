@@ -298,10 +298,16 @@ export function WeeklyLogTimelineView({
           />
         ) : (
           <>
-            {/* 막대 색상 3종·지연 테두리·오늘 세로선이 무엇을 뜻하는지 화면 어디에도 설명이
-                없다는 피드백에 따른 범례. 가로 스크롤되는 그리드 밖에 둬 기간이 길어 오른쪽
-                으로 스크롤해도 항상 보이게 한다. */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {/* 막대 색상 3종·지연 테두리(+아이콘)·오늘 세로선이 무엇을 뜻하는지 화면 어디에도
+                설명이 없다는 피드백에 따른 범례. 목록이 길어 페이지를 세로로 스크롤해도
+                사라지지 않도록 sticky로 고정한다 — 이 프로젝트에서 position: sticky를 쓰는
+                첫 지점. 아래 날짜 헤더 행도 같은 이유로 sticky이며, 이 범례 높이(h-8=32px)
+                만큼 top을 내려 겹치지 않게 한다 — 범례 높이를 바꾸면 날짜 헤더의 top-8도
+                함께 맞춰야 한다. flex-wrap을 쓰지 않는 것도 이 고정 높이를 보장하기 위함
+                (좁은 화면에서 줄바꿈되면 날짜 헤더와 겹친다).
+                bg-background로 완전 불투명하게 둬야 스크롤되는 아래 내용이 비쳐 보이지
+                않는다. */}
+            <div className="bg-background sticky top-0 z-20 flex h-8 shrink-0 items-center gap-x-4 text-xs text-muted-foreground">
               {STATUS_LEGEND_ORDER.map((status) => (
                 <span key={status} className="flex items-center gap-1.5">
                   <span
@@ -314,9 +320,11 @@ export function WeeklyLogTimelineView({
               ))}
               <span className="flex items-center gap-1.5">
                 <span
-                  className="bg-muted inline-block size-3 rounded-sm border-2 border-destructive"
+                  className="bg-muted relative inline-flex size-3 items-center justify-center rounded-sm border-2 border-destructive"
                   aria-hidden
-                />
+                >
+                  <AlertTriangle className="size-2 text-destructive" aria-hidden />
+                </span>
                 지연
               </span>
               <span className="flex items-center gap-1.5">
@@ -332,8 +340,11 @@ export function WeeklyLogTimelineView({
                 className="relative w-full"
                 style={{ minWidth: `${LABEL_WIDTH + totalDays * DAY_MIN_WIDTH}px` }}
               >
+                {/* 업무 행이 많으면 세로로 길어져 스크롤해야 하는데, 그때마다 어느 날짜
+                    열인지 알 수 없어지는 문제를 막기 위해 날짜 헤더도 sticky로 고정한다.
+                    바로 위 범례와 겹치지 않도록 top을 범례 높이(32px)만큼 내린다. */}
                 <div
-                  className="grid border-b bg-muted/30 text-xs text-muted-foreground"
+                  className="sticky top-8 z-10 grid border-b bg-muted text-xs text-muted-foreground"
                   style={{ gridTemplateColumns }}
                 >
                   <div className="px-2 py-1.5 font-medium text-foreground">업무</div>
