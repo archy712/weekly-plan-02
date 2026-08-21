@@ -59,7 +59,12 @@ export function NotificationsProvider({
   );
 }
 
+// 리마인더(F041) 알림은 weekly_log_id가 없다("아직 없는 로그"에 대한 알림) — 이 경우
+// 작성 화면으로 보낸다(Task 042 결정).
 function notificationHref(notification: NotificationListItem): string {
+  if (!notification.weekly_log_id) {
+    return "/protected/weekly-logs/new";
+  }
   return notification.comment_id
     ? `/protected/weekly-logs/${notification.weekly_log_id}#comment-${notification.comment_id}`
     : `/protected/weekly-logs/${notification.weekly_log_id}`;

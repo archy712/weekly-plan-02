@@ -11,31 +11,42 @@ type AnySupabaseClient = SupabaseClient<Database>;
 type RawNotificationRow = {
   id: string;
   type: string;
-  actor_id: string;
+  // Task 042(F044·F041 공통 백엔드): 리마인더 알림에는 행위자·대상 로그가 없어
+  // 둘 다 nullable로 완화됨(notifications 마이그레이션 extend_notifications_for_reminder).
+  actor_id: string | null;
   recipient_id: string;
-  weekly_log_id: string;
+  weekly_log_id: string | null;
   comment_id: string | null;
   read_at: string | null;
   created_at: string;
+  period_start: string | null;
 };
 
 // notifications 원본 행에 발신자 신원(get_profile_identities RPC)과 대상 업무일지 제목을
 // 배치 조회해 붙인다. weekly_logs는 "전 부서 공개" SELECT RLS라 일반 조회로 충분하지만,
 // profiles는 profiles_select_own_or_admin 때문에 embed로 타인의 이름/아바타를 가져올 수
 // 없어 lib/queries/comments.ts와 동일하게 RPC를 거친다.
+// 리마인더 알림은 actor_id/weekly_log_id가 둘 다 null이므로, 배치 조회에 넘기기 전에
+// null을 걸러낸다(get_profile_identities/weekly_logs 조회 모두 null id를 원치 않음).
 export async function enrichNotifications(
   supabase: AnySupabaseClient,
   rows: RawNotificationRow[],
 ): Promise<NotificationListItem[]> {
   if (rows.length === 0) return [];
 
-  const actorIds = [...new Set(rows.map((row) => row.actor_id))];
-  const weeklyLogIds = [...new Set(rows.map((row) => row.weekly_log_id))];
+  const actorIds = [...new Set(rows.map((row) => row.actor_id).filter((id): id is string => id !== null))];
+  const weeklyLogIds = [
+    ...new Set(rows.map((row) => row.weekly_log_id).filter((id): id is string => id !== null)),
+  ];
 
   const [{ data: identities, error: identitiesError }, { data: logs, error: logsError }] =
     await Promise.all([
-      supabase.rpc("get_profile_identities", { profile_ids: actorIds }),
-      supabase.from("weekly_logs").select("id, title").in("id", weeklyLogIds),
+      actorIds.length > 0
+        ? supabase.rpc("get_profile_identities", { profile_ids: actorIds })
+        : Promise.resolve({ data: [], error: null }),
+      weeklyLogIds.length > 0
+        ? supabase.from("weekly_logs").select("id, title").in("id", weeklyLogIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
   if (identitiesError) {
@@ -49,7 +60,7 @@ export async function enrichNotifications(
   const titleMap = new Map((logs ?? []).map((log) => [log.id, log.title]));
 
   return rows.map((row) => {
-    const actor = identityMap.get(row.actor_id);
+    const actor = row.actor_id ? identityMap.get(row.actor_id) : undefined;
     return {
       id: row.id,
       type: row.type as NotificationType,
@@ -59,10 +70,11 @@ export async function enrichNotifications(
       comment_id: row.comment_id,
       read_at: row.read_at,
       created_at: row.created_at,
+      period_start: row.period_start,
       actor_name: actor?.name ?? null,
       actor_email: actor?.email ?? null,
       actor_avatar_key: actor?.avatar_key ?? "fox",
-      weekly_log_title: titleMap.get(row.weekly_log_id) ?? null,
+      weekly_log_title: row.weekly_log_id ? (titleMap.get(row.weekly_log_id) ?? null) : null,
     };
   });
 }
@@ -96,7 +108,9 @@ export async function getRecentNotifications(
 ): Promise<NotificationListItem[]> {
   const { data: rows, error } = await supabase
     .from("notifications")
-    .select("id, type, actor_id, recipient_id, weekly_log_id, comment_id, read_at, created_at")
+    .select(
+      "id, type, actor_id, recipient_id, weekly_log_id, comment_id, read_at, created_at, period_start",
+    )
     .eq("recipient_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);

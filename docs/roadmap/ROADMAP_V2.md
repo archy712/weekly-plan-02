@@ -204,36 +204,38 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 알림이 **유형별로 켜고 끌 수 있고**, 댓글이라는 사건 없이도 **스케줄에 의해** 발송되는 상태. v1 Task 034가 세운 "알림은 DB 트리거로만 생성된다"는 원칙에 **두 번째 생성 경로**가 추가되는, v2에서 가장 인프라 부담이 큰 묶음.
 > **선행 조건**: 없음(Phase 1과 독립). **단 Phase 2 내부는 042 → 043 → 044 순차 필수.**
 
-- **Task 042: 알림 스키마 확장 — 유형 3종화 및 수신 설정 컬럼 (F044·F041 공통 백엔드)**
-  - [ ] **`notifications` 제약 완화 마이그레이션** — 위 "반드시 해소해야 하는 갭"의 4개 항목을 한 번에 처리한다.
+- **Task 042: 알림 스키마 확장 — 유형 3종화 및 수신 설정 컬럼 (F044·F041 공통 백엔드)** ✅
+  - [x] **`notifications` 제약 완화 마이그레이션** — 위 "반드시 해소해야 하는 갭"의 4개 항목을 한 번에 처리한다.
     - `actor_id`를 **nullable로 변경** — 스케줄 알림에는 행위자가 없다. (대안: 수신자 자신을 actor로 넣기 → 알림 문구가 "OOO님이 나에게"로 어색해지고 `get_profile_identities` 조회가 낭비되므로 **nullable 채택 권장**)
     - `weekly_log_id`를 **nullable로 변경** — 리마인더는 "아직 존재하지 않는 로그"에 대한 알림이다
     - `notifications_type_check`를 `('mention','comment','reply','reminder')`로 확장
-    - **`period_start date null` 컬럼 신규 + 부분 유니크 인덱스** `unique (recipient_id, period_start) where type = 'reminder'` — 기존 `notifications_recipient_comment_unique`는 `comment_id`가 NULL이면 **Postgres가 NULL을 서로 구별해 중복 억제가 동작하지 않으므로**(실측 확인) 리마인더 전용 dedupe 키가 반드시 별도로 필요하다. 이 결정 근거를 마이그레이션 주석에 명시
-  - [ ] **`prevent_unauthorized_notification_update()` 트리거 영향 확인** — 이 트리거는 `app.bypass_notification_column_guard` 세션 설정으로 우회하도록 되어 있고 기존 notify 함수 2종이 `set_config`로 이를 켠다. **신규 컬럼(`period_start`)이 사용자 UPDATE로 변경 불가능한 보호 대상에 포함되는지** 확인하고, 필요하면 트리거 본문에 추가한다(사용자는 여전히 `read_at`만 바꿀 수 있어야 함)
-  - [ ] **`profiles` 알림 수신 설정 컬럼 3종 추가** — `notify_on_comment boolean not null default true`, `notify_on_mention boolean not null default true`, `notify_on_reminder boolean not null default true`.
+    - **`period_start date null` 컬럼 신규 + 부분 유니크 인덱스** `unique (recipient_id, period_start) where type = 'reminder'` — 기존 `notifications_recipient_comment_unique`는 `comment_id`가 NULL이면 **Postgres가 NULL을 서로 구별해 중복 억제가 동작하지 않으므로**(실측 확인) 리마인더 전용 dedupe 키가 반드시 별도로 필요하다. 이 결정 근거를 마이그레이션 주석에 명시 — 인덱스명 `notifications_recipient_period_start_unique`로 적용
+  - [x] **`prevent_unauthorized_notification_update()` 트리거 영향 확인** — 이 트리거는 `app.bypass_notification_column_guard` 세션 설정으로 우회하도록 되어 있고 기존 notify 함수 2종이 `set_config`로 이를 켠다. **신규 컬럼(`period_start`)이 사용자 UPDATE로 변경 불가능한 보호 대상에 포함되는지** 확인하고, 필요하면 트리거 본문에 추가한다(사용자는 여전히 `read_at`만 바꿀 수 있어야 함) — 실측 결과 원래 정의에 `period_start` 비교가 빠져 있어(신규 컬럼이라 당연히 없었음) 트리거 본문에 `new.period_start is distinct from old.period_start` 조건을 추가
+  - [x] **`profiles` 알림 수신 설정 컬럼 3종 추가** — `notify_on_comment boolean not null default true`, `notify_on_mention boolean not null default true`, `notify_on_reminder boolean not null default true`.
     - **결정: 단일 `jsonb`가 아니라 개별 boolean 컬럼** ← 권장. 트리거·RLS에서 직접 참조하기 쉽고, `profiles`의 기존 스타일(평평한 컬럼 + CHECK)과 일치하며, 타입 재생성 시 필드가 그대로 드러난다
     - `DEFAULT true` + `NOT NULL`이므로 **기존 65건 프로필에 백필 불필요**(전원 기존과 동일하게 전부 수신)
-    - **`'reply'` 유형은 별도 컬럼을 두지 않고 `notify_on_comment`를 따른다** — 사용자에게 "댓글/멘션/리마인더" 3종으로 보이는 편이 이해하기 쉽고, 대댓글은 댓글의 하위 개념이다. 이 매핑을 트리거 주석과 UI 캡션 양쪽에 명시
-  - [ ] **RLS 확인(변경 불필요 예상, 반드시 실측)** — `profiles_update_own_or_admin`은 행 단위 제한만 있고 컬럼 제한이 없으므로 **사용자가 자기 설정 컬럼을 수정하는 데 정책 변경이 필요 없다.** `prevent_unauthorized_role_change()` 트리거는 `role` 변경만 검사하므로 신규 컬럼 UPDATE를 막지 않는다. → **impersonation SQL로 "일반 사용자가 자기 `notify_on_*`은 바꿀 수 있고, 타인 것은 못 바꾸며, 이 김에 `role`을 끼워 넣으면 여전히 거부된다"를 실측 확인**
-  - [ ] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성
-  - [ ] **타입 재생성으로 드러나는 컴파일 에러 정리 (의도된 안전장치)**
+    - **`'reply'` 유형은 별도 컬럼을 두지 않고 `notify_on_comment`를 따른다** — 사용자에게 "댓글/멘션/리마인더" 3종으로 보이는 편이 이해하기 쉽고, 대댓글은 댓글의 하위 개념이다. 이 매핑을 트리거 주석과 UI 캡션 양쪽에 명시(컬럼 주석에 명시, 트리거 본문 수정은 Task 043 범위)
+  - [x] **RLS 확인(변경 불필요 예상, 반드시 실측)** — `profiles_update_own_or_admin`은 행 단위 제한만 있고 컬럼 제한이 없으므로 **사용자가 자기 설정 컬럼을 수정하는 데 정책 변경이 필요 없다.** `prevent_unauthorized_role_change()` 트리거는 `role` 변경만 검사하므로 신규 컬럼 UPDATE를 막지 않는다. → **impersonation SQL로 "일반 사용자가 자기 `notify_on_*`은 바꿀 수 있고, 타인 것은 못 바꾸며, 이 김에 `role`을 끼워 넣으면 여전히 거부된다"를 실측 확인** — 예상대로 RLS 변경 불필요임을 확인(아래 테스트 체크리스트 참고)
+  - [x] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성
+  - [x] **타입 재생성으로 드러나는 컴파일 에러 정리 (의도된 안전장치)**
     - `lib/types/index.ts`의 `NotificationType = "mention" | "comment" | "reply"` → **`"reminder"` 추가**
-    - `lib/queries/notifications.ts`의 `RawNotificationRow.weekly_log_id: string` → `string | null`, `actor_id: string` → `string | null`. `enrichNotifications()`의 `actorIds`/`weeklyLogIds` 배치 조회에서 **null을 걸러낸 뒤** RPC/쿼리에 넘길 것
-    - `components/notification-bell.tsx`의 `notificationHref()` — `weekly_log_id`가 null이면 `/protected/weekly-logs/new`로 보낸다(리마인더의 목적지는 "작성 화면"). 발신자 아바타 자리에는 시스템 표시로 폴백
-  - [ ] `mcp__supabase__get_advisors`(security/performance) 확인 — 신규 인덱스·nullable 변경으로 인한 새 경고 유무 확인
-  - **관련 파일**: DB 마이그레이션(`extend_notifications_for_reminder`, `add_profiles_notification_preferences`), `lib/supabase/database.types.ts`, `lib/types/index.ts`, `lib/queries/notifications.ts`, `components/notification-bell.tsx`
-  - **수락 기준**: `notifications`에 `type='reminder'`이고 `actor_id`/`weekly_log_id`/`comment_id`가 모두 NULL인 행을 삽입할 수 있고, 같은 `(recipient_id, period_start)`로 두 번째 삽입은 유니크 위반으로 거부되며, **기존 댓글·멘션 알림 흐름은 어떤 회귀도 없다**
+    - `lib/queries/notifications.ts`의 `RawNotificationRow.weekly_log_id: string` → `string | null`, `actor_id: string` → `string | null`(`period_start: string | null` 필드도 추가). `enrichNotifications()`의 `actorIds`/`weeklyLogIds` 배치 조회에서 **null을 걸러낸 뒤** RPC/쿼리에 넘길 것 — 반영 완료, 두 배열 모두 0건이면 RPC/쿼리 자체를 스킵하도록 처리
+    - `components/notification-bell.tsx`의 `notificationHref()` — `weekly_log_id`가 null이면 `/protected/weekly-logs/new`로 보낸다(리마인더의 목적지는 "작성 화면"). 발신자 아바타 자리에는 시스템 표시로 폴백 — `enrichNotifications()`가 이미 `actor_avatar_key`를 `actor?.avatar_key ?? "fox"`로 폴백하고 있어 actor가 null이어도 자동으로 "fox" 아바타가 표시됨(추가 코드 불필요, 기존 폴백 로직 재사용)
+    - (계획에 없던 추가 수정) `hooks/use-notifications.ts`의 Realtime INSERT 페이로드 타입(`payload.new as {...}`)도 `actor_id`/`weekly_log_id`를 nullable로, `period_start`를 필드로 추가해야 `enrichNotifications()` 호출부가 컴파일됨 — 타입 재생성 시점엔 로드맵에 명시되지 않았던 3번째 지점이라 기록
+  - [x] `mcp__supabase__get_advisors`(security/performance) 확인 — 신규 인덱스·nullable 변경으로 인한 새 경고 유무 확인 — 확인 결과 신규 경고 없음(기존 ERP 도메인 함수·인덱스 관련 INFO/WARN만 존재, 이번 변경과 무관)
+  - **관련 파일**: DB 마이그레이션(`extend_notifications_for_reminder`, `guard_notifications_period_start_column`, `add_profiles_notification_preferences`), `lib/supabase/database.types.ts`, `lib/types/index.ts`, `lib/queries/notifications.ts`, `components/notification-bell.tsx`, `hooks/use-notifications.ts`
+  - **⚠️ 계획과 다르게 처리한 부분**: 관련 파일 목록엔 마이그레이션 2건만 명시돼 있었으나, `prevent_unauthorized_notification_update()` 트리거 수정을 `extend_notifications_for_reminder`에 합치지 않고 `guard_notifications_period_start_column`이라는 별도 마이그레이션으로 분리해 적용했다(스키마 변경과 트리거 함수 교체를 분리해 각각의 의도를 마이그레이션 이름에서 명확히 드러내기 위함, 두 마이그레이션 모두 순서대로 정상 적용됨).
+  - **수락 기준**: `notifications`에 `type='reminder'`이고 `actor_id`/`weekly_log_id`/`comment_id`가 모두 NULL인 행을 삽입할 수 있고, 같은 `(recipient_id, period_start)`로 두 번째 삽입은 유니크 위반으로 거부되며, **기존 댓글·멘션 알림 흐름은 어떤 회귀도 없다** — 전부 실측 확인 완료
   - **테스트 체크리스트** (UI 변경이 거의 없는 단계이므로 `execute_sql` 중심. 모든 데이터 조작은 `BEGIN`/`ROLLBACK`)
-    - [ ] `type='reminder'` + `actor_id`/`weekly_log_id` NULL 행 INSERT 성공 확인
-    - [ ] **동일 `(recipient_id, period_start)` 재삽입 → 유니크 위반으로 거부** 확인(부분 인덱스가 실제로 동작하는지 — 이번 Task의 핵심 검증)
-    - [ ] **다른 `period_start`로는 정상 삽입**되고, `type<>'reminder'` 행은 `period_start`가 NULL이어도 부분 인덱스에 걸리지 않는지 확인
-    - [ ] 기존 댓글·멘션 알림 회귀: 실제 댓글 1건·멘션 1건을 삽입해 `notify_on_new_comment`/`notify_on_comment_mention` 트리거가 **v1과 동일하게** 알림을 만드는지 확인(중복 억제 `on conflict` 동작 포함)
-    - [ ] 일반 사용자 impersonation으로 자기 `notify_on_comment`를 `false`로 UPDATE → 성공 확인
-    - [ ] 같은 사용자가 **타인의** `notify_on_*` UPDATE 시도 → 0건 거부 확인
-    - [ ] 같은 UPDATE 문에 `role='admin'`을 끼워 넣어 시도 → `P0001` 거부 확인(**하드닝 회귀 없음**)
-    - [ ] 일반 사용자가 `notifications`에 직접 INSERT 시도 → 여전히 거부되는지 확인(**INSERT 정책을 추가하지 않았다는 증거**)
-    - [ ] `npx tsc --noEmit` 통과 — 위 3개 파일의 nullable 대응이 빠짐없이 반영됐다는 증거
+    - [x] `type='reminder'` + `actor_id`/`weekly_log_id` NULL 행 INSERT 성공 확인
+    - [x] **동일 `(recipient_id, period_start)` 재삽입 → 유니크 위반으로 거부** 확인(부분 인덱스가 실제로 동작하는지 — 이번 Task의 핵심 검증) — `23505 duplicate key value violates unique constraint "notifications_recipient_period_start_unique"`로 거부 확인
+    - [x] **다른 `period_start`로는 정상 삽입**되고, `type<>'reminder'` 행은 `period_start`가 NULL이어도 부분 인덱스에 걸리지 않는지 확인 — 서로 다른 `period_start` 2건 + `comment`/`mention` 각 1건(모두 `period_start` NULL) 동시 삽입 성공 확인
+    - [x] 기존 댓글·멘션 알림 회귀: 실제 댓글 1건·멘션 1건을 삽입해 `notify_on_new_comment`/`notify_on_comment_mention` 트리거가 **v1과 동일하게** 알림을 만드는지 확인(중복 억제 `on conflict` 동작 포함) — 댓글 1건에서 로그 작성자에게 `comment` 알림, 멘션 1건에서 멘션 대상에게 `mention` 알림 생성 확인(둘 다 `actor_id`/`weekly_log_id`/`comment_id` 정상 채워짐)
+    - [x] 일반 사용자 impersonation으로 자기 `notify_on_comment`를 `false`로 UPDATE → 성공 확인
+    - [x] 같은 사용자가 **타인의** `notify_on_*` UPDATE 시도 → 0건 거부 확인 — 첫 시도에서 우연히 `role='admin'`인 프로필을 대상 사용자로 골라 `is_admin()` 예외 조건 때문에 64건이 수정되는 것을 발견(RLS가 관리자에게는 전 사용자 UPDATE를 의도적으로 허용하기 때문 — 정상 동작), `role='user'`인 일반 사용자로 다시 테스트해 0건 거부를 확인
+    - [x] 같은 UPDATE 문에 `role='admin'`을 끼워 넣어 시도 → `P0001` 거부 확인(**하드닝 회귀 없음**) — `prevent_unauthorized_role_change()`가 "권한이 없습니다: role은 관리자만 변경할 수 있습니다."로 거부
+    - [x] 일반 사용자가 `notifications`에 직접 INSERT 시도 → 여전히 거부되는지 확인(**INSERT 정책을 추가하지 않았다는 증거**) — `42501 new row violates row-level security policy`로 거부
+    - [x] `npx tsc --noEmit` 통과 — 위 3개 파일(및 `hooks/use-notifications.ts`)의 nullable 대응이 빠짐없이 반영됐다는 증거 — 통과 확인, `npm run lint`도 기존 경고 4건 외 신규 에러/경고 없이 통과
 
 - **Task 043: 알림 구독 설정 UI 및 트리거 게이트 적용 (F044)**
   - [ ] **`notify_on_new_comment()` 트리거 수정** — 두 개의 INSERT 분기 각각에서 **해당 수신자의** `profiles.notify_on_comment`를 조회해 `false`면 알림을 만들지 않는다. `'reply'` 분기도 같은 컬럼을 본다(Task 042의 매핑 결정). 트리거는 `SECURITY DEFINER`라 RLS 없이 `profiles`를 읽을 수 있다

@@ -664,34 +664,37 @@ export type Database = {
       }
       notifications: {
         Row: {
-          actor_id: string
+          actor_id: string | null
           comment_id: string | null
           created_at: string
           id: string
+          period_start: string | null
           read_at: string | null
           recipient_id: string
           type: string
-          weekly_log_id: string
+          weekly_log_id: string | null
         }
         Insert: {
-          actor_id: string
+          actor_id?: string | null
           comment_id?: string | null
           created_at?: string
           id?: string
+          period_start?: string | null
           read_at?: string | null
           recipient_id: string
           type: string
-          weekly_log_id: string
+          weekly_log_id?: string | null
         }
         Update: {
-          actor_id?: string
+          actor_id?: string | null
           comment_id?: string | null
           created_at?: string
           id?: string
+          period_start?: string | null
           read_at?: string | null
           recipient_id?: string
           type?: string
-          weekly_log_id?: string
+          weekly_log_id?: string | null
         }
         Relationships: [
           {
@@ -1233,6 +1236,9 @@ export type Database = {
           id: string
           is_active: boolean
           name: string | null
+          notify_on_comment: boolean
+          notify_on_mention: boolean
+          notify_on_reminder: boolean
           phone_number: string | null
           role: string
           updated_at: string
@@ -1246,6 +1252,9 @@ export type Database = {
           id: string
           is_active?: boolean
           name?: string | null
+          notify_on_comment?: boolean
+          notify_on_mention?: boolean
+          notify_on_reminder?: boolean
           phone_number?: string | null
           role?: string
           updated_at?: string
@@ -1259,6 +1268,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string | null
+          notify_on_comment?: boolean
+          notify_on_mention?: boolean
+          notify_on_reminder?: boolean
           phone_number?: string | null
           role?: string
           updated_at?: string

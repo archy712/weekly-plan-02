@@ -135,12 +135,14 @@ export function useNotifications({
           const row = payload.new as {
             id: string;
             type: string;
-            actor_id: string;
+            // Task 042: 리마인더 알림은 actor_id/weekly_log_id가 둘 다 null일 수 있다.
+            actor_id: string | null;
             recipient_id: string;
-            weekly_log_id: string;
+            weekly_log_id: string | null;
             comment_id: string | null;
             read_at: string | null;
             created_at: string;
+            period_start: string | null;
           };
           const [enriched] = await enrichNotifications(supabase, [row]);
           if (cancelled || !enriched) return;

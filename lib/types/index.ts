@@ -240,7 +240,7 @@ export type WeeklyLogComment = Pick<
 // 멘션·댓글·대댓글 발생 시 DB 트리거로만 생성되는 알림(Task 034). notifications 테이블은
 // weekly_logs 등 대부분의 테이블과 달리 "전 부서 공개"가 아니라 recipient_id 기준으로만
 // RLS가 걸려 있어(개인 데이터), 이 타입은 항상 "내 알림" 목록에만 쓰인다.
-export type NotificationType = "mention" | "comment" | "reply";
+export type NotificationType = "mention" | "comment" | "reply" | "reminder";
 
 export type Notification = Omit<Tables<"notifications">, "type"> & {
   type: NotificationType;
