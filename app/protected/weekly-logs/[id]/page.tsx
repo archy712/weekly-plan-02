@@ -58,8 +58,13 @@ async function WeeklyLogDetailContent({
     notFound();
   }
 
-  // 쓰기(수정/삭제/완료토글)는 RLS에서 소속 부서 또는 admin으로만 허용된다.
-  const canWrite = profile.role === "admin" || log.department_id === profile.department_id;
+  // 쓰기(수정/삭제/완료토글)는 RLS에서 소속 부서 또는 is_admin()(admin·superadmin 모두
+  // 포함)으로만 허용된다 — 이 화면의 canWrite는 그 RLS 판정을 UI에서 미리 반영한 것이라
+  // role === "admin"만 확인하면 superadmin은 자기 소속이 아닌 부서 업무에서 실제로는
+  // 쓸 수 있는데도 편집 컨트롤이 전부 숨겨진다(목록·칸반·타임라인 페이지는 이미
+  // isAdmin 계산에 superadmin을 포함하고 있어 이 페이지만 누락돼 있었다).
+  const isAdmin = profile.role === "admin" || profile.role === "superadmin";
+  const canWrite = isAdmin || log.department_id === profile.department_id;
 
   // 로그 존재가 확정된 뒤 필요한 5개 조회(첨부·댓글·추천비추천·업무타입·변경이력)는 서로
   // 독립적이라 순차로 await하면 왕복만 늘어난다 — 한 번에 병렬로 실행한다. 전부 weekly_logs
@@ -144,7 +149,7 @@ async function WeeklyLogDetailContent({
       }}
       canWrite={canWrite}
       currentUserId={data.claims.sub}
-      isAdmin={profile.role === "admin"}
+      isAdmin={isAdmin}
       workTypeOptions={workTypeOptions}
       // 목표진척률(computeTargetProgress)·기존 지연 판정(칸반·타임라인·"내 업무" 위젯)과
       // 동일하게 호출부(Node의 new Date())에서 today를 계산해 내려준다.
