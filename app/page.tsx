@@ -152,8 +152,9 @@ export default function Home() {
           <Suspense fallback={null}>
             <LandingHeader />
           </Suspense>
-          {/* 본문 폭 제한 컨테이너(max-w-5xl). 상하 패딩은 sm 이상에서 넓어지는 반응형. */}
-          <div className="w-full max-w-5xl flex flex-col gap-10 px-5 pb-16 pt-8 sm:pb-20 sm:pt-10">
+          {/* 본문 폭 제한 컨테이너(max-w-6xl, SiteHeader·보호 페이지 레이아웃과 동일 폭 —
+              헤더와 어긋나지 않도록 반드시 함께 맞출 것). 상하 패딩은 sm 이상에서 넓어지는 반응형. */}
+          <div className="w-full max-w-6xl flex flex-col gap-10 px-5 pb-16 pt-8 sm:pb-20 sm:pt-10">
           {/* ── 히어로 섹션: 서비스 한 줄 소개 + CTA ── */}
           <section className="flex flex-col items-center gap-8 py-6 text-center">
             {/* 대표 헤드라인. <br/>로 두 줄 고정, 폰트 크기는 sm/md에서 단계적으로 확대. */}

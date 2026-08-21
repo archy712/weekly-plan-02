@@ -82,7 +82,7 @@ export default function TechStackPage() {
       <Suspense fallback={null}>
         <LandingHeader />
       </Suspense>
-      <div className="w-full max-w-5xl flex-1 px-4 pb-10 pt-4 sm:pb-14 sm:pt-6">
+      <div className="w-full max-w-6xl flex-1 px-4 pb-10 pt-4 sm:pb-14 sm:pt-6">
         <Link
           href="/"
           className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
