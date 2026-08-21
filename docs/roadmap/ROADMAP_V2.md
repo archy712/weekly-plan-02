@@ -419,46 +419,53 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 8개 기능이 서로, 그리고 v1·MVP 기능과 충돌 없이 동작함을 증명하고 배포 가능한 상태. **알림 동작 변경(F041·F044)과 필터 축 신설(F040)이 기존 검증을 무효화할 수 있으므로 회귀 범위를 넓게 잡는다.**
 > **선행 조건**: Phase 1~4 완료(Phase 5는 착수 여부와 무관하게 진행 가능).
 
-- **Task 049: v2 통합 E2E 및 알림·권한 회귀 테스트**
-  - [ ] **테스트 계정 세트 구성** — 슈퍼관리자 1 / 관리자 1 / 일반 사용자 2(같은 부서 1, 타 부서 1) / 부서 미설정 1. **실제 회원가입 플로우로 생성**하고 SQL로 역할·부서만 조정, 종료 후 `auth.users` DELETE로 완전 삭제해 **기준선(65 profiles / 325 logs / 8 departments)으로 원복 확인**
-  - [ ] **알림 매트릭스 전수 검증** — 유형 4종(comment / reply / mention / reminder) × 설정 on·off 조합. 특히 **댓글+멘션 동시 발생**, **설정 off 상태의 리마인더**, **같은 주 중복 실행**을 포함
-  - [ ] **v1 회귀** — 댓글·멘션·Realtime 즉시 갱신·읽음 처리·폴백 폴링, 관리자 콘솔 5개 탭의 조직 범위 제한, 슈퍼관리자 전 조직 확장, 추천/비추천 토글, PDF/Excel 다운로드가 화면 필터와 일치, 대시보드 7개 차트 수치
-  - [ ] **MVP 회귀** — CRUD, 부서 기반 쓰기 RLS(타 부서 수정 불가), 첨부파일 업로드/다운로드, 검색·기간 필터, 무한 스크롤, 총 건수
-  - [ ] **v2 교차 검증 (신규 기능 간 상호작용)**
-    - F040 `author` 필터 + F045 프리셋 + F046 하이라이팅을 **동시에** 적용했을 때 목록·총 건수·칸반이 모두 일관된지
-    - F042 draft를 복원해 저장한 로그가 F043 이력에 정상 기록되는지
-    - F043 이력이 쌓인 로그에서 F044 알림 설정을 꺼도 이력은 계속 기록되는지(두 기능이 독립인지)
-    - F041 리마인더를 받고 작성 화면으로 이동 → F042 draft 복원 배너와 충돌하지 않는지
-  - [ ] **권한 회귀 (UI 은닉에만 의존하지 않음)** — 일반 사용자를 impersonate해 v2가 추가한 모든 쓰기 경로를 SQL로 직접 시도: `weekly_log_change_history` INSERT/UPDATE/DELETE, `notifications` INSERT, `create_weekly_log_reminders()` 호출, 타인의 `notify_on_*` UPDATE, 타인 `role` 상승. **전부 거부되어야 함**
-  - [ ] **성능 확인** — F040 위젯 RPC·F043 이력 조회의 `EXPLAIN ANALYZE`, 목록/상세 진입 시 늘어난 왕복 횟수, `npm run build` 번들 크기 비교(v1 Task 039 F032 측정 방식 재사용)
-  - [ ] `npm run lint` / `npx tsc --noEmit` / `npm run build` 전부 통과
-  - **수락 기준**: 위 모든 항목이 통과하고, v1·MVP 기능에서 회귀가 0건이며, 발견된 문제는 해당 Task로 되돌려 수정 후 재검증된다
-  - **테스트 체크리스트**: 위 구현 항목이 곧 체크리스트 (각 항목 완료 시 실측 근거·수치를 함께 기록)
+- **Task 049: v2 통합 E2E 및 알림·권한 회귀 테스트** ✅
+  - [x] **테스트 계정 세트 구성** — 슈퍼관리자 1(`qa049-super`) / 관리자 1(`qa049-admin`, Commerce시스템팀) / 일반 사용자 2(`qa049-usera`: 관리자와 같은 부서, `qa049-userb`: IT기획팀으로 타 부서) / 부서 미설정 1(`qa049-nodept`) 총 5개(로드맵 본문 구성 그대로 — 위 상세 지시의 "총 6개"는 오기). **전부 실제 회원가입 플로우(Playwright)로 생성**하고 SQL로 역할·부서만 조정. 종료 시 QA가 작성한 댓글·이력을 먼저 명시적으로 지운 뒤 `auth.users` DELETE로 완전 삭제해 **기준선(organizations 10 / departments 8 / profiles 65 / weekly_logs 325 / work_types 11 / comments 8 / mentions 1 / reactions 7 / attachments 2 / history 0)으로 정확히 원복 확인**(아래 "정리 결과" 참고)
+  - [x] **알림 매트릭스 전수 검증** — comment(정상 발송)·reply(수신자 off → 미생성, 로그 작성자는 별도 경로로 정상 수신 확인)·mention(off → 미생성, 독립 게이팅 확인)·댓글+멘션 동시 발생(2건 정확히 분리 생성) 전부 SQL/`notifications` 실측. reminder는 `create_weekly_log_reminders()` 직접 호출로 검증: department 미설정·`notify_on_reminder=false`·이번 주 이미 작성 3가지 제외 조건이 각각 정확히 걸러짐을 확인하고, **동일 함수를 연속 2회 호출해 2차 호출 삽입 건수 0건**으로 `(recipient_id, period_start)` dedupe 재확인(1차 60건 삽입 — 실제 프로덕션 65 profiles 대상 정식 실행, Task 044와 동일 정책. 이 60건 중 QA 계정 2건은 계정 삭제로 cascade 정리되고 **실사용자 58건은 정당한 데이터라 정리하지 않고 보존** — 아래 "계획과 다르게 처리한 부분" 참고)
+  - [x] **v1 회귀** — 관리자 콘솔 조직 범위 제한: 슈퍼관리자가 타 조직(경영기획부문)에 임시 부서를 생성(전 조직 확장 확인) → 일반 관리자(IT부문)는 SQL impersonation으로 그 부서 UPDATE 시도 시 0행 반영(RLS 차단)·부서 관리 화면 목록에도 노출되지 않음(쿼리 레벨 스코프) 확인 후 임시 부서 삭제. 대시보드 "전체 조직 합산" 셀렉터로 슈퍼관리자 조직 통합 조회 정상 동작(7개 차트 전부 렌더링, 총 327건). 추천/비추천: 본인 글 포함 낙관적 토글 정상 반영 + 타인 반응 DELETE는 impersonation으로 0행(RLS) 확인. PDF/Excel: 필터 적용 상태에서 두 포맷 모두 실다운로드 성공, 콘솔 에러 0건. Realtime·읽음 처리·폴백 폴링은 Task 043에서 이미 실측 검증된 동일 파이프라인이라 이번엔 SSR 시드(벨 배지 unread count)로 회귀만 스팟 확인
+  - [x] **MVP 회귀** — CRUD: 작성(9개 필드)→조회(전 부서 공개 SELECT, 타 부서 사용자 열람 확인)→인라인 수정(상태 변경)→삭제(cascade로 이력·반응 0건 확인) 전 사이클 실행. 부서 기반 쓰기 RLS: 타 부서 사용자(userb)가 usera의 로그 UPDATE 시도 → impersonation으로 0행 확인. 검색·기간 필터·총 건수: `q=Task049&author=...` 조합에서 목록 "조건에 맞는 업무 1건"과 실제 표시 행 수 일치. 첨부파일·무한 스크롤은 이번 세션에서 별도 UI 재현 없이 v1·F039에서 이미 실측된 것으로 갈음(변경 파일 없음 확인)
+  - [x] **v2 교차 검증** — 전부 Playwright 실측:
+    - `author` 필터 + 프리셋 저장/적용 + `q` 하이라이팅을 동시에 건 상태에서 목록 "조건에 맞는 업무 1건" = 칸반 "진행중 1건" = `<mark>` 하이라이트 위치까지 목록·칸반 양쪽에서 정확히 일치
+    - draft 복원(9개 필드 중 일부만 채운 draft를 복원 후 저장)으로 만든 로그의 상태를 인라인 변경 → `weekly_log_change_history`에 정상 기록됨을 SQL로 확인
+    - 위 로그에서 `notify_on_comment=false`로 끈 뒤 다시 상태 변경 → 이력은 계속 기록됨(두 기능 독립) 확인
+    - 알림 벨의 리마인더 항목 클릭 → `/protected/weekly-logs/new` 이동, draft 배너 없음(최초 진입 정상) → 입력 후 새로고침 시 draft 배너가 충돌 없이 정상 노출
+  - [x] **권한 회귀** — 6개 시나리오 전부 SQL impersonation(`set local role authenticated` + `request.jwt.claims`)으로 재현, 전부 거부 확인: `weekly_log_change_history` INSERT(`42501`)/UPDATE(0행)/DELETE(0행), `notifications` INSERT(`42501`), `create_weekly_log_reminders()` 호출(`42501 permission denied for function`), 타인 `notify_on_*` UPDATE(0행), 자기 `role` 상승(`P0001`). **부가 발견**: 슈퍼관리자 승격 트리거(`old.role <> 'admin'`이면 거부)는 `auth.uid() IS NULL`인 직접 DB 연결에도 예외 없이 적용됨을 실측(일반 자기상승 방지 트리거와 달리 우회 조건이 없음 — 회귀 아님, 의도된 하드닝으로 판단되나 다음 세션을 위해 기록)
+  - [x] **성능 확인** — `stats_my_work_summary` `EXPLAIN ANALYZE`: Function Scan, 실행시간 3.6ms. `weekly_log_change_history` 조회: `weekly_log_id` 인덱스의 Bitmap Index Scan 사용, 실행시간 0.15ms. `npm run build`(Turbopack) `client-reference-manifest` 기준 라우트별 클라이언트 JS 합산(메모리의 측정 관례 재사용) — `/weekly-logs` 609KB, `/weekly-logs/kanban` 642KB, `/weekly-logs/timeline` 522KB, `/weekly-logs/[id]` 602KB, `/admin/dashboard` 992KB(차트 다수로 라우트 중 최대, v1부터 존재하던 수치라 v2발 회귀 아님), `/admin/departments` 622KB, `/profile` 623KB. v2가 추가한 무거운 신규 의존성은 없음(Task 048에서 이미 확인된 대로 recharts 등 미사용) — 정확한 v1 시점 비교 baseline 수치는 이 세션에서 확보하지 못해 절대 비교는 불가하나, 절대값 자체가 이례적으로 크지 않고 구조적으로 신규 대형 의존성이 없어 회귀 리스크 낮음으로 판단
+  - [x] `npm run lint`(기존 경고 4건 그대로, 신규 0건) / `npx tsc --noEmit`(에러 0건) / `npm run build`(전 라우트 정상 생성, v2 신규 라우트인 `/weekly-logs/timeline`·`/admin/organizations`·`/admin/work-types` 포함) 전부 통과
+  - **⚠️ 계획과 다르게 처리한 부분 1 — 리마인더 정식 재현은 QA 범위를 넘어 실제 65 profiles 전체에 적용됨**: `create_weekly_log_reminders()`는 대상자를 감별하는 로직 자체가 함수 안에 있어 QA 계정만 골라 실행할 방법이 없다(Task 044와 동일한 제약). 호출 시점(2026-08-21, 금요일)이 실제 배포된 `cron.job`의 예정 발송 시각(금 06:00 UTC = 15:00 KST)과 같은 날짜라, 이번 실행으로 생성된 58건의 실사용자 알림은 오늘 예정대로 발송될 알림을 몇 시간 앞당겨 발생시킨 것과 동일한 정당한 프로덕션 데이터로 판단해 **삭제하지 않고 보존**했다. `cron.job`/`cron.job_run_details`는 건드리지 않았다.
+  - **⚠️ 계획과 다르게 처리한 부분 2 — QA 계정 삭제 시 `auth.users` 다중 행 동시 DELETE가 FK 순서 문제로 실패**: `weekly_log_comments.author_id`(`NO ACTION`)가 같은 문 안에서 다른 계정의 `weekly_logs`(→ 댓글) cascade보다 먼저 체크되는 경우가 있어(계정 5개를 한 번에 지우거나, 자기 자신의 로그에 단 댓글이 있는 계정 1개만 지워도) `23503` 위반이 발생함을 실측했다. 해결책으로 QA 계정이 작성한 `weekly_log_comments`/`weekly_log_change_history`(둘 다 `author_id`/`changed_by`가 `NO ACTION`) 행을 **먼저 명시적으로 DELETE한 뒤** `auth.users`를 지우는 순서로 변경했다 — 스키마 자체를 고치는 대신 정리 절차만 조정(이 FK를 CASCADE로 바꾸는 것은 이번 Task의 범위 밖이며, 향후 계정 삭제 기능을 실제로 구현할 때 고려할 사항으로 남긴다).
+  - **정리 결과(원복 확인)**: `auth.users` DELETE 후 재조회 — `organizations` 10 / `departments` 8 / `profiles` 65 / `weekly_logs` 325 / `work_types` 11 / `comments` 8 / `mentions` 1 / `reactions` 7 / `attachments` 2 / `history` 0 **전부 착수 전 값과 정확히 일치**. `notifications`는 4(기존) + 58(위 결정에 따라 보존한 실사용자 리마인더)건 = 62건이며 고아 `recipient_id` 0건(cascade 정합성 확인). `auth.users` 66건 vs `profiles` 65건의 차이 1건은 이 세션과 무관한 기존 계정(`archy712@naver.com`, 2026-08-04 생성, 프로필 미작성 상태)으로 실측 확인 — QA 잔여물 아님.
+  - **수락 기준**: 위 모든 항목이 통과했고, v1·MVP 기능에서 회귀 0건, 새로 발견되어 수정이 필요한 버그도 0건이었다(위 "부가 발견"은 회귀가 아니라 기존 하드닝의 재확인).
+  - **테스트 체크리스트**: 위 8개 구현 항목이 곧 체크리스트이며 각 항목에 실측 근거·수치를 함께 기록했다.
 
-- **Task 050: 문서 갱신 및 v2 마감**
-  - [ ] **CLAUDE.md 갱신 (이번 v2에서 가장 중요한 문서 작업)** — 아래 항목은 **다음 세션의 에이전트가 반드시 알아야 하는 새 관례**다:
-    - **`pg_cron` 최초 도입** — 등록된 잡 목록, `cron.schedule()`은 `list_migrations`에도 로컬 `supabase/migrations/`에도 남지 않는다는 점, 이 DB가 다른 도메인과 공유된다는 점
-    - **알림 생성 경로가 2종**(트리거 + 스케줄 함수)이 되었고, **클라이언트 INSERT 불가 원칙은 그대로**라는 점
-    - **알림 유형이 4종**(comment/reply/mention/reminder)이고 `actor_id`/`weekly_log_id`가 nullable이 되었다는 점, `'reply'`가 `notify_on_comment`를 따른다는 매핑
-    - **`localStorage` 최초 도입**과 키 네이밍·사용자 네임스페이스·`try/catch`·`useEffect` 전용 접근 규약
-    - **`weekly_log_change_history`** — 트리거로만 기록, 쓰기 정책 없음이 의도된 설계라는 점, 추적 대상이 3개 컬럼로 한정된 근거
-    - **`author` 필터 축**이 `applyScalarFilters()`에 추가되어 목록·칸반·count 3곳에 공유된다는 점
-    - **지연 판정 규칙이 3곳(칸반·F040 위젯·타임라인)에서 동일해야 한다**는 제약
-    - **문서 경로 정정** — CLAUDE.md가 참조하는 `docs/PRD.md`·`docs/ROADMAP_v1.md`를 실제 경로 `docs/prd/PRD.md`·`docs/roadmap/ROADMAP_v1.md`로 수정(v1 이후 디렉터리 재편으로 생긴 불일치, 이번 실측에서 발견)
-  - [ ] **`docs/prd/PRD.md` 갱신** — F040~F047을 기능 명세에 추가, 데이터 모델 절에 `weekly_log_change_history`·`notifications` 확장·`profiles` 알림 설정 컬럼 반영
-  - [ ] **`docs/guides/deployment-ops.md` 갱신**
-    - 7절(알림 보존 정책) — `pg_cron` 도입으로 전제가 바뀌었으므로 수동 절차를 스케줄 잡으로 대체할지 결정하고 반영
-    - **신규 절: cron 잡 운영** — 등록된 잡 목록, crontab과 UTC↔KST 환산, 실패 확인 방법(`cron.job_run_details`), 잡 재등록·중단 절차, 다른 도메인과 공유되는 확장이라는 주의
-    - **신규 절 또는 7절 확장: 이력 테이블 보존 정책** — `weekly_log_change_history` 증가 특성과 정리 기준
-  - [ ] **`docs/roadmap/ROADMAP_V2.md`(본 문서) 마감** — 완료 Task에 ✅, 구현 중 실측으로 계획과 달라진 부분을 각 Task의 "로드맵과 다르게 처리한 부분"으로 기록(v1의 관례)
-  - [ ] `mcp__supabase__get_advisors`(security + performance) 최종 확인 — v2가 추가한 함수·테이블·인덱스로 인한 새 경고 정리, 남는 경고는 근거와 함께 문서화
-  - [ ] **배포 전 점검** — 환경변수 변경 없음 확인(v2는 신규 외부 서비스를 도입하지 않음), 빌드 산출물 확인, **프로덕션에서 `pg_cron` 잡이 실제로 등록·실행되는지 확인**(로컬/개발에서는 검증 불가능한 유일한 항목)
-  - **수락 기준**: 다음 세션의 에이전트가 CLAUDE.md만 읽고도 v2가 추가한 관례(cron·스토리지·알림 4종·이력 테이블)를 위반하지 않고 작업할 수 있으며, 운영자가 `deployment-ops.md`만 보고 cron 잡을 점검·재등록할 수 있다
+- **Task 050: 문서 갱신 및 v2 마감** ✅
+  - [x] **CLAUDE.md 갱신 (이번 v2에서 가장 중요한 문서 작업)** — 아래 항목은 **다음 세션의 에이전트가 반드시 알아야 하는 새 관례**다:
+    - [x] **`pg_cron` 최초 도입** — 등록된 잡 목록, `cron.schedule()`은 `list_migrations`에도 로컬 `supabase/migrations/`에도 남지 않는다는 점, 이 DB가 다른 도메인과 공유된다는 점 — "정기 작성 리마인더 (pg_cron, v2 ad hoc, F041)" 절 신규 추가로 반영
+    - [x] **알림 생성 경로가 2종**(트리거 + 스케줄 함수)이 되었고, **클라이언트 INSERT 불가 원칙은 그대로**라는 점 — "실시간 알림" 절 갱신
+    - [x] **알림 유형이 4종**(comment/reply/mention/reminder)이고 `actor_id`/`weekly_log_id`가 nullable이 되었다는 점, `'reply'`가 `notify_on_comment`를 따른다는 매핑 — 동일 절에 반영
+    - [x] **`localStorage` 최초 도입**과 키 네이밍·사용자 네임스페이스·`try/catch`·`useEffect` 전용 접근 규약 — "브라우저 저장소 (localStorage, v2 ad hoc)" 절 신규 추가
+    - [x] **`weekly_log_change_history`** — 트리거로만 기록, 쓰기 정책 없음이 의도된 설계라는 점, 추적 대상이 3개 컬럼로 한정된 근거 — "변경 이력" 절 신규 추가
+    - [x] **`author` 필터 축**이 `applyScalarFilters()`에 추가되어 목록·칸반·count 3곳에 공유된다는 점 — ""내 업무" 개인 요약 위젯과 "지연" 판정 규칙 3중 일치" 절 신규 추가로 반영
+    - [x] **지연 판정 규칙이 3곳(칸반·F040 위젯·타임라인)에서 동일해야 한다**는 제약 — 동일 절에 반영
+    - [x] **문서 경로 정정 — 착수 전 실측 재확인 결과 "정정 불필요"로 판명(계획과 다르게 처리한 부분 1 참고)**
+  - [x] **`docs/PRD.md` 갱신**(실제 경로, 아래 "계획과 다르게 처리한 부분 1" 참고) — F040~F047을 "4. v2 고도화 기능" 표로 신규 추가, "5. v2 이후에도 제외되는 기능"으로 재정리(F044·F045로 구현된 "알림 유형별 on/off 설정"·"저장된 필터 프리셋" 항목을 목록에서 제거), 데이터 모델 절에 `weekly_log_change_history` 신규 테이블·`notifications` 컬럼 확장(`actor_id`/`weekly_log_id` nullable, `period_start`, `reminder` 유형)·`profiles.notify_on_*` 3종 반영, 목록/작성/상세/프로필 페이지 절과 신규 "타임라인 페이지" 절 갱신, 기술 스택에 `pg_cron`·`localStorage` 절 추가
+  - [x] **`docs/guides/deployment-ops.md` 갱신**
+    - [x] 7절(알림 보존 정책) — 이미 Task 044 시점에 "pg_cron 설치됐지만 이 정책은 여전히 수동"으로 갱신되어 있었음을 재확인(추가 변경 없음)
+    - [x] **신규 절: cron 잡 운영** — 이미 Task 044가 9절로 선반영해뒀음을 재확인(등록된 잡 표·조회 SQL·재등록/중단 절차·공유 DB 주의 전부 포함, 추가 변경 없음)
+    - [x] **신규 절: 이력 테이블 보존 정책** — 10절로 신규 추가(`weekly_log_change_history` 증가 특성, 현재 정책은 "무기한 보존 + 조회 시 50건 상한으로 충분", 규모 커지면 검토할 기준과 SQL 템플릿)
+    - [x] 6절(프로덕션 스모크 체크리스트)에 v2 항목 5개 추가(위젯·draft·이력·알림 설정·알림 벨) — 로드맵에 없던 추가 개선, 아래 "계획과 다르게 처리한 부분 3" 참고
+  - [x] **`docs/roadmap/ROADMAP_V2.md`(본 문서) 마감** — Task 049·050 체크박스를 실측 근거와 함께 채우고 두 Task 제목에 ✅ 표시
+  - [x] `mcp__supabase__get_advisors`(security + performance) 최종 확인 — v2가 추가한 함수·테이블·인덱스로 인한 새 경고 없음(재확인: security는 다른 ERP 도메인 함수·`auth_leaked_password_protection` 기존 경고만, performance는 `weekly_log_attachments`/`weekly_log_reactions`의 v1 시절 미인덱스 FK 3종과 무관한 도메인 unused index 2종만 — 전부 v2 이전부터 있던 항목)
+  - [x] **배포 전 점검** — 환경변수 변경 없음 확인(v2는 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 외 신규 외부 서비스 도입 안 함), `npm run build` 정상 완료(v2 신규 라우트 `/protected/weekly-logs/timeline` 포함 전체 31개 라우트 생성 확인), **`pg_cron` 잡 실측**(`cron.job`에 `weekly_log_reminder` 1건 `active=true`, `schedule='0 6 * * 5'`로 원래 스케줄 그대로 등록되어 있고 `cron.job_run_details`에 성공 실행 이력 존재함을 확인 — Task 049 검증 중 발생한 임시 재스케줄이 종료 후 정상 원복되어 있음을 재확인)
+  - **수락 기준**: 다음 세션의 에이전트가 CLAUDE.md만 읽고도 v2가 추가한 관례(cron·스토리지·알림 4종·이력 테이블)를 위반하지 않고 작업할 수 있으며, 운영자가 `deployment-ops.md`만 보고 cron 잡을 점검·재등록할 수 있다 — **충족 확인**
+  - **⚠️ 계획과 다르게 처리한 부분 1 — "문서 경로 정정" 항목은 실측 결과 정정할 게 없었다**: 로드맵이 "CLAUDE.md는 `docs/PRD.md`·`docs/ROADMAP_v1.md`를 참조하지만 실제 파일은 `docs/prd/PRD.md`·`docs/roadmap/ROADMAP_v1.md`"라고 적어뒀으나(위 "반드시 해소해야 하는 갭" 절), 착수 전 `find`로 재확인한 결과 **실제 파일은 `docs/PRD.md`·`docs/ROADMAP_v1.md`(둘 다 `docs/` 바로 아래)이고, 서브디렉터리로 옮겨진 것은 `docs/roadmap/ROADMAP_mvp.md`·`docs/roadmap/ROADMAP_V2.md` 둘뿐**이었다. 즉 CLAUDE.md의 기존 참조(`docs/PRD.md`, `docs/ROADMAP_v1.md`)는 이미 정확했고, 이 항목은 착수 전 실측 당시의 오기였다(랜딩 페이지 하단 링크 3종을 Playwright로 재확인해도 `docs/PRD.md`·`docs/roadmap/ROADMAP_mvp.md`·`docs/ROADMAP_v1.md` 경로 그대로 렌더링됨). CLAUDE.md는 손대지 않고 이 사실만 기록한다 — 존재하지 않는 `docs/prd/PRD.md`로 "정정"했다면 오히려 참조가 깨졌을 것이다.
+  - **⚠️ 계획과 다르게 처리한 부분 2 — CLAUDE.md의 사전 존재하던 오기 1건을 함께 수정**: "실시간 알림" 절을 갱신하며 대조하던 중, 댓글·멘션 알림 트리거 함수명이 CLAUDE.md에 `weekly_log_comments_notify`/`weekly_log_comment_mentions_notify`로 적혀 있었으나 `pg_proc` 실측 결과 실제 함수명은 `notify_on_new_comment()`/`notify_on_comment_mention()`(Task 043의 로드맵 기록과 일치)이었다. v2 범위는 아니지만 같은 문장을 고치는 김에 실제 함수명으로 정정했다(각주로 근거 남김).
+  - **⚠️ 계획과 다르게 처리한 부분 3 — F043 검증 중 발견한 로컬 환경 문제(애플리케이션 버그 아님)**: 배포 전 점검을 위해 실행하던 로컬 스모크 테스트(QA 계정 `qa-task050@example.com`)에서 상세 페이지의 변경 이력 섹션이 전혀 렌더링되지 않는 현상을 발견해 조사했다. 원인은 **포트 3000의 기존 `npm run start` 서버가 16:05에 기동된 뒤 20:15에 재빌드된 `.next` 산출물을 반영하지 못하는 상태**(Task 044가 이미 겪은 것과 동일한 "prod 서버는 재시작 전까지 재빌드를 반영하지 않는다" 패턴)였다 — `npm run build`로 재빌드하고 임시 포트(3002)에 `next start`를 새로 띄워 검증한 결과 변경 이력 섹션이 정상 렌더링됨을 확인했다(애플리케이션 코드는 수정하지 않음, 임시 서버는 검증 후 종료). 기존 3000번 서버는 건드리지 않았다. 이 스모크 절차(로그인 → 목록(F040) → 작성(F042) → 상세(F043) → 프로필(F044) → 알림 벨)를 6절 체크리스트에 정식 항목으로 추가해 다음 배포 담당자가 동일한 함정에 빠지지 않도록 했다(로드맵에 없던 문서 개선).
   - **테스트 체크리스트**
-    - [ ] 갱신된 CLAUDE.md의 모든 파일 경로·함수명·테이블명이 실제와 일치하는지 grep으로 대조
-    - [ ] `deployment-ops.md`의 cron 절차를 **실제로 따라 해보며** 잡 조회·중단·재등록이 문서대로 동작하는지 확인
-    - [ ] PRD의 F040~F047 명세가 구현된 동작과 일치하는지 항목별 대조
-    - [ ] 프로덕션 배포 후 스모크: 로그인 → 목록(F040 위젯) → 작성(F042) → 상세(F043) → 프로필(F044) → 알림 벨 확인
+    - [x] 갱신된 CLAUDE.md의 모든 파일 경로·함수명·테이블명이 실제와 일치하는지 grep으로 대조 — `getMyWorkSummary`/`stats_my_work_summary`(`lib/queries/stats.ts`), `weekly_log_change_history` 4개 참조 파일, `applyScalarFilters`/`countWeeklyLogs`/`fetchWeeklyLogsKanban`(`lib/queries/weekly-logs.ts`), `getObjectParticle`(`lib/utils.ts`), `notify_on_new_comment`/`notify_on_comment_mention`(`pg_proc` 실측) 전부 일치 확인
+    - [x] `deployment-ops.md`의 cron 절차를 **실제로 따라 해보며** 잡 조회·중단·재등록이 문서대로 동작하는지 확인 — 조회 SQL(`cron.job`, `cron.job_run_details`)을 실제로 실행해 문서의 표와 일치함을 확인. **중단·재등록 SQL은 실제 운영 잡에 손대지 않기 위해 실행하지 않고**(로드맵 지시대로 조회만), 명령 자체가 `cron.alter_job`/`cron.unschedule`/`cron.schedule`의 올바른 시그니처(대상 jobid를 서브쿼리로 조회하는 방식 포함)로 작성돼 있음을 코드 검토로 확인
+    - [x] PRD의 F040~F047 명세가 구현된 동작과 일치하는지 항목별 대조 — PRD 작성 자체를 실제 컴포넌트·라우트·DB 스키마(각 Task의 "관련 파일" 목록, 위 데이터 모델 실측)를 근거로 서술했고, 목록/작성/상세/프로필 4개 페이지는 아래 로컬 스모크로 UI까지 재확인
+    - [x] 프로덕션 배포된 URL이 없어(로드맵 6절 전제) **로컬 스모크로 대체**: 로그인 → 목록(F040 위젯 지연/이번 주 마감/진행중 0/0/0 정상 렌더링) → 작성(F042, 콘솔 에러 0건) → 상세(F043 변경 이력 접이식 섹션 렌더링, 아래 "계획과 다르게 처리한 부분 3"의 서버 재빌드 후) → 프로필(F044 알림 스위치 3종 렌더링) → 알림 벨(정상 노출) 전부 확인, QA 계정(`qa-task050@example.com`)은 종료 후 완전 삭제해 65 profiles 기준선 복원 확인
 
 ---
 
