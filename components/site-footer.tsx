@@ -40,6 +40,15 @@ export function SiteFooter() {
           고도화 1차 과제
         </a>
         <span className="h-3 w-px bg-border" aria-hidden="true" />
+        <a
+          href="https://github.com/archy712/weekly-plan-02/blob/main/docs/roadmap/ROADMAP_V2.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-foreground"
+        >
+          고도화 2차 과제
+        </a>
+        <span className="h-3 w-px bg-border" aria-hidden="true" />
         <Link
           href="/component-gallery"
           className="hover:text-foreground"
