@@ -44,7 +44,10 @@ const STATUS_FILTER_OPTIONS: WeeklyLogStatus[] = ["planned", "in_progress", "com
 // 이 최솟값의 합보다 좁을 때만(기간이 길거나 화면이 좁을 때) overflow-x-auto로 스크롤된다.
 const LABEL_WIDTH = 200;
 const DAY_MIN_WIDTH = 28;
-const ROW_HEIGHT = 40;
+const ROW_HEIGHT = 48;
+
+// 범례(막대 색상 3종 + 지연 테두리 + 오늘 세로선)에서도 재사용하는 상태 라벨 순서.
+const STATUS_LEGEND_ORDER: WeeklyLogStatus[] = ["planned", "in_progress", "completed"];
 
 export function WeeklyLogTimelineView({
   items,
@@ -177,7 +180,12 @@ export function WeeklyLogTimelineView({
     // 칸반보드(components/weekly-log-kanban-column.tsx)·"내 업무" 위젯과 문자 그대로
     // 동일한 지연 규칙을 쓴다 — 세 화면의 지연 판정이 어긋나면 안 된다.
     const overdue = item.status !== "completed" && item.target_end_date < todayIso;
-    return { item, startOffset, spanDays, overdue, clippedStart, clippedEnd };
+    // 동일한 제목의 업무가 여러 부서/작성자에게서 반복될 수 있어(정기 업무 명칭 관례),
+    // 막대·행 라벨만으로는 서로 구분이 안 된다는 피드백에 따라 작성자 식별자를 함께 쓴다
+    // (list/kanban 카드와 동일한 author_name → author_email → 폴백 우선순위, weekly-log-card.tsx 등 참고).
+    const authorLabel = item.author_name ?? item.author_email ?? "알 수 없는 사용자";
+    const dateRangeText = `${formatDate(item.start_date)} ~ ${formatDate(item.target_end_date)}`;
+    return { item, startOffset, spanDays, overdue, clippedStart, clippedEnd, authorLabel, dateRangeText };
   });
 
   const gridTemplateColumns = `${LABEL_WIDTH}px repeat(${totalDays}, minmax(${DAY_MIN_WIDTH}px, 1fr))`;
@@ -289,85 +297,146 @@ export function WeeklyLogTimelineView({
             description="기간이나 필터를 조정해보세요."
           />
         ) : (
-          // 페이지 본문 자체는 가로 스크롤되지 않고, 이 컨테이너 내부만 스크롤된다(칸반
-          // 컬럼 반응형 수정에서 겪은 문제와 동일한 원칙 — overflow는 항상 안쪽 컨테이너가
-          // 책임진다).
-          <div className="overflow-x-auto rounded-lg border">
-            <div
-              className="relative w-full"
-              style={{ minWidth: `${LABEL_WIDTH + totalDays * DAY_MIN_WIDTH}px` }}
-            >
-              <div
-                className="grid border-b bg-muted/30 text-xs text-muted-foreground"
-                style={{ gridTemplateColumns }}
-              >
-                <div className="px-2 py-1.5 font-medium text-foreground">업무</div>
-                {Array.from({ length: totalDays }).map((_, index) => {
-                  const dateStr = addDaysToDateString(currentFrom, index);
-                  const day = Number(dateStr.slice(8, 10));
-                  const isMonthStart = day === 1;
-                  return (
-                    <div
-                      key={dateStr}
-                      className="flex items-center justify-center border-l py-1.5 tabular-nums"
-                      aria-hidden
-                    >
-                      {isMonthStart ? formatDate(dateStr).slice(5) : day}
-                    </div>
-                  );
-                })}
-              </div>
-              {bars.map(({ item, startOffset, spanDays, overdue, clippedStart, clippedEnd }) => (
-                <div
-                  key={item.id}
-                  className="grid items-center border-b last:border-b-0"
-                  style={{ gridTemplateColumns, height: ROW_HEIGHT }}
-                >
-                  <Link
-                    href={`/protected/weekly-logs/${item.id}`}
-                    className="truncate px-2 text-sm hover:text-primary hover:underline"
-                    title={item.title}
-                  >
-                    {item.title}
-                  </Link>
-                  <div
-                    className="relative h-full"
-                    style={{ gridColumn: `2 / span ${totalDays}` }}
-                  >
-                    <div
-                      role="img"
-                      aria-label={`${item.title}, ${formatDate(item.start_date)} ~ ${formatDate(item.target_end_date)}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}`}
-                      className={cn(
-                        "absolute inset-y-2 rounded",
-                        clippedStart && "rounded-l-none",
-                        clippedEnd && "rounded-r-none",
-                        overdue && "ring-2 ring-destructive",
-                      )}
-                      style={{
-                        // 날짜 열이 minmax(..., 1fr)라 실제 렌더 폭이 화면마다 달라지므로,
-                        // 고정 px 대신 이 wrapper(정확히 totalDays개 열의 폭 = 100%) 기준
-                        // 백분율로 위치·너비를 계산해야 열 경계와 항상 정확히 일치한다.
-                        left: `${(startOffset / totalDays) * 100}%`,
-                        width: `${(spanDays / totalDays) * 100}%`,
-                        backgroundColor: STATUS_CHART_COLORS[item.status],
-                      }}
-                    />
-                  </div>
-                </div>
+          <>
+            {/* 막대 색상 3종·지연 테두리·오늘 세로선이 무엇을 뜻하는지 화면 어디에도 설명이
+                없다는 피드백에 따른 범례. 가로 스크롤되는 그리드 밖에 둬 기간이 길어 오른쪽
+                으로 스크롤해도 항상 보이게 한다. */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {STATUS_LEGEND_ORDER.map((status) => (
+                <span key={status} className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block size-3 rounded-sm"
+                    style={{ backgroundColor: STATUS_CHART_COLORS[status] }}
+                    aria-hidden
+                  />
+                  {getStatusLabel(status)}
+                </span>
               ))}
-              {showTodayLine && (
-                <div
-                  className="pointer-events-none absolute inset-y-0 border-l-2 border-primary"
-                  // 날짜 영역(라벨 열을 제외한 나머지 100% - LABEL_WIDTH)의 todayOffset/totalDays
-                  // 지점 — 위 막대와 동일한 이유로 고정 px 대신 calc 기반 백분율을 쓴다.
-                  style={{
-                    left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px) * ${todayOffset / totalDays})`,
-                  }}
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="bg-muted inline-block size-3 rounded-sm border-2 border-destructive"
                   aria-hidden
                 />
-              )}
+                지연
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="bg-primary inline-block h-3 w-0.5" aria-hidden />
+                오늘
+              </span>
             </div>
-          </div>
+            {/* 페이지 본문 자체는 가로 스크롤되지 않고, 이 컨테이너 내부만 스크롤된다(칸반
+                컬럼 반응형 수정에서 겪은 문제와 동일한 원칙 — overflow는 항상 안쪽 컨테이너가
+                책임진다). */}
+            <div className="overflow-x-auto rounded-lg border">
+              <div
+                className="relative w-full"
+                style={{ minWidth: `${LABEL_WIDTH + totalDays * DAY_MIN_WIDTH}px` }}
+              >
+                <div
+                  className="grid border-b bg-muted/30 text-xs text-muted-foreground"
+                  style={{ gridTemplateColumns }}
+                >
+                  <div className="px-2 py-1.5 font-medium text-foreground">업무</div>
+                  {Array.from({ length: totalDays }).map((_, index) => {
+                    const dateStr = addDaysToDateString(currentFrom, index);
+                    const day = Number(dateStr.slice(8, 10));
+                    const isMonthStart = day === 1;
+                    return (
+                      <div
+                        key={dateStr}
+                        className="flex items-center justify-center border-l py-1.5 tabular-nums"
+                        aria-hidden
+                      >
+                        {isMonthStart ? formatDate(dateStr).slice(5) : day}
+                      </div>
+                    );
+                  })}
+                </div>
+                {bars.map(
+                  ({
+                    item,
+                    startOffset,
+                    spanDays,
+                    overdue,
+                    clippedStart,
+                    clippedEnd,
+                    authorLabel,
+                    dateRangeText,
+                  }) => {
+                    // 마우스오버 시 상태·기간·지연 여부·부서·작성자를 한 번에 보여주는
+                    // 네이티브 title 툴팁 — 이 페이지의 다른 요소(아래 Link의 title 등)와
+                    // 동일하게 별도 Tooltip 라이브러리 없이 브라우저 기본 툴팁을 재사용한다.
+                    const tooltip = `${item.title}\n${item.department_name} · ${authorLabel}\n${dateRangeText} · ${getStatusLabel(item.status)}${overdue ? " · 지연" : ""}`;
+                    return (
+                      <div
+                        key={item.id}
+                        className="grid items-center border-b last:border-b-0"
+                        style={{ gridTemplateColumns, height: ROW_HEIGHT }}
+                      >
+                        {/* 동일한 제목의 업무가 여러 부서/작성자에게서 반복될 수 있어(정기
+                            업무 명칭 관례), 제목 아래 작성자를 보조 텍스트로 함께 표시해
+                            구분할 수 있게 한다. */}
+                        <Link
+                          href={`/protected/weekly-logs/${item.id}`}
+                          className="flex min-w-0 flex-col justify-center gap-0.5 px-2 hover:text-primary"
+                          title={tooltip}
+                        >
+                          <span className="truncate text-sm hover:underline">{item.title}</span>
+                          <span className="text-muted-foreground truncate text-xs">
+                            {authorLabel}
+                          </span>
+                        </Link>
+                        <div
+                          className="relative h-full"
+                          style={{ gridColumn: `2 / span ${totalDays}` }}
+                        >
+                          <div
+                            role="img"
+                            aria-label={`${item.title}, 부서: ${item.department_name}, 작성자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}`}
+                            title={tooltip}
+                            className={cn(
+                              "absolute inset-y-2 flex items-center rounded",
+                              clippedStart && "rounded-l-none",
+                              clippedEnd && "rounded-r-none",
+                              // 지연은 빨간 테두리 하나에만 의존하면 예정(주황)과 색상이
+                              // 가까워 헷갈린다는 피드백에 따라 아이콘을 함께 병행한다.
+                              overdue && "ring-2 ring-destructive",
+                            )}
+                            style={{
+                              // 날짜 열이 minmax(..., 1fr)라 실제 렌더 폭이 화면마다 달라지므로,
+                              // 고정 px 대신 이 wrapper(정확히 totalDays개 열의 폭 = 100%) 기준
+                              // 백분율로 위치·너비를 계산해야 열 경계와 항상 정확히 일치한다.
+                              left: `${(startOffset / totalDays) * 100}%`,
+                              width: `${(spanDays / totalDays) * 100}%`,
+                              backgroundColor: STATUS_CHART_COLORS[item.status],
+                            }}
+                          >
+                            {overdue && (
+                              <AlertTriangle
+                                className="ml-0.5 size-3 shrink-0 text-white drop-shadow-sm"
+                                aria-hidden
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  },
+                )}
+                {showTodayLine && (
+                  <div
+                    className="pointer-events-none absolute inset-y-0 border-l-2 border-primary"
+                    // 날짜 영역(라벨 열을 제외한 나머지 100% - LABEL_WIDTH)의 todayOffset/totalDays
+                    // 지점 — 위 막대와 동일한 이유로 고정 px 대신 calc 기반 백분율을 쓴다.
+                    style={{
+                      left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px) * ${todayOffset / totalDays})`,
+                    }}
+                    aria-hidden
+                  />
+                )}
+              </div>
+            </div>
+          </>
         )}
         {/* 시각적 막대만으로는 정보가 전달되지 않으므로, 동일한 데이터를 표로 제공한다
             (v1 Task 031이 대시보드 차트에 적용한 것과 동일한 해법). sr-only는 <table>에
@@ -384,6 +453,8 @@ export function WeeklyLogTimelineView({
               <thead>
                 <tr>
                   <th scope="col">제목</th>
+                  <th scope="col">부서</th>
+                  <th scope="col">작성자</th>
                   <th scope="col">시작일</th>
                   <th scope="col">목표종료일</th>
                   <th scope="col">진행상태</th>
@@ -391,9 +462,11 @@ export function WeeklyLogTimelineView({
                 </tr>
               </thead>
               <tbody>
-                {bars.map(({ item, overdue }) => (
+                {bars.map(({ item, overdue, authorLabel }) => (
                   <tr key={item.id}>
                     <th scope="row">{item.title}</th>
+                    <td>{item.department_name}</td>
+                    <td>{authorLabel}</td>
                     <td>{formatDate(item.start_date)}</td>
                     <td>{formatDate(item.target_end_date)}</td>
                     <td>{getStatusLabel(item.status)}</td>
