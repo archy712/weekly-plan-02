@@ -6,12 +6,11 @@ import { ArrowLeft } from "lucide-react";
 import { LandingHeader } from "@/components/landing-header";
 import { SiteFooter } from "@/components/site-footer";
 import { ComponentGalleryView } from "@/components/component-gallery-view";
-import { COMPONENT_GALLERY } from "@/lib/constants/component-gallery";
 
 export const metadata = {
   title: "컴포넌트 갤러리",
   description:
-    "shadcn/ui 컴포넌트를 카테고리별로 살펴보고 Base UI 문서로 이동합니다.",
+    "shadcn/ui 공식 레지스트리의 모든 컴포넌트와, 실무에서 자주 쓰이는 확장 컴포넌트를 함께 모아 살펴봅니다.",
 };
 
 export default function ComponentGalleryPage() {
@@ -31,14 +30,13 @@ export default function ComponentGalleryPage() {
         <div className="mt-8 flex flex-col gap-3">
           <h1 className="text-2xl font-bold sm:text-3xl">컴포넌트 갤러리</h1>
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-            shadcn/ui 컴포넌트를 카테고리별로 모아 보여줍니다. 각 카드를 누르면
-            해당 컴포넌트의 <span className="font-medium">Base UI</span> 타입 공식
-            문서가 새 탭에서 열립니다.
+            shadcn/ui 공식 레지스트리의 모든 컴포넌트와, 실무에서 자주 쓰이는 확장
+            컴포넌트를 함께 모아 살펴볼 수 있습니다.
           </p>
         </div>
 
         <div className="mt-8">
-          <ComponentGalleryView categories={COMPONENT_GALLERY} />
+          <ComponentGalleryView />
         </div>
       </div>
       <SiteFooter />
