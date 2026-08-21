@@ -85,6 +85,7 @@ async function WeeklyLogKanbanContent({
       // 카드의 "지연" 표시(목표종료일 경과)는 서버 렌더링 시점 날짜를 그대로 기준으로 삼아
       // 클라이언트 컴포넌트 초기 렌더와 SSR 결과가 항상 일치하게 한다.
       todayIso={formatDate(new Date())}
+      userId={data.claims.sub}
     />
   );
 }

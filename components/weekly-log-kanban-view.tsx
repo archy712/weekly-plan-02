@@ -27,12 +27,14 @@ import {
 } from "@/components/ui/select";
 import { WeeklyLogKanbanColumn } from "@/components/weekly-log-kanban-column";
 import { WeeklyLogKanbanCardContent } from "@/components/weekly-log-kanban-card";
+import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
 import { cn } from "@/lib/utils";
 import { updateWeeklyLogStatusAction } from "@/lib/actions/weekly-log";
 import { loadMoreKanbanColumnAction } from "@/lib/actions/weekly-log-list";
 import { formatDate, getStatusLabel } from "@/lib/format";
+import type { FilterPresetFilters } from "@/hooks/use-filter-presets";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
   Department,
@@ -78,6 +80,7 @@ export function WeeklyLogKanbanView({
   currentUserDepartmentId,
   isAdmin,
   todayIso,
+  userId,
 }: {
   initialColumns: WeeklyLogKanbanColumnData[];
   departments: Department[];
@@ -94,6 +97,9 @@ export function WeeklyLogKanbanView({
   currentUserDepartmentId: string;
   isAdmin: boolean;
   todayIso: string;
+  // F045(Task 046) 필터 프리셋의 localStorage 키 네임스페이스. 목록 페이지와 동일하게
+  // 서버 컴포넌트가 확보한 값을 prop으로 내려받는다.
+  userId: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -143,6 +149,20 @@ export function WeeklyLogKanbanView({
   const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
     navigate({ q: searchInput });
+  };
+
+  // 저장된 필터 프리셋 적용(F045) — 목록 페이지(weekly-log-list-view.tsx)와 동일하게
+  // 프리셋에 없는 축도 명시적으로 넘겨 현재 값과 병합되지 않고 완전히 대체되게 한다.
+  const applyFilterPreset = (filters: FilterPresetFilters) => {
+    setSearchInput(filters.q);
+    navigate({
+      department: filters.department,
+      status: filters.status,
+      q: filters.q,
+      from: filters.from,
+      to: filters.to,
+      author: filters.author,
+    });
   };
 
   const rawFilters = {
@@ -344,6 +364,11 @@ export function WeeklyLogKanbanView({
               ))}
             </SelectContent>
           </Select>
+          <WeeklyLogFilterPresets
+            userId={userId}
+            currentFilters={rawFilters}
+            onApply={applyFilterPreset}
+          />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">

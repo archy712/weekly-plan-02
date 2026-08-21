@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
+import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
@@ -42,6 +43,7 @@ import {
   loadMoreWeeklyLogsAction,
 } from "@/lib/actions/weekly-log-list";
 import { formatDate, getStatusLabel } from "@/lib/format";
+import type { FilterPresetFilters } from "@/hooks/use-filter-presets";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
   Department,
@@ -70,6 +72,7 @@ export function WeeklyLogListView({
   currentAuthorId,
   currentSortKey,
   currentSortDirection,
+  userId,
 }: {
   initialItems: WeeklyLogListItem[];
   initialHasMore: boolean;
@@ -86,6 +89,9 @@ export function WeeklyLogListView({
   currentAuthorId?: string;
   currentSortKey: WeeklyLogSortKey | null;
   currentSortDirection: WeeklyLogSortDirection;
+  // F045(Task 046) 필터 프리셋의 localStorage 키 네임스페이스. 서버 컴포넌트가 이미 확보한
+  // 값을 prop으로 내려받는다(클라이언트에서 세션을 다시 읽지 않음 — F042 draft와 동일 관례).
+  userId: string;
 }) {
   const router = useRouter();
   // 필터/정렬 변경은 URL 쿼리파라미터만 바뀌는 soft navigation이라 page.tsx의 Suspense
@@ -183,6 +189,20 @@ export function WeeklyLogListView({
 
   const applyDatePreset = (range: { from: string; to: string }) => {
     navigate({ from: range.from, to: range.to });
+  };
+
+  // 저장된 필터 프리셋 적용(F045) — 프리셋에 없는 축은 명시적으로 null/빈 값을 넘겨
+  // 현재 화면에 남아 있는 값과 병합되지 않고 프리셋 조건으로 완전히 대체되게 한다.
+  const applyFilterPreset = (filters: FilterPresetFilters) => {
+    setSearchInput(filters.q);
+    navigate({
+      department: filters.department,
+      status: filters.status,
+      q: filters.q,
+      from: filters.from,
+      to: filters.to,
+      author: filters.author,
+    });
   };
 
   // 정렬 헤더 토글은 클라이언트 정렬이 아니라 URL을 바꿔 서버가 첫 배치를 다시 정렬해
@@ -425,6 +445,11 @@ export function WeeklyLogListView({
               ))}
             </SelectContent>
           </Select>
+          <WeeklyLogFilterPresets
+            userId={userId}
+            currentFilters={rawFilters}
+            onApply={applyFilterPreset}
+          />
         </div>
         <div className="flex gap-2">
           <DropdownMenu>

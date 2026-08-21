@@ -126,6 +126,7 @@ async function WeeklyLogsContent({
       currentAuthorId={filters.author}
       currentSortKey={sort.key}
       currentSortDirection={sort.direction}
+      userId={data.claims.sub}
     />
   );
 }
