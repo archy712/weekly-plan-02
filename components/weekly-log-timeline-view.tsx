@@ -328,6 +328,16 @@ export function WeeklyLogTimelineView({
                 지연
               </span>
               <span className="flex items-center gap-1.5">
+                <span
+                  className="relative inline-flex size-3 overflow-hidden rounded-sm"
+                  style={{ backgroundColor: STATUS_CHART_COLORS.in_progress }}
+                  aria-hidden
+                >
+                  <span className="absolute inset-y-0 left-0 w-1/2 bg-black/25" />
+                </span>
+                진척률(입력 시 진하게)
+              </span>
+              <span className="flex items-center gap-1.5">
                 <span className="bg-primary inline-block h-3 w-0.5" aria-hidden />
                 오늘
               </span>
@@ -374,10 +384,13 @@ export function WeeklyLogTimelineView({
                     authorLabel,
                     dateRangeText,
                   }) => {
-                    // 마우스오버 시 상태·기간·지연 여부·부서·작성자를 한 번에 보여주는
+                    // 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
+                    // 구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
+                    const progressText = item.progress > 0 ? ` · 진척률 ${item.progress}%` : "";
+                    // 마우스오버 시 상태·기간·지연 여부·부서·작성자·진척률을 한 번에 보여주는
                     // 네이티브 title 툴팁 — 이 페이지의 다른 요소(아래 Link의 title 등)와
                     // 동일하게 별도 Tooltip 라이브러리 없이 브라우저 기본 툴팁을 재사용한다.
-                    const tooltip = `${item.title}\n${item.department_name} · ${authorLabel}\n${dateRangeText} · ${getStatusLabel(item.status)}${overdue ? " · 지연" : ""}`;
+                    const tooltip = `${item.title}\n${item.department_name} · ${authorLabel}\n${dateRangeText} · ${getStatusLabel(item.status)}${overdue ? " · 지연" : ""}${progressText}`;
                     return (
                       <div
                         key={item.id}
@@ -403,10 +416,10 @@ export function WeeklyLogTimelineView({
                         >
                           <div
                             role="img"
-                            aria-label={`${item.title}, 부서: ${item.department_name}, 작성자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}`}
+                            aria-label={`${item.title}, 부서: ${item.department_name}, 작성자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
                             title={tooltip}
                             className={cn(
-                              "absolute inset-y-2 flex items-center rounded",
+                              "absolute inset-y-2 flex items-center overflow-hidden rounded",
                               clippedStart && "rounded-l-none",
                               clippedEnd && "rounded-r-none",
                               // 지연은 빨간 테두리 하나에만 의존하면 예정(주황)과 색상이
@@ -422,9 +435,19 @@ export function WeeklyLogTimelineView({
                               backgroundColor: STATUS_CHART_COLORS[item.status],
                             }}
                           >
+                            {/* 간트 차트의 흔한 관례 — 막대 안에 진척률만큼 더 어둡게 채워
+                                "기간 대비 실제 완료분"을 한눈에 보이게 한다. 0%(미입력)는
+                                표시하지 않는다. */}
+                            {item.progress > 0 && (
+                              <div
+                                className="absolute inset-y-0 left-0 bg-black/25"
+                                style={{ width: `${item.progress}%` }}
+                                aria-hidden
+                              />
+                            )}
                             {overdue && (
                               <AlertTriangle
-                                className="ml-0.5 size-3 shrink-0 text-white drop-shadow-sm"
+                                className="relative z-10 ml-0.5 size-3 shrink-0 text-white drop-shadow-sm"
                                 aria-hidden
                               />
                             )}
@@ -470,6 +493,7 @@ export function WeeklyLogTimelineView({
                   <th scope="col">목표종료일</th>
                   <th scope="col">진행상태</th>
                   <th scope="col">지연 여부</th>
+                  <th scope="col">진척률</th>
                 </tr>
               </thead>
               <tbody>
@@ -482,6 +506,7 @@ export function WeeklyLogTimelineView({
                     <td>{formatDate(item.target_end_date)}</td>
                     <td>{getStatusLabel(item.status)}</td>
                     <td>{overdue ? "지연" : "정상"}</td>
+                    <td>{item.progress > 0 ? `${item.progress}%` : "미입력"}</td>
                   </tr>
                 ))}
               </tbody>

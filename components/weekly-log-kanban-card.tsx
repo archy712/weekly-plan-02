@@ -91,6 +91,20 @@ export function WeeklyLogKanbanCardContent({
         {overdue && <span className="font-medium">지연</span>}
       </div>
 
+      {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
+          구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. */}
+      {item.progress > 0 && (
+        <div className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/20">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${item.progress}%` }}
+            />
+          </div>
+          <span className="shrink-0">{item.progress}%</span>
+        </div>
+      )}
+
       <WeeklyLogReactionCounts up={item.reaction_up_count} down={item.reaction_down_count} />
     </div>
   );

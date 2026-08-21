@@ -51,7 +51,14 @@ export type WeeklyLog = Omit<Tables<"weekly_logs">, "status" | "work_type" | "im
 
 export type WeeklyLogListItem = Pick<
   WeeklyLog,
-  "id" | "title" | "start_date" | "target_end_date" | "status" | "department_id" | "author_id"
+  | "id"
+  | "title"
+  | "start_date"
+  | "target_end_date"
+  | "status"
+  | "progress"
+  | "department_id"
+  | "author_id"
 > & {
   department_name: string;
   // 목록 화면의 부서 컬럼을 아바타+작성자명으로 대체하며 추가됨. profiles_select_own_or_admin

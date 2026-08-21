@@ -128,6 +128,13 @@ export function WeeklyLogTable({
               </TableCell>
               <TableCell className="py-3 pr-4 text-right">
                 <StatusBadge status={item.status} />
+                {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
+                    구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. */}
+                {item.progress > 0 && (
+                  <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                    진척률 {item.progress}%
+                  </p>
+                )}
               </TableCell>
             </TableRow>
           ))}

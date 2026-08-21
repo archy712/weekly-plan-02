@@ -15,7 +15,7 @@ import type {
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 const LOGS_SELECT =
-  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, departments:departments(name)";
+  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, progress, departments:departments(name)";
 
 type LogRow = {
   id: string;
@@ -26,6 +26,7 @@ type LogRow = {
   department_id: string;
   author_id: string;
   created_at: string;
+  progress: number;
   departments: { name: string } | null;
 };
 
@@ -307,6 +308,7 @@ async function hydrateWeeklyLogRows(
       start_date: row.start_date,
       target_end_date: row.target_end_date,
       status: row.status as WeeklyLogStatus,
+      progress: row.progress,
       department_id: row.department_id,
       department_name: row.departments?.name ?? "",
       author_id: row.author_id,
