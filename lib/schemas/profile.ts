@@ -16,6 +16,9 @@ export const profileSchema = z.object({
     .string()
     .max(500, "자기소개는 최대 500자까지 입력 가능합니다")
     .optional(),
+  notify_on_comment: z.boolean(),
+  notify_on_mention: z.boolean(),
+  notify_on_reminder: z.boolean(),
 });
 
 export type ProfileFormData = z.infer<typeof profileSchema>;

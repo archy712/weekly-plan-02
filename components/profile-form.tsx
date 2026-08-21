@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarPickerDialog } from "@/components/avatar-picker-dialog";
+import { NotificationPreferencesField } from "@/components/notification-preferences-field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,7 +42,16 @@ import { profileSchema, type ProfileFormData } from "@/lib/schemas/profile";
 
 type Profile = Pick<
   Tables<"profiles">,
-  "id" | "email" | "name" | "department_id" | "phone_number" | "avatar_key" | "bio"
+  | "id"
+  | "email"
+  | "name"
+  | "department_id"
+  | "phone_number"
+  | "avatar_key"
+  | "bio"
+  | "notify_on_comment"
+  | "notify_on_mention"
+  | "notify_on_reminder"
 >;
 type Department = Pick<Tables<"departments">, "id" | "name" | "archived_at">;
 
@@ -65,6 +75,9 @@ export function ProfileForm({
       phone_number: profile.phone_number ?? "",
       avatar_key: (profile.avatar_key as AvatarKey) ?? "fox",
       bio: profile.bio ?? "",
+      notify_on_comment: profile.notify_on_comment ?? true,
+      notify_on_mention: profile.notify_on_mention ?? true,
+      notify_on_reminder: profile.notify_on_reminder ?? true,
     },
   });
 
@@ -83,6 +96,9 @@ export function ProfileForm({
           phone_number: values.phone_number || null,
           avatar_key: values.avatar_key,
           bio: values.bio || null,
+          notify_on_comment: values.notify_on_comment,
+          notify_on_mention: values.notify_on_mention,
+          notify_on_reminder: values.notify_on_reminder,
         })
         .eq("id", profile.id);
       if (error) throw error;
@@ -219,6 +235,7 @@ export function ProfileForm({
                   </FormItem>
                 )}
               />
+              <NotificationPreferencesField control={form.control} />
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "저장 중..." : "저장"}

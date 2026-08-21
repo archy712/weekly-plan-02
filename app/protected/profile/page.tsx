@@ -19,7 +19,9 @@ async function ProfileContent() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, email, name, department_id, phone_number, avatar_key, bio")
+        .select(
+          "id, email, name, department_id, phone_number, avatar_key, bio, notify_on_comment, notify_on_mention, notify_on_reminder",
+        )
         .eq("id", userId)
         .maybeSingle(),
       supabase.from("departments").select("id, name, archived_at").order("name"),
@@ -50,6 +52,9 @@ async function ProfileContent() {
           phone_number: null,
           avatar_key: "fox",
           bio: null,
+          notify_on_comment: true,
+          notify_on_mention: true,
+          notify_on_reminder: true,
         }
       }
       departments={visibleDepartments}
