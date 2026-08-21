@@ -5,6 +5,7 @@ import { getReactionCountsForLogs } from "@/lib/queries/reactions";
 import { escapeLikePattern } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
+  WeeklyLogKanbanColumn,
   WeeklyLogListFilters,
   WeeklyLogListItem,
   WeeklyLogListSort,
@@ -370,4 +371,62 @@ export async function fetchAllWeeklyLogsForExport(
 ): Promise<WeeklyLogListItem[]> {
   const { rows } = await fetchWeeklyLogRows(supabase, filters, sort, null);
   return hydrateWeeklyLogRows(supabase, rows);
+}
+
+// 칸반보드 컬럼(진행상태) 내부 정렬 — 목표종료일이 가까운 업무가 위로 오도록 항상
+// 오름차순으로 고정한다(목록 페이지의 사용자 지정 정렬과 달리 칸반보드는 정렬 UI가 없다).
+const KANBAN_SORT: WeeklyLogListSort = { key: "target_end_date", direction: "asc" };
+
+// 칸반보드 한 컬럼(진행상태 1개)의 첫 배치를 조회한다. filters.status가 이 컬럼과 다른
+// 특정 상태로 좁혀져 있으면(목록과 동일한 진행상태 필터를 칸반보드도 그대로 지원하므로)
+// 쿼리 없이 빈 컬럼을 즉시 반환한다.
+async function fetchWeeklyLogsKanbanColumn(
+  supabase: Client,
+  filters: WeeklyLogListFilters,
+  status: WeeklyLogStatus,
+  limit: number,
+): Promise<WeeklyLogKanbanColumn> {
+  if (filters.status !== ALL_STATUSES_FILTER && filters.status !== status) {
+    return { status, items: [], hasMore: false, total: 0 };
+  }
+
+  const columnFilters: WeeklyLogListFilters = { ...filters, status };
+  const [{ rows, hasMore }, total] = await Promise.all([
+    fetchWeeklyLogRows(supabase, columnFilters, KANBAN_SORT, { offset: 0, limit }),
+    countWeeklyLogs(supabase, columnFilters),
+  ]);
+  const items = await hydrateWeeklyLogRows(supabase, rows);
+  return { status, items, hasMore, total };
+}
+
+// 칸반보드 3개 컬럼(예정/진행중/완료)을 병렬로 조회한다. 목록 페이지와 달리 한 번에
+// 전체를 불러오지 않고 컬럼별로 limit건씩만 로드하며, 컬럼별 "더 보기"는
+// fetchWeeklyLogsKanbanColumnPage로 이어서 조회한다.
+export async function fetchWeeklyLogsKanban(
+  supabase: Client,
+  filters: WeeklyLogListFilters,
+  limitPerColumn: number,
+): Promise<WeeklyLogKanbanColumn[]> {
+  return Promise.all(
+    VALID_STATUSES.map((status) =>
+      fetchWeeklyLogsKanbanColumn(supabase, filters, status, limitPerColumn),
+    ),
+  );
+}
+
+// 칸반보드 컬럼 하나의 다음 배치("더 보기"). offset은 해당 컬럼에서 이미 로드한 카드 수.
+export async function fetchWeeklyLogsKanbanColumnPage(
+  supabase: Client,
+  filters: WeeklyLogListFilters,
+  status: WeeklyLogStatus,
+  offset: number,
+  limit: number,
+): Promise<{ items: WeeklyLogListItem[]; hasMore: boolean }> {
+  const columnFilters: WeeklyLogListFilters = { ...filters, status };
+  const { rows, hasMore } = await fetchWeeklyLogRows(supabase, columnFilters, KANBAN_SORT, {
+    offset,
+    limit,
+  });
+  const items = await hydrateWeeklyLogRows(supabase, rows);
+  return { items, hasMore };
 }

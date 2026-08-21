@@ -116,6 +116,19 @@ export type StatusFilter = typeof ALL_STATUSES_FILTER | WeeklyLogStatus;
 // 서버에서 range로 추가 조회한다. 전통적 페이지 숫자 방식 대신 필요한 만큼만 로딩한다.
 export const WEEKLY_LOGS_PAGE_SIZE = 30;
 
+// 칸반보드 컬럼(진행상태) 1개가 최초에 로드하는 카드 수. 컬럼별로 "더 보기" 버튼으로
+// 독립적으로 이어서 불러온다(전체 목록을 한 번에 불러오지 않는다).
+export const WEEKLY_LOGS_KANBAN_COLUMN_PAGE_SIZE = 20;
+
+// 칸반보드 한 컬럼(진행상태 1개)의 데이터. total은 현재 필터 조건에서 이 상태에 해당하는
+// 전체 건수이고 items.length는 그중 로드된 건수 — "더 보기" 버튼과 헤더 배지 표시에 쓴다.
+export type WeeklyLogKanbanColumn = {
+  status: WeeklyLogStatus;
+  items: WeeklyLogListItem[];
+  hasMore: boolean;
+  total: number;
+};
+
 // 목록 정렬 키. 증분 로딩에서는 일부만 로드된 상태의 클라이언트 정렬이 어긋나므로 정렬을
 // 전부 서버 ORDER BY로 처리한다 — 그래서 작성자(author_name)는 정렬 대상에서 제외한다.
 // 작성자 이름은 weekly_logs 컬럼이 아니라 profiles_select_own_or_admin RLS 때문에

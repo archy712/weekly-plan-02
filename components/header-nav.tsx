@@ -24,7 +24,11 @@ function getNavLinks(user: NavUser): { href: string; label: string }[] {
   if (!user) {
     return [];
   }
-  const links: { href: string; label: string }[] = [];
+  // 칸반보드는 관리자 전용이 아니라 주간업무 목록과 동일하게 전 로그인 사용자가 볼 수
+  // 있으므로, "관리자 콘솔" 조건부 push보다 앞에 무조건 넣는다(요청상 배치 순서이기도 함).
+  const links: { href: string; label: string }[] = [
+    { href: "/protected/weekly-logs/kanban", label: "칸반보드" },
+  ];
   if (user.role === "admin" || user.role === "superadmin") {
     links.push({ href: "/protected/admin", label: "관리자 콘솔" });
   }
