@@ -11,14 +11,20 @@ import { Suspense } from "react";
 // 주요 기능 카드에 쓰이는 lucide 아이콘들 — 아래 features 배열에서 각 항목의 icon으로 사용.
 import {
   Bell,
+  BellRing,
+  Bookmark,
   Building2,
+  CalendarRange,
   FileDown,
   FileText,
+  History,
   LayoutDashboard,
   ListChecks,
   MessagesSquare,
   Paperclip,
+  Save,
   ShieldCheck,
+  UserCheck,
 } from "lucide-react";
 
 // LandingHeader/HeroCta: 쿠키 기반 세션(getClaims)을 읽는 동적 Server Component (아래 Suspense로 감쌈).
@@ -39,7 +45,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 // 히어로 아래 "주요 기능" 섹션에 3열 그리드로 렌더링되는 기능 소개 카드 데이터.
 // 모듈 최상단의 정적 상수라 렌더마다 재생성되지 않으며, 각 실제 기능의 위치는 CLAUDE.md의
 // 해당 절(리치 텍스트 에디터·조직 계층·업무 타입/중요도·PDF/Excel·대시보드·관리자 콘솔·
-// 실시간 알림·댓글/멘션·첨부파일)을 참고. 순서 = 화면 노출 순서, title은 카드 key로도 쓰인다.
+// 실시간 알림·댓글/멘션·첨부파일, v2: F040~F047 각 기능 절)을 참고.
+// 순서 = 화면 노출 순서, title은 카드 key로도 쓰인다.
 const features = [
   {
     icon: FileText,
@@ -93,7 +100,43 @@ const features = [
     icon: Paperclip,
     title: "첨부파일 & 빠른 검색",
     description:
-      "업무일지에 파일을 첨부하고, 제목·내용·기간 검색과 컬럼 정렬로 원하는 기록을 빠르게 찾아냅니다.",
+      "업무일지에 파일을 첨부하고, 제목·내용·기간 검색과 컬럼 정렬로 원하는 기록을 빠르게 찾아내며 검색어는 하이라이트로 바로 확인할 수 있습니다.",
+  },
+  {
+    icon: UserCheck,
+    title: "내 업무 요약 위젯",
+    description:
+      "목록에 들어가는 즉시 본인 담당 업무의 지연·이번 주 마감·진행중 건수를 한눈에 확인하세요.",
+  },
+  {
+    icon: Save,
+    title: "작성 중 임시저장",
+    description:
+      "새로고침하거나 실수로 페이지를 벗어나도 작성 중이던 내용이 브라우저에 자동 저장되어 그대로 복원할 수 있습니다.",
+  },
+  {
+    icon: BellRing,
+    title: "정기 리마인더 & 알림 설정",
+    description:
+      "이번 주 업무일지를 아직 작성하지 않았다면 알림으로 알려드리고, 댓글·멘션·리마인더 알림은 원하는 대로 켜고 끌 수 있습니다.",
+  },
+  {
+    icon: History,
+    title: "변경 이력 추적",
+    description:
+      "진행 상태·업무 타입·중요도가 언제 누구에 의해 바뀌었는지 상세 페이지에서 이력으로 되짚어보세요.",
+  },
+  {
+    icon: Bookmark,
+    title: "필터 프리셋 저장",
+    description:
+      "자주 쓰는 필터 조합을 이름 붙여 저장해두고, 목록·칸반 어디서든 한 번의 선택으로 다시 적용하세요.",
+  },
+  {
+    icon: CalendarRange,
+    title: "타임라인 뷰",
+    description:
+      "시작일부터 목표종료일까지 업무 일정을 시간축 위에 나란히 배치해 전체 흐름을 한눈에 파악합니다.",
   },
 ];
 
