@@ -280,6 +280,10 @@ export function WeeklyLogDetailView({
   // 완료된 업무는 진척률이 목표에 못 미쳐도 "지연"으로 보지 않는다 — 칸반·타임라인의
   // 기존 지연 판정(status !== "completed")과 동일한 원칙.
   const delayed = !isCompleted && progress < targetProgress;
+  // progress는 DB CHECK 제약상 nullable이 아니라 "입력 안 함"과 "실제로 0%"를 구분할
+  // 별도 상태가 없다 — 기본값 0을 "아직 입력 안 함"으로 간주해 입력을 유도한다. 완료된
+  // 업무는 더 이상 진척률을 조정할 대상이 아니므로 제외한다.
+  const progressNotEntered = !isCompleted && progress === 0;
 
   const backLink = (
     <Link
@@ -415,15 +419,24 @@ export function WeeklyLogDetailView({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">진척률 현황</span>
-          <span className="text-muted-foreground">
-            {isCompleted ? (
-              "진척률 100% (완료)"
-            ) : (
-              <>
-                진척률 {progress}% · 목표진척률 {targetProgress}%
-              </>
-            )}
-          </span>
+          {/* progress가 기본값 0에서 한 번도 바뀌지 않은 업무는 값 자체보다 "아직
+              입력되지 않았다"는 사실을 알리는 게 더 중요하므로, 평범한 요약 텍스트 대신
+              빨간색 경고 문구로 대체한다(canWrite 여부와 무관하게 항상 노출). */}
+          {progressNotEntered ? (
+            <span className="text-destructive font-medium">
+              진척률을 반드시 입력(선택)해 주세요
+            </span>
+          ) : (
+            <span className="text-muted-foreground">
+              {isCompleted ? (
+                "진척률 100% (완료)"
+              ) : (
+                <>
+                  진척률 {progress}% · 목표진척률 {targetProgress}%
+                </>
+              )}
+            </span>
+          )}
         </div>
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-primary/20">
           <div
@@ -448,7 +461,8 @@ export function WeeklyLogDetailView({
           // 저장(onValueCommit) 패턴. 완료 처리된 업무는 진척률 계산 자체를 무시하고
           // 완료로 간주하므로(위 displayProgress) 슬라이더를 감추고 안내만 남긴다 —
           // 진행중으로 되돌리면 마지막으로 저장했던 값 그대로 슬라이더가 다시 보인다.
-          <div className="pt-1">
+          // "진척률 현황"과 너무 붙어 있어 구분이 안 된다는 피드백에 따라 위쪽 여백을 넉넉히 둔다.
+          <div className="mt-4">
             {isCompleted ? (
               <p className="text-sm text-muted-foreground">
                 완료 처리된 업무는 진척률을 100%로 간주합니다. 진척률을 다시 조정하려면
