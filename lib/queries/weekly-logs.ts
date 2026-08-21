@@ -390,6 +390,27 @@ export async function fetchAllWeeklyLogsForExport(
 // 오름차순으로 고정한다(목록 페이지의 사용자 지정 정렬과 달리 칸반보드는 정렬 UI가 없다).
 const KANBAN_SORT: WeeklyLogListSort = { key: "target_end_date", direction: "asc" };
 
+// 타임라인 뷰(F047, v2 Task 048) 정렬 — 좌에서 우로 시간 흐름을 그대로 읽도록 시작일
+// 오름차순으로 고정한다(칸반의 목표종료일 오름차순과는 다른 축).
+const TIMELINE_SORT: WeeklyLogListSort = { key: "start_date", direction: "asc" };
+
+// 타임라인 뷰는 무한 스크롤·컬럼 페이징이 아니라 지정된 기간 전체를 한 화면에 그리므로,
+// range+1건을 조회해 상한(limit)을 넘는지(truncated)만 판정하고 그 이상은 불러오지 않는다
+// — fetchWeeklyLogRows의 hasMore 판정 로직을 그대로 재사용(range 상한 초과 시 안내 문구는
+// 호출하는 컴포넌트가 담당).
+export async function fetchWeeklyLogsTimeline(
+  supabase: Client,
+  filters: WeeklyLogListFilters,
+  limit: number,
+): Promise<{ items: WeeklyLogListItem[]; truncated: boolean }> {
+  const { rows, hasMore } = await fetchWeeklyLogRows(supabase, filters, TIMELINE_SORT, {
+    offset: 0,
+    limit,
+  });
+  const items = await hydrateWeeklyLogRows(supabase, rows);
+  return { items, truncated: hasMore };
+}
+
 // 칸반보드 한 컬럼(진행상태 1개)의 첫 배치를 조회한다. filters.status가 이 컬럼과 다른
 // 특정 상태로 좁혀져 있으면(목록과 동일한 진행상태 필터를 칸반보드도 그대로 지원하므로)
 // 쿼리 없이 빈 컬럼을 즉시 반환한다.

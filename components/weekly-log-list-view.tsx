@@ -31,6 +31,7 @@ import {
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
+import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
@@ -404,6 +405,7 @@ export function WeeklyLogListView({
   return (
     <div className="flex flex-col gap-4">
       <LoadingBar active={isPending} />
+      <WeeklyLogViewSwitcher current="list" filters={rawFilters} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">

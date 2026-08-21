@@ -139,6 +139,11 @@ export const WEEKLY_LOGS_PAGE_SIZE = 30;
 // 독립적으로 이어서 불러온다(전체 목록을 한 번에 불러오지 않는다).
 export const WEEKLY_LOGS_KANBAN_COLUMN_PAGE_SIZE = 20;
 
+// 타임라인 뷰(F047, v2 Task 048)는 무한 스크롤/컬럼 페이징이 아니라 지정된 기간 전체를 한
+// 화면에 그리므로, 그대로 두면 데이터가 늘어날수록(현재 325건+) 가장 무거운 화면이 된다.
+// 렌더 상한을 두고 초과분은 안내와 함께 절단한다(로드맵 결정).
+export const WEEKLY_LOGS_TIMELINE_PAGE_SIZE = 200;
+
 // 칸반보드 한 컬럼(진행상태 1개)의 데이터. total은 현재 필터 조건에서 이 상태에 해당하는
 // 전체 건수이고 items.length는 그중 로드된 건수 — "더 보기" 버튼과 헤더 배지 표시에 쓴다.
 export type WeeklyLogKanbanColumn = {

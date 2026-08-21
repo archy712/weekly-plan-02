@@ -28,6 +28,7 @@ import {
 import { WeeklyLogKanbanColumn } from "@/components/weekly-log-kanban-column";
 import { WeeklyLogKanbanCardContent } from "@/components/weekly-log-kanban-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
+import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
 import { cn } from "@/lib/utils";
@@ -320,6 +321,7 @@ export function WeeklyLogKanbanView({
   return (
     <div className="flex flex-col gap-4">
       <LoadingBar active={isPending} />
+      <WeeklyLogViewSwitcher current="kanban" filters={rawFilters} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">

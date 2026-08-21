@@ -83,6 +83,29 @@ export function getRecentMonthsRange(
   return { from: toDateOnlyString(from), to: toDateOnlyString(base) };
 }
 
+// "YYYY-MM-DD" 문자열을 로컬 타임존의 자정 Date로 파싱한다. new Date("YYYY-MM-DD")는 UTC
+// 자정으로 해석돼 로컬 타임존이 UTC보다 빠르면(한국 등) 하루 전 날짜로 보일 수 있어
+// (toDateOnlyString과 대칭되게) 연/월/일을 직접 분해해 로컬 Date를 구성한다.
+function parseDateOnly(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// 두 로컬 날짜(YYYY-MM-DD) 사이의 일수 차이(a - b). 타임라인 뷰(F047)가 막대의 가로
+// 오프셋·길이를 계산하는 데 쓴다.
+export function diffDays(a: string, b: string): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((parseDateOnly(a).getTime() - parseDateOnly(b).getTime()) / msPerDay);
+}
+
+// 기준 날짜(YYYY-MM-DD)에 n일을 더한 로컬 날짜 문자열. 타임라인 뷰(F047)가 기간의 날짜 눈금을
+// 계산하는 데 쓴다.
+export function addDaysToDateString(value: string, days: number): string {
+  const date = parseDateOnly(value);
+  date.setDate(date.getDate() + days);
+  return toDateOnlyString(date);
+}
+
 // This check can be removed, it is just for tutorial purposes
 export const hasEnvVars =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
