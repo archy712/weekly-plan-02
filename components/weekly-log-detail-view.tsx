@@ -95,11 +95,11 @@ export function WeeklyLogDetailView({
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  // 진행상태·업무타입·중요도·진척률 인라인 편집 컨트롤은 기본적으로 숨겨두고, 이 토글을
-  // 눌러야만 펼쳐진다 — 내 부서(canWrite) 업무를 열었을 때 곧바로 Select·Slider가
-  // 나타나 "수정 화면에 들어온 것 같다"는 혼동이 있어, 다른 부서 업무를 볼 때와 동일하게
-  // 항상 읽기 전용 화면으로 먼저 보여준 뒤 명시적으로 편집을 펼치게 한다.
-  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
+  // 진행상태·업무타입·중요도·진척률 인라인 편집 컨트롤 — 접었다 펼 수 있는 토글이지만
+  // 기본값은 펼침이다(사용자 요청). 접힌 채로 시작하면 다른 부서 업무를 볼 때와 동일한
+  // 읽기 전용 화면으로 보이지만, canWrite 업무를 열 때마다 매번 "빠른 편집"을 눌러야 해
+  // 오히려 불편하다는 피드백에 따라 기본을 열림으로 바꿨다.
+  const [isQuickEditOpen, setIsQuickEditOpen] = useState(true);
   const [status, setStatus] = useState<WeeklyLogStatus>(log.status);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [workType, setWorkType] = useState<WeeklyLogWorkType[]>(log.work_type);
