@@ -348,7 +348,7 @@ export function WeeklyLogTimelineView({
                       >
                         <span className="absolute inset-y-0 left-0 w-1/2 bg-black/25" />
                       </span>
-                      진척률(입력 시 진하게)
+                      진척률(입력 시 숫자·진하게 표시)
                     </span>
                     <span className="flex items-center gap-1.5">
                       <span className="bg-primary inline-block h-3 w-0.5" aria-hidden />
@@ -453,6 +453,16 @@ export function WeeklyLogTimelineView({
                                 className="relative z-10 ml-0.5 size-3 shrink-0 text-white drop-shadow-sm"
                                 aria-hidden
                               />
+                            )}
+                            {/* 막대 안 어둡게 채워지는 부분(간트 채움)만으로는 눈에 잘 안
+                                띈다는 피드백에 따라 숫자를 함께 표기한다. 배경색(예정/진행중/
+                                완료 3종)이 제각각이라 흰 글자만으로는 대비가 부족할 수 있어,
+                                막대 색과 무관하게 항상 대비가 확보되는 어두운 알약 배경 위에
+                                노란색 글자를 올린다 — 어느 상태색 위에서도 튀는 조합. */}
+                            {item.progress > 0 && (
+                              <span className="relative z-10 ml-1 shrink-0 rounded bg-black/50 px-1 text-[10px] font-bold tabular-nums text-yellow-300">
+                                {item.progress}%
+                              </span>
                             )}
                           </div>
                         </div>
