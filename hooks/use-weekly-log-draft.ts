@@ -15,8 +15,8 @@ import {
 // F042 임시저장(Task 041). 신규 작성 폼(components/weekly-log-new-form.tsx)에서만 쓰인다 —
 // 수정 폼은 이미 서버에 저장된 원본이 있어 유실 위험이 낮고, weekly_logs에 낙관적 잠금이
 // 없어 오래된 draft를 복원해 저장하면 그 사이의 타인 변경을 조용히 덮어쓸 수 있으며,
-// 상세 페이지의 진행상태·업무타입·중요도는 이미 인라인 즉시 저장이라 draft와 이중으로
-// 어긋나기 때문이다(ROADMAP_V2.md Task 041 결정 근거).
+// 상세 페이지의 진행상태·업무타입·중요도·진척률은 이미 인라인 즉시 저장이라 draft와
+// 이중으로 어긋나기 때문이다(ROADMAP_V2.md Task 041 결정 근거).
 
 const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 // content는 최대 5000자 제한이 있어 일반적으로 이 상한에 걸릴 일이 없지만, 직렬화 결과가
@@ -34,6 +34,7 @@ const weeklyLogDraftValuesSchema = z.object({
   title: z.string(),
   work_type: z.array(z.string()),
   importance: z.number(),
+  progress: z.number(),
   content: z.string(),
   start_date: z.string(),
   target_end_date: z.string(),

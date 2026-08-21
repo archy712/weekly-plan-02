@@ -139,6 +139,17 @@ export function WeeklyLogDetailView({
       }
     }
 
+    // work_type/importance/progress는 title·content 등과 달리 log prop이 아니라 이
+    // 컴포넌트의 useState로 관리된다(인라인 즉시 편집과 값을 공유하기 위함) — 전체 수정
+    // 폼으로 값을 바꿔도 이 상태들은 자동으로 갱신되지 않아(useState 초기값은 최초 마운트
+    // 시에만 반영됨), router.refresh() 이후에도 배지·"빠른 편집" 슬라이더가 예전 값을 계속
+    // 보여주는 문제가 있었다. 제출된 값으로 직접 동기화한다.
+    setWorkType(values.work_type);
+    setImportance(values.importance as WeeklyLogImportance);
+    savedImportanceRef.current = values.importance as WeeklyLogImportance;
+    setProgress(values.progress);
+    savedProgressRef.current = values.progress;
+
     toast.success("수정되었습니다.");
     setIsEditing(false);
     router.refresh();
@@ -290,6 +301,7 @@ export function WeeklyLogDetailView({
             title: log.title,
             work_type: workType,
             importance,
+            progress,
             content: log.content,
             start_date: log.start_date,
             target_end_date: log.target_end_date,

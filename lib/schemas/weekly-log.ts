@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
+import { PROGRESS_MAX, PROGRESS_MIN } from "@/lib/constants/progress";
 
 export const weeklyLogSchema = z
   .object({
@@ -20,6 +21,13 @@ export const weeklyLogSchema = z
       .int()
       .min(IMPORTANCE_MIN, "업무 중요도를 선택해주세요")
       .max(IMPORTANCE_MAX, "업무 중요도를 선택해주세요"),
+    // 슬라이더 1개 값 — 0~100(5 단위)만 들어오므로 min/max만 확인한다. 상세 페이지의
+    // 인라인 편집(weekly-log-detail-view.tsx)과 값 범위가 항상 같아야 한다.
+    progress: z
+      .number()
+      .int()
+      .min(PROGRESS_MIN, "진척률을 확인해주세요")
+      .max(PROGRESS_MAX, "진척률을 확인해주세요"),
     content: z
       .string()
       .min(1, "업무 상세 내용을 입력해주세요")

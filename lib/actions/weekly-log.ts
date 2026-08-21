@@ -36,6 +36,7 @@ function toWeeklyLogPayload(data: WeeklyLogFormData) {
     title: data.title,
     work_type: data.work_type,
     importance: data.importance,
+    progress: data.progress,
     content: sanitizeWeeklyLogContent(data.content),
     start_date: data.start_date,
     target_end_date: data.target_end_date,

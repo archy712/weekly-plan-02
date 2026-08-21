@@ -32,7 +32,7 @@ export function WeeklyLogNewForm({
   // [복원] 클릭 시 WeeklyLogForm을 새 defaultValues로 다시 마운트한다. Tiptap 에디터
   // (components/html-editor.tsx)는 생성 시점의 content만 초기값으로 쓰고 이후 value prop
   // 변화를 구독하지 않으므로(외부 setContent 동기화 없음), form.reset()만으로는 본문
-  // 내용이 반영되지 않는다 — 나머지 8개 필드는 RHF가 defaultValues를 그대로 반영하므로
+  // 내용이 반영되지 않는다 — 나머지 9개 필드는 RHF가 defaultValues를 그대로 반영하므로
   // 함께 재마운트해도 값이 정확히 일치한다.
   const [restoredValues, setRestoredValues] = useState<WeeklyLogFormData | undefined>(undefined);
   const [formInstanceKey, setFormInstanceKey] = useState(0);

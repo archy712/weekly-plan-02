@@ -26,6 +26,12 @@ import {
   IMPORTANCE_MAX,
   IMPORTANCE_MIN,
 } from "@/lib/constants/importance";
+import {
+  DEFAULT_PROGRESS,
+  PROGRESS_MAX,
+  PROGRESS_MIN,
+  PROGRESS_STEP,
+} from "@/lib/constants/progress";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogAttachment, WorkTypeOption } from "@/lib/types";
 import { formatThousandsInput } from "@/lib/utils";
@@ -66,6 +72,7 @@ export function WeeklyLogForm({
       title: defaultValues?.title ?? "",
       work_type: defaultValues?.work_type ?? [],
       importance: defaultValues?.importance ?? DEFAULT_IMPORTANCE,
+      progress: defaultValues?.progress ?? DEFAULT_PROGRESS,
       content: defaultValues?.content ?? "",
       start_date: defaultValues?.start_date ?? "",
       target_end_date: defaultValues?.target_end_date ?? "",
@@ -201,6 +208,38 @@ export function WeeklyLogForm({
                     {IMPORTANCE_LEVELS.map((level) => (
                       <span key={level}>{formatImportanceLabel(level)}</span>
                     ))}
+                  </div>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* 목표진척률(시작일~목표종료일 대비 오늘 위치)과 비교할 실제 진척률 — 자동으로
+            산출할 방법이 마땅치 않아 슬라이더로 직접 입력받는다. 상세 페이지의 "빠른 편집"
+            인라인 슬라이더와 값 범위·단위가 항상 같아야 한다(lib/constants/progress.ts). */}
+        <FormField
+          control={form.control}
+          name="progress"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                진척률{" "}
+                <span className="text-muted-foreground font-normal">{field.value}%</span>
+              </FormLabel>
+              <FormControl>
+                <div className="flex flex-col gap-2 pt-1">
+                  <Slider
+                    min={PROGRESS_MIN}
+                    max={PROGRESS_MAX}
+                    step={PROGRESS_STEP}
+                    value={[field.value]}
+                    onValueChange={([next]) => field.onChange(next)}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0%</span>
+                    <span>50%</span>
+                    <span>100%</span>
                   </div>
                 </div>
               </FormControl>
