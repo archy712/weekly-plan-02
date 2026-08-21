@@ -132,12 +132,14 @@ export function WeeklyLogTable({
                   {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
                       구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
                       완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(displayProgress와
-                      동일한 규칙). 배지와 같은 줄에 붙여 행마다 줄 수가 달라지는 것을 막는다. */}
-                  {(item.status === "completed" ? 100 : item.progress) > 0 && (
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {item.status === "completed" ? 100 : item.progress}%
-                    </span>
-                  )}
+                      동일한 규칙). span 자체는 항상 렌더링해 고정 폭을 예약함으로써, 값이
+                      있는 행과 없는 행 사이에서 배지 위치가 좌우로 엇갈리지 않게 한다
+                      (justify-end라 퍼센트 유무에 따라 그룹 전체 폭이 바뀌면 배지가 밀림). */}
+                  <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                    {(item.status === "completed" ? 100 : item.progress) > 0
+                      ? `${item.status === "completed" ? 100 : item.progress}%`
+                      : ""}
+                  </span>
                 </div>
               </TableCell>
             </TableRow>
