@@ -42,6 +42,9 @@ export function WeeklyLogKanbanCardContent({
     "text-sm font-medium leading-snug",
     item.status === "completed" && "italic line-through text-muted-foreground",
   );
+  // 완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(상세 페이지의
+  // displayProgress와 동일한 규칙, weekly-log-detail-view.tsx 참고).
+  const displayProgress = item.status === "completed" ? 100 : item.progress;
 
   return (
     <div className="flex flex-col gap-2">
@@ -93,15 +96,15 @@ export function WeeklyLogKanbanCardContent({
 
       {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
           구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. */}
-      {item.progress > 0 && (
+      {displayProgress > 0 && (
         <div className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/20">
             <div
               className="h-full rounded-full bg-primary"
-              style={{ width: `${item.progress}%` }}
+              style={{ width: `${displayProgress}%` }}
             />
           </div>
-          <span className="shrink-0">{item.progress}%</span>
+          <span className="shrink-0">{displayProgress}%</span>
         </div>
       )}
 

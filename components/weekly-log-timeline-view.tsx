@@ -185,7 +185,21 @@ export function WeeklyLogTimelineView({
     // (list/kanban 카드와 동일한 author_name → author_email → 폴백 우선순위, weekly-log-card.tsx 등 참고).
     const authorLabel = item.author_name ?? item.author_email ?? "알 수 없는 사용자";
     const dateRangeText = `${formatDate(item.start_date)} ~ ${formatDate(item.target_end_date)}`;
-    return { item, startOffset, spanDays, overdue, clippedStart, clippedEnd, authorLabel, dateRangeText };
+    // 완료 처리된 업무는 실제 progress 값(끝까지 갱신 안 하고 남겨뒀을 수 있음)과
+    // 무관하게 100%로 간주한다 — 상세 페이지의 displayProgress와 동일한 규칙
+    // (weekly-log-detail-view.tsx 참고). 목록/칸반 카드도 이 규칙을 공유한다.
+    const displayProgress = item.status === "completed" ? 100 : item.progress;
+    return {
+      item,
+      startOffset,
+      spanDays,
+      overdue,
+      clippedStart,
+      clippedEnd,
+      authorLabel,
+      dateRangeText,
+      displayProgress,
+    };
   });
 
   const gridTemplateColumns = `${LABEL_WIDTH}px repeat(${totalDays}, minmax(${DAY_MIN_WIDTH}px, 1fr))`;
@@ -386,10 +400,13 @@ export function WeeklyLogTimelineView({
                     clippedEnd,
                     authorLabel,
                     dateRangeText,
+                    displayProgress,
                   }) => {
                     // 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
                     // 구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
-                    const progressText = item.progress > 0 ? ` · 진척률 ${item.progress}%` : "";
+                    // 완료 업무는 displayProgress가 항상 100이라 여기 걸린다.
+                    const progressText =
+                      displayProgress > 0 ? ` · 진척률 ${displayProgress}%` : "";
                     // 마우스오버 시 상태·기간·지연 여부·부서·작성자·진척률을 한 번에 보여주는
                     // 네이티브 title 툴팁 — 이 페이지의 다른 요소(아래 Link의 title 등)와
                     // 동일하게 별도 Tooltip 라이브러리 없이 브라우저 기본 툴팁을 재사용한다.
@@ -440,11 +457,12 @@ export function WeeklyLogTimelineView({
                           >
                             {/* 간트 차트의 흔한 관례 — 막대 안에 진척률만큼 더 어둡게 채워
                                 "기간 대비 실제 완료분"을 한눈에 보이게 한다. 0%(미입력)는
-                                표시하지 않는다. */}
-                            {item.progress > 0 && (
+                                표시하지 않는다. 완료 업무는 실제 저장값과 무관하게 100%로
+                                간주한다(displayProgress, weekly-log-detail-view.tsx와 동일). */}
+                            {displayProgress > 0 && (
                               <div
                                 className="absolute inset-y-0 left-0 bg-black/25"
-                                style={{ width: `${item.progress}%` }}
+                                style={{ width: `${displayProgress}%` }}
                                 aria-hidden
                               />
                             )}
@@ -459,9 +477,9 @@ export function WeeklyLogTimelineView({
                                 완료 3종)이 제각각이라 흰 글자만으로는 대비가 부족할 수 있어,
                                 막대 색과 무관하게 항상 대비가 확보되는 어두운 알약 배경 위에
                                 노란색 글자를 올린다 — 어느 상태색 위에서도 튀는 조합. */}
-                            {item.progress > 0 && (
+                            {displayProgress > 0 && (
                               <span className="relative z-10 ml-1 shrink-0 rounded bg-black/50 px-1 text-[10px] font-bold tabular-nums text-yellow-300">
-                                {item.progress}%
+                                {displayProgress}%
                               </span>
                             )}
                           </div>
@@ -510,7 +528,7 @@ export function WeeklyLogTimelineView({
                 </tr>
               </thead>
               <tbody>
-                {bars.map(({ item, overdue, authorLabel }) => (
+                {bars.map(({ item, overdue, authorLabel, displayProgress }) => (
                   <tr key={item.id}>
                     <th scope="row">{item.title}</th>
                     <td>{item.department_name}</td>
@@ -519,7 +537,7 @@ export function WeeklyLogTimelineView({
                     <td>{formatDate(item.target_end_date)}</td>
                     <td>{getStatusLabel(item.status)}</td>
                     <td>{overdue ? "지연" : "정상"}</td>
-                    <td>{item.progress > 0 ? `${item.progress}%` : "미입력"}</td>
+                    <td>{displayProgress > 0 ? `${displayProgress}%` : "미입력"}</td>
                   </tr>
                 ))}
               </tbody>
