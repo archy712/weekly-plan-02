@@ -213,3 +213,13 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
   - `code-reviewer`(`dev/code-reviewer.md`), `development-planner`(`dev/development-planner.md`, `docs/roadmap/ROADMAP_mvp.md`·`docs/ROADMAP_v1.md` 관리), `starter-cleaner`(`dev/starter-cleaner.md`), `notion-api-database-expert`(`dev/notion-api-database-expert.md`)
   - `prd-generator`, `prd-validator`(`docs/`)
 - `.claude/commands/git/`에 `commit`, `pr`, `merge`, `branch`, `update-roadmap` 슬래시 커맨드가 정의되어 있습니다.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
