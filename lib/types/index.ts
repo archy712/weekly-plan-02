@@ -140,12 +140,16 @@ export type WeeklyLogSortDirection = "asc" | "desc";
 // 무한 스크롤/다운로드 서버 액션은 클라이언트가 보낸 값을 정규화(normalizeWeeklyLogFilters)해
 // 동일 헬퍼(lib/queries/weekly-logs.ts)를 재사용한다. department/status는 ALL_*_FILTER 또는
 // 구체값, q는 trim된 검색어("" = 없음), from/to는 유효한 날짜 문자열 또는 undefined.
+// author는 Task 040(F040)에서 신설된 축 — "내 업무" 위젯이 자기 자신의 id로 목록/칸반을
+// 좁혀 이동하기 위한 용도이며, weekly_logs SELECT가 전 부서 공개이므로 department와 마찬가지로
+// 값 자체에 별도 권한 검증이 필요 없다(RLS가 이미 공개 조회를 허용).
 export type WeeklyLogListFilters = {
   department: DepartmentFilter;
   status: StatusFilter;
   q: string;
   from?: string;
   to?: string;
+  author?: string;
 };
 
 // key가 null이면 기본 정렬(시작일 내림차순, created_at·id로 안정 정렬). 증분 로딩의 range

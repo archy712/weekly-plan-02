@@ -74,6 +74,7 @@ export function WeeklyLogKanbanView({
   currentStatus,
   currentFrom,
   currentTo,
+  currentAuthorId,
   currentUserDepartmentId,
   isAdmin,
   todayIso,
@@ -86,6 +87,10 @@ export function WeeklyLogKanbanView({
   currentStatus: StatusFilter;
   currentFrom?: string;
   currentTo?: string;
+  // Task 040(F040) 신설 축. "내 업무" 위젯의 "지연" 링크가 자신의 id로 칸반을 좁혀 보낼 때
+  // 쓰인다(목록 페이지의 status=in_progress 근사와 달리, 칸반은 카드의 "지연" 표시가
+  // stats_my_work_summary RPC와 동일한 조건이라 정확히 일치한다).
+  currentAuthorId?: string;
   currentUserDepartmentId: string;
   isAdmin: boolean;
   todayIso: string;
@@ -103,7 +108,7 @@ export function WeeklyLogKanbanView({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const filterKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}`;
+  const filterKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}`;
   const [prevKey, setPrevKey] = useState(filterKey);
   if (filterKey !== prevKey) {
     setPrevKey(filterKey);
@@ -117,6 +122,7 @@ export function WeeklyLogKanbanView({
     status?: string;
     from?: string | null;
     to?: string | null;
+    author?: string | null;
   }) => {
     const params = new URLSearchParams();
     params.set("department", overrides.department ?? currentDepartmentId);
@@ -127,6 +133,8 @@ export function WeeklyLogKanbanView({
     const to = overrides.to === null ? "" : (overrides.to ?? currentTo ?? "");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
+    const author = overrides.author === null ? "" : (overrides.author ?? currentAuthorId ?? "");
+    if (author) params.set("author", author);
     startTransition(() => {
       router.push(`/protected/weekly-logs/kanban?${params.toString()}`);
     });
@@ -143,6 +151,7 @@ export function WeeklyLogKanbanView({
     q: currentSearchQuery ?? "",
     from: currentFrom ?? null,
     to: currentTo ?? null,
+    author: currentAuthorId ?? null,
   };
 
   const loadMoreColumn = async (status: WeeklyLogStatus) => {
@@ -272,6 +281,15 @@ export function WeeklyLogKanbanView({
       key: "date",
       label: `기간: ${dateRangeLabel}`,
       onRemove: () => navigate({ from: null, to: null }),
+    });
+  }
+  // author는 "내 업무" 위젯의 "지연" 링크만 이 값을 채운다(본인 id 고정) — 라벨을 항상
+  // "나"로 고정한다(목록 페이지 weekly-log-list-view.tsx와 동일한 결정).
+  if (currentAuthorId) {
+    activeFilters.push({
+      key: "author",
+      label: "작성자: 나",
+      onRemove: () => navigate({ author: null }),
     });
   }
 

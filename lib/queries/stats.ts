@@ -3,6 +3,7 @@ import type {
   DepartmentLogStats,
   ImportanceLogStats,
   MonthlyLogTrend,
+  MyWorkSummary,
   ReactionSummaryStats,
   StatsDateRange,
   StatusLogStats,
@@ -181,4 +182,34 @@ export async function getWorkloadSummary(
   }
 
   return data ?? [];
+}
+
+// "내 업무" 개인 요약(Task 040/F040) — 지연/이번 주 마감/진행중 3개 지표를 왕복 1회로 조회.
+// today_param은 칸반보드(app/protected/weekly-logs/kanban/page.tsx)와 동일하게 호출부가
+// 서버 렌더링 시점의 Node 날짜(formatDate(new Date()))를 넘겨야 한다 — RPC 내부는
+// current_date를 참조하지 않으므로 이 값이 두 화면의 "지연" 판정을 일치시키는 유일한 축이다.
+// 위젯 하나의 RPC 실패가 목록 페이지 전체를 죽이면 안 되므로, 다른 stats_* 래퍼와 달리
+// 빈 배열이 아니라 0으로 채운 단일 객체로 폴백한다(위젯이 "0건"으로 조용히 렌더링됨).
+export async function getMyWorkSummary(
+  authorId: string,
+  todayIso: string,
+): Promise<MyWorkSummary> {
+  const fallback: MyWorkSummary = {
+    overdue_count: 0,
+    due_this_week_count: 0,
+    in_progress_count: 0,
+  };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stats_my_work_summary", {
+    author_id_param: authorId,
+    today_param: todayIso,
+  });
+
+  if (error) {
+    console.error("[lib/queries/stats] stats_my_work_summary 조회 실패:", error);
+    return fallback;
+  }
+
+  return data?.[0] ?? fallback;
 }

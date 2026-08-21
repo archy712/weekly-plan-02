@@ -67,6 +67,7 @@ export function WeeklyLogListView({
   currentStatus,
   currentFrom,
   currentTo,
+  currentAuthorId,
   currentSortKey,
   currentSortDirection,
 }: {
@@ -80,6 +81,9 @@ export function WeeklyLogListView({
   currentStatus: StatusFilter;
   currentFrom?: string;
   currentTo?: string;
+  // Task 040(F040) 신설 축. "내 업무" 위젯이 자기 자신의 id로 좁혀 이동할 때만 쓰이므로,
+  // 배지 라벨은 항상 "작성자: 나"로 고정한다(다른 사용자의 id를 지정하는 UI가 없음).
+  currentAuthorId?: string;
   currentSortKey: WeeklyLogSortKey | null;
   currentSortDirection: WeeklyLogSortDirection;
 }) {
@@ -100,13 +104,13 @@ export function WeeklyLogListView({
   const loadingRef = useRef(false);
 
   const [prevKey, setPrevKey] = useState(
-    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`,
+    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`,
   );
 
-  // 부서/진행상태/기간/검색어/정렬(서버에서 확정된 값)이 바뀌면 서버가 첫 배치를 다시 내려
-  // initialItems가 갱신되므로, 목록 상태를 그 첫 배치로 되돌린다(뒤로가기·필터 변경 대응).
-  // (렌더링 중 상태 조정 — https://react.dev/learn/you-might-not-need-an-effect)
-  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`;
+  // 부서/진행상태/기간/검색어/작성자/정렬(서버에서 확정된 값)이 바뀌면 서버가 첫 배치를
+  // 다시 내려 initialItems가 갱신되므로, 목록 상태를 그 첫 배치로 되돌린다(뒤로가기·필터
+  // 변경 대응). (렌더링 중 상태 조정 — https://react.dev/learn/you-might-not-need-an-effect)
+  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`;
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
     setItems(initialItems);
@@ -114,18 +118,20 @@ export function WeeklyLogListView({
     setSearchInput(currentSearchQuery ?? "");
   }
 
-  // 부서/상태/검색어/기간/정렬 필터는 클라이언트 상태가 아니라 URL로 관리한다 — 서버
+  // 부서/상태/검색어/기간/작성자/정렬 필터는 클라이언트 상태가 아니라 URL로 관리한다 — 서버
   // 컴포넌트가 searchParams를 읽어 첫 배치를 다시 조회한다. weekly_logs SELECT는 전 부서
   // 공개이므로 이 필터는 관리자 여부와 관계없이 누구나 사용할 수 있다.
   // "전체 부서"를 골랐을 때도 파라미터를 명시적으로 남겨야, 파라미터가 아예 없는
   // 최초 진입(기본값: admin은 전체, 일반 유저는 소속 부서)과 구분된다.
-  // from/to/sort는 명시적으로 null을 넘기면 해제(파라미터 제거), undefined면 현재 값을 유지한다.
+  // from/to/author/sort는 명시적으로 null을 넘기면 해제(파라미터 제거), undefined면 현재
+  // 값을 유지한다.
   const navigate = (overrides: {
     department?: string;
     q?: string;
     status?: string;
     from?: string | null;
     to?: string | null;
+    author?: string | null;
     sort?: WeeklyLogSortKey | null;
     dir?: WeeklyLogSortDirection;
   }) => {
@@ -138,6 +144,8 @@ export function WeeklyLogListView({
     const to = overrides.to === null ? "" : (overrides.to ?? currentTo ?? "");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
+    const author = overrides.author === null ? "" : (overrides.author ?? currentAuthorId ?? "");
+    if (author) params.set("author", author);
     const sortKey = overrides.sort === null ? null : (overrides.sort ?? currentSortKey);
     if (sortKey) {
       params.set("sort", sortKey);
@@ -193,6 +201,7 @@ export function WeeklyLogListView({
     q: currentSearchQuery ?? "",
     from: currentFrom ?? null,
     to: currentTo ?? null,
+    author: currentAuthorId ?? null,
   };
   const rawSort = { key: currentSortKey, direction: currentSortDirection };
 
@@ -360,6 +369,15 @@ export function WeeklyLogListView({
       key: "date",
       label: `기간: ${dateRangeLabel}`,
       onRemove: handleDateRangeReset,
+    });
+  }
+  // author는 "내 업무" 위젯이 본인 id로만 링크를 만들기 때문에(다른 사용자를 지정하는
+  // UI가 없음) 라벨을 항상 "나"로 고정한다.
+  if (currentAuthorId) {
+    activeFilters.push({
+      key: "author",
+      label: "작성자: 나",
+      onRemove: () => navigate({ author: null }),
     });
   }
 

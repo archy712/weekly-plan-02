@@ -18,6 +18,7 @@ type RawFilters = {
   q?: string | null;
   from?: string | null;
   to?: string | null;
+  author?: string | null;
 };
 
 type RawSort = {

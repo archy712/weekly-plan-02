@@ -65,3 +65,12 @@ export type StatsDateRange = {
   from?: string;
   to?: string;
 };
+
+// Task 040(F040): "내 업무" 개인 요약 위젯 — stats_my_work_summary(author_id_param, today_param).
+// 다른 stats_*와 달리 부서/조직 축이 아니라 작성자(author_id) 단일 축이고, 항상 성공 시
+// 정확히 1행을 반환한다(getWorkloadSummary와 동일한 배열-단일행 관례). overdue_count/
+// due_this_week_count/in_progress_count 정의는 마이그레이션 주석 및
+// components/weekly-log-kanban-column.tsx:71 참고 — "지연"은 그 조건과 문자 그대로 동일해야
+// 한다.
+export type MyWorkSummary =
+  StatsFunctions["stats_my_work_summary"]["Returns"][number];

@@ -54,6 +54,7 @@ export function normalizeWeeklyLogFilters(raw: {
   q?: string | null;
   from?: string | null;
   to?: string | null;
+  author?: string | null;
 }): WeeklyLogListFilters {
   const status =
     raw.status && VALID_STATUSES.includes(raw.status as WeeklyLogStatus)
@@ -67,12 +68,18 @@ export function normalizeWeeklyLogFilters(raw: {
     [from, to] = [to, from];
   }
 
+  // author는 department와 마찬가지로 RLS(전 부서 공개 SELECT)로 보호되는 공개 조회라
+  // 값 자체의 유효성(존재하는 사용자 id인지)을 여기서 검증하지 않고 그대로 통과시킨다 —
+  // 존재하지 않는 id를 넘기면 그냥 0건이 나올 뿐이다.
+  const author = raw.author && raw.author.trim() ? raw.author.trim() : undefined;
+
   return {
     department: raw.department || ALL_DEPARTMENTS_FILTER,
     status,
     q: (raw.q ?? "").trim(),
     from,
     to,
+    author,
   };
 }
 
@@ -117,6 +124,12 @@ function applyScalarFilters<
   }
   if (filters.from) {
     query = query.gte("target_end_date", filters.from);
+  }
+  // Task 040(F040) 신설 축. 목록 조회(buildWeeklyLogsQuery)와 countWeeklyLogs()가 이 함수를
+  // 공유하므로, 여기 한 곳만 고치면 두 곳 모두에 반영된다(칸반의 fetchWeeklyLogsKanban도
+  // 동일 헬퍼를 쓰므로 자동으로 함께 반영됨).
+  if (filters.author) {
+    query = query.eq("author_id", filters.author);
   }
   return query;
 }

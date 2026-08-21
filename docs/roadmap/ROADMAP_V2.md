@@ -131,35 +131,36 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 일반 사용자가 **자기 업무 현황을 목록 진입 즉시 파악**하고, **작성하던 내용을 잃지 않는** 상태.
 > **선행 조건**: 없음 (즉시 착수 가능). Phase 3와 병렬 진행 가능.
 
-- **Task 040: "내 업무" 개인 요약 위젯 구현 (F040)** - 우선순위
-  - [ ] **집계 방식 결정 (착수 첫 단계)** — 아래 3안을 비교하고 근거를 코드 주석에 남긴다.
+- **Task 040: "내 업무" 개인 요약 위젯 구현 (F040)** ✅
+  - [x] **집계 방식 결정 (착수 첫 단계)** — 권장안 (A) 신규 RPC 1종 `stats_my_work_summary(...)`를 그대로 채택. 근거는 마이그레이션 `add_my_work_summary_stats_function`의 코드 주석에 남김(왕복 1회, 기존 `stats_*` 7종과 컨벤션 일치).
     - (A) **신규 RPC 1종 `stats_my_work_summary(...)`** ← **권장**. 왕복 1회로 3개 숫자를 모두 얻고, 기존 `stats_*` 7종과 컨벤션이 완전히 일치한다
     - (B) 기존 7종에 `author_id` 파라미터 추가 — 시그니처 7개 변경 + 타입 재생성 + 모든 호출부 수정이 필요한데 대시보드는 개인 축을 쓰지 않으므로 **비용만 크고 이득이 없음**
     - (C) RPC 없이 서버 컴포넌트에서 `count: "exact", head: true` 3회 병렬 조회 — 마이그레이션이 없어 가장 가볍지만 왕복 3회이고 F032(성능 개선) 방향과 반대
-  - [ ] **DB 마이그레이션** — `stats_my_work_summary(author_id_param uuid, today_param date)` 신규. 기존 7종과 **동일한 컨벤션**: `language sql stable security invoker set search_path = ''`, 생성 직후 **`revoke execute ... from anon` 명시적 회수**(v1 Task 030에서 `revoke from public`만으로는 부족함을 실측한 전례 — Supabase 기본 권한이 `anon`에게 개별 부여함). 단일 행으로 `overdue_count` / `due_this_week_count` / `in_progress_count`(필요 시 `total_count`)를 반환
-  - [ ] **"지연" 정의를 칸반과 동일하게 고정** — `status <> 'completed' and target_end_date < today_param`. `components/weekly-log-kanban-column.tsx:71`의 `status !== "completed" && item.target_end_date < todayIso`와 **문자 그대로 같은 조건**이어야 하며, 이 사실을 마이그레이션 주석과 RPC 호출부 주석 양쪽에 남긴다
-  - [ ] **⚠️ 타임존 결정 (놓치기 쉬운 지점)** — 칸반은 `todayIso`를 **서버 렌더링 시점의 Node `new Date()`**(`formatDate(new Date())`, `app/protected/weekly-logs/kanban/page.tsx:84`)로 계산해 내려줍니다. RPC 안에서 `current_date`를 쓰면 **Postgres 세션 타임존(Supabase 기본 UTC)** 기준이 되어 두 화면이 하루 어긋날 수 있습니다. → **`today_param`을 파라미터로 받아 호출부에서 칸반과 동일한 값을 넘기는 방식**을 채택하고, RPC 내부에서 `current_date`를 직접 참조하지 않는다
-  - [ ] **"이번 주 마감" 정의** — 월요일 시작 기준의 이번 주(`date_trunc('week', today_param)::date` ~ `+6일`)에 `target_end_date`가 속하고 `status <> 'completed'`인 건. 지연 건과의 중복 여부(이미 지난 마감은 "지연"으로만 셀지)를 결정해 캡션에 명시
-  - [ ] `lib/queries/stats.ts`에 `getMyWorkSummary()` 추가 — 기존 7개 래퍼와 동일하게 `await createClient()`(전역 저장 금지) → `.rpc(...)` → **실패 시 예외를 던지지 않고 0 폴백 + 콘솔 로그**(위젯 하나가 목록 페이지 전체를 죽이지 않게)
-  - [ ] `lib/types/stats.ts`에 `MyWorkSummary` 타입 추가 — `Database["public"]["Functions"]` 반환 타입 재노출 관례 유지
-  - [ ] **`author` 필터 축 신설** — `WeeklyLogsSearchParams`/`WeeklyLogKanbanSearchParams`에 `author?: string` 추가, `normalizeWeeklyLogFilters()`에 정규화 추가, **`applyScalarFilters()`에 `.eq("author_id", ...)` 추가**. 이 헬퍼는 목록 조회와 `countWeeklyLogs()`가 **공유**하므로 한쪽만 고치면 "총 N건"이 화면과 어긋난다(F039의 교훈). 칸반(`fetchWeeklyLogsKanban`)도 같은 헬퍼를 쓰므로 자동 반영됨
-  - [ ] `components/my-work-summary-widget.tsx` 신규 — `ui/card` 3장(또는 1장 안의 3분할). 각 숫자를 **클릭 가능한 링크**로 만들어 대응 필터가 적용된 목록으로 이동(예: 지연 → `?author={me}&status=in_progress` + 기간, 진행중 → `?author={me}&status=in_progress`). 0건일 때는 링크를 비활성화하고 회색 처리
-  - [ ] `app/protected/weekly-logs/page.tsx`에 위젯 배치 — **목록과 별도의 `<Suspense>` 경계**로 감싼다(`cacheComponents: true` 하에서 위젯 집계가 목록 스트리밍을 지연시키지 않도록). 스켈레톤은 `components/my-work-summary-skeleton.tsx` 신규
-  - [ ] 반응형 — 데스크탑 가로 3분할, 모바일 세로 1열 또는 한 줄 요약. 기존 필터 행 위에 배치하되 **목록 첫 화면을 밀어내지 않을 만큼 낮게** 유지
-  - [ ] 접근성 — 숫자만으로는 의미가 전달되지 않으므로 각 항목에 `aria-label`("지연된 내 업무 3건")을 부여(v1 Task 031에서 차트 `aria-label` 누락이 실제로 발견된 전례 반영)
-  - **관련 파일**: DB 마이그레이션(`add_my_work_summary_stats_function`), `lib/queries/stats.ts`, `lib/types/stats.ts`, `lib/queries/weekly-logs.ts`(필터 축 추가), `app/protected/weekly-logs/page.tsx`, `app/protected/weekly-logs/kanban/page.tsx`, `components/my-work-summary-widget.tsx`(신규), `components/my-work-summary-skeleton.tsx`(신규), `components/weekly-log-list-view.tsx`(활성 필터 배지에 `author` 추가), `lib/supabase/database.types.ts`
-  - **수락 기준**: 일반 사용자가 `/protected/weekly-logs` 진입 즉시 본인의 지연·이번 주 마감·진행중 건수를 확인할 수 있고, 각 숫자가 **칸반보드의 "지연" 배지 개수 및 필터 적용 목록의 총 건수와 정확히 일치**하며, 위젯 집계가 실패해도 목록은 정상 렌더링된다
-  - **테스트 체크리스트** (Playwright MCP + Supabase MCP. 임시 QA 계정을 실제 회원가입 플로우로 생성하고 소유 로그를 조작해 검증, 종료 후 `auth.users` DELETE로 완전 삭제해 65 profiles / 325 logs 기준선으로 원복 확인)
-    - [ ] RPC를 `execute_sql`로 직접 호출한 값이 **동일 조건의 수동 `count` 쿼리와 일치**하는지 3개 지표 각각 대조
-    - [ ] 위젯 숫자 ↔ `?author={me}&status=...` 목록의 "총 N건" ↔ 칸반보드의 "지연" 배지 개수 **3자 일치** 확인
-    - [ ] 경계값: `target_end_date = 오늘`인 로그가 지연에 **포함되지 않고** 이번 주 마감에 **포함**되는지, `target_end_date = 어제`가 지연에만 잡히는지 확인
-    - [ ] 타임존 회귀: DB 세션 타임존을 UTC/`Asia/Seoul`로 각각 바꿔 RPC를 호출해도 **`today_param`을 넘기는 한 결과가 동일**한지 확인(내부 `current_date` 의존이 남아 있지 않다는 증거)
-    - [ ] 로그 0건 사용자(신규 가입 계정)에서 위젯이 0/0/0으로 오류 없이 렌더링되고 링크가 비활성화되는지 확인
-    - [ ] 완료 처리된 로그가 세 지표 어디에도 잡히지 않는지 확인
-    - [ ] 일반 사용자를 impersonate(`set local role authenticated` + `request.jwt.claims`)해 **타인의 `author_id`를 넘겨 RPC 호출** → `weekly_logs` SELECT가 전 부서 공개이므로 결과가 나오는 것이 정상임을 확인하되, **위젯 UI가 항상 본인 id만 넘기는지**(클라이언트가 임의 id를 주입할 경로가 없는지) 서버 컴포넌트 코드로 확인
-    - [ ] `anon` 역할로 RPC 호출 시 `42501 permission denied`로 명시적 거부되는지 확인(EXECUTE 권한 회수 검증)
-    - [ ] Playwright로 RPC 실패를 강제(네트워크 가로채기 또는 잘못된 파라미터)했을 때 목록이 정상 렌더링되고 콘솔 에러만 남는지 확인
-  - **범위 밖 유지**: 부서 단위 요약(관리자 대시보드가 이미 담당), 위젯 커스터마이징(표시 지표 선택), 위젯을 다른 페이지로 확산하는 것
+  - [x] **DB 마이그레이션** — `stats_my_work_summary(author_id_param uuid, today_param date)` 신규. 기존 7종과 **동일한 컨벤션**: `language sql stable security invoker set search_path = ''`, 생성 직후 **`revoke execute ... from anon` 명시적 회수**(v1 Task 030에서 `revoke from public`만으로는 부족함을 실측한 전례 — Supabase 기본 권한이 `anon`에게 개별 부여함). 단일 행으로 `overdue_count` / `due_this_week_count` / `in_progress_count`(필요 시 `total_count`)를 반환
+  - [x] **"지연" 정의를 칸반과 동일하게 고정** — `status <> 'completed' and target_end_date < today_param`. `components/weekly-log-kanban-column.tsx:71`의 `status !== "completed" && item.target_end_date < todayIso`와 **문자 그대로 같은 조건**이어야 하며, 이 사실을 마이그레이션 주석과 RPC 호출부 주석 양쪽에 남긴다
+  - [x] **⚠️ 타임존 결정 (놓치기 쉬운 지점)** — 칸반은 `todayIso`를 **서버 렌더링 시점의 Node `new Date()`**(`formatDate(new Date())`, `app/protected/weekly-logs/kanban/page.tsx:84`)로 계산해 내려줍니다. RPC 안에서 `current_date`를 쓰면 **Postgres 세션 타임존(Supabase 기본 UTC)** 기준이 되어 두 화면이 하루 어긋날 수 있습니다. → **`today_param`을 파라미터로 받아 호출부에서 칸반과 동일한 값을 넘기는 방식**을 채택하고, RPC 내부에서 `current_date`를 직접 참조하지 않는다
+  - [x] **"이번 주 마감" 정의** — 월요일 시작 기준의 이번 주(`date_trunc('week', today_param)::date` ~ `+6일`)에 `target_end_date`가 속하고 `status <> 'completed'`인 건. **"지연"과 상호 배타적으로 결정**(`target_end_date >= today_param` 조건 추가) — 이미 지난 마감은 "지연"으로만 집계되고 "이번 주 마감"에는 중복되지 않음. 근거는 마이그레이션 주석에 명시.
+  - [x] `lib/queries/stats.ts`에 `getMyWorkSummary()` 추가 — 기존 7개 래퍼와 동일하게 `await createClient()`(전역 저장 금지) → `.rpc(...)` → **실패 시 예외를 던지지 않고 0 폴백 + 콘솔 로그**(위젯 하나가 목록 페이지 전체를 죽이지 않게)
+  - [x] `lib/types/stats.ts`에 `MyWorkSummary` 타입 추가 — `Database["public"]["Functions"]` 반환 타입 재노출 관례 유지
+  - [x] **`author` 필터 축 신설** — `WeeklyLogsSearchParams`/`WeeklyLogKanbanSearchParams`에 `author?: string` 추가, `normalizeWeeklyLogFilters()`에 정규화 추가, **`applyScalarFilters()`에 `.eq("author_id", ...)` 추가**. 이 헬퍼는 목록 조회와 `countWeeklyLogs()`가 **공유**하므로 한쪽만 고치면 "총 N건"이 화면과 어긋난다(F039의 교훈). 칸반(`fetchWeeklyLogsKanban`)도 같은 헬퍼를 쓰므로 자동 반영됨 — 실제로 `WeeklyLogKanbanView`/kanban `page.tsx`에도 `author` 축(네비게이션·활성 필터 배지 포함)을 함께 배선해 목록과 대칭을 맞췄다.
+  - [x] `components/my-work-summary-widget.tsx` 신규 — `ui/card` 1장 안의 3분할. 각 숫자를 **클릭 가능한 링크**로 만들어 대응 필터가 적용된 화면으로 이동. 0건일 때는 링크를 비활성화하고 회색 처리.
+    - **⚠️ 계획과 다르게 처리한 부분**: 로드맵이 예시로 든 `?author={me}&status=in_progress` 링크를 "지연"에 그대로 쓰면 부정확함을 구현 중 실측으로 확인했다 — 이 프로젝트 시드 데이터 기준 지연 203건 중 69건(34%)이 `status='planned'`라 `status=in_progress` 단일값 필터로는 표현할 수 없다(기존 `applyScalarFilters`는 단일 상태 equality만 지원, "완료 아님"을 표현할 방법이 없음). 그래서 **"지연" 숫자는 목록이 아니라 칸반보드(`?department=all&author={id}`)로 링크**한다 — 칸반 카드의 빨간 "지연" 표시가 RPC와 동일한 조건이라 정확히 일치하며, Playwright로 3자 일치(위젯 숫자=칸반 지연 배지 개수=RPC)를 직접 검증했다. "진행중"은 `?author={id}&status=in_progress`로 목록에 링크해 **정확히 일치**함을 검증했다. "이번 주 마감"은 `?author={id}&status=in_progress&from={todayIso}`로 목표종료일 하한(오늘 이후)만 정확히 표현 가능하고 상한(이번 주 종료일)은 기존 필터로 표현할 수 없어 **근사치**(이번 주보다 늦게 마감인 진행중 업무도 함께 보일 수 있음)임을 위젯 컴포넌트 주석과 아래 수락 기준 메모에 남겼다. 이 상한 필터 신설은 author 축 신설만 명시된 Task 040 범위 밖으로 남겨둔다.
+  - [x] `app/protected/weekly-logs/page.tsx`에 위젯 배치 — **목록과 별도의 `<Suspense>` 경계**로 감싼다(`cacheComponents: true` 하에서 위젯 집계가 목록 스트리밍을 지연시키지 않도록). 스켈레톤은 `components/my-work-summary-skeleton.tsx` 신규. 위젯 섹션은 목록과 별개로 자체 `getClaims()`를 호출해 독립적으로 스트리밍된다(공통 상위 컴포넌트의 인증 결과를 재사용할 수 없음 — Suspense 경계가 각자 필요).
+  - [x] 반응형 — 데스크탑 가로 3분할(`sm:grid-cols-3`), 모바일 세로 1열(`grid-cols-1`). 필터 행 위에 낮게 배치.
+  - [x] 접근성 — 각 항목에 `aria-label`("지연인 내 업무 3건" 형식)을 부여, Playwright 스냅샷으로 실제 렌더링 확인.
+  - **관련 파일**: DB 마이그레이션(`add_my_work_summary_stats_function`), `lib/queries/stats.ts`, `lib/types/stats.ts`, `lib/types/index.ts`(`WeeklyLogListFilters.author`), `lib/queries/weekly-logs.ts`(필터 축 추가), `lib/actions/weekly-log-list.ts`(`RawFilters.author`), `app/protected/weekly-logs/page.tsx`, `app/protected/weekly-logs/kanban/page.tsx`, `components/my-work-summary-widget.tsx`(신규), `components/my-work-summary-skeleton.tsx`(신규), `components/weekly-log-list-view.tsx`(활성 필터 배지·`navigate`·`rawFilters`에 `author` 추가), `components/weekly-log-kanban-view.tsx`(동일), `lib/supabase/database.types.ts`
+  - **수락 기준**: 일반 사용자가 `/protected/weekly-logs` 진입 즉시 본인의 지연·이번 주 마감·진행중 건수를 확인할 수 있고, 위젯 집계가 실패해도 목록은 정상 렌더링된다. **"지연"/"진행중"은 칸반보드·목록의 대응 숫자와 정확히 일치를 Playwright로 실측 확인했다.** "이번 주 마감"은 위 결정 메모대로 목록 필터 아키텍처(단일 상태값·overlap 기반 기간 필터)의 한계로 목록 링크가 상한 없는 근사치임을 감안해야 한다(실측: 위젯 2건 vs 근사 링크 목록 3건, RPC 자체 숫자는 정확).
+  - **테스트 체크리스트** (Playwright MCP + Supabase MCP. 임시 QA 계정을 실제 회원가입 플로우로 생성하고 소유 로그를 조작해 검증, 종료 후 `auth.users` DELETE로 완전 삭제해 65 profiles / 325 logs 기준선으로 원복 확인 — 실제로 `qa-f040-test@example.com` 계정으로 수행 후 원복 완료)
+    - [x] RPC를 `execute_sql`로 직접 호출한 값이 **동일 조건의 수동 `count` 쿼리와 일치**하는지 3개 지표 각각 대조 — 일치 확인(overdue 25/25, due_this_week 0/0, in_progress 10/10)
+    - [x] 위젯 숫자 ↔ `?author={me}&status=...` 목록의 "총 N건" ↔ 칸반보드의 "지연" 배지 개수 **3자 일치** 확인 — "지연"(2=2, 칸반)·"진행중"(4=4, 목록) 정확히 일치, "이번 주 마감"은 위 결정 메모대로 근사(2 vs 3)임을 실측 확인
+    - [x] 경계값: `target_end_date = 오늘`인 로그가 지연에 **포함되지 않고** 이번 주 마감에 **포함**되는지, `target_end_date = 어제`가 지연에만 잡히는지 확인 — QA 로그로 실측(오늘마감→이번 주 마감만, 어제마감→지연만)
+    - [x] 타임존 회귀: DB 세션 타임존을 UTC/`Asia/Seoul`로 각각 바꿔 RPC를 호출해도 **`today_param`을 넘기는 한 결과가 동일**한지 확인(내부 `current_date` 의존이 남아 있지 않다는 증거) — 동일 결과 확인
+    - [x] 로그 0건 사용자(신규 가입 계정)에서 위젯이 0/0/0으로 오류 없이 렌더링되고 링크가 비활성화되는지 확인 — 확인(disabled 상태, 링크 아님)
+    - [x] 완료 처리된 로그가 세 지표 어디에도 잡히지 않는지 확인 — QA 로그(`QA-완료-과거마감`, 과거 마감·completed)로 실측, 지연·이번주마감·칸반 지연 배지 모두 미포함
+    - [x] 일반 사용자를 impersonate(`set local role authenticated` + `request.jwt.claims`)해 **타인의 `author_id`를 넘겨 RPC 호출** → `weekly_logs` SELECT가 전 부서 공개이므로 결과가 나오는 것이 정상임을 확인하되, **위젯 UI가 항상 본인 id만 넘기는지**(클라이언트가 임의 id를 주입할 경로가 없는지) 서버 컴포넌트 코드로 확인 — impersonation으로 타인 id 조회 성공 확인(설계대로), `app/protected/weekly-logs/page.tsx`의 `MyWorkSummarySection`이 `data.claims.sub`만 넘기는 것 코드 확인
+    - [x] `anon` 역할로 RPC 호출 시 `42501 permission denied`로 명시적 거부되는지 확인(EXECUTE 권한 회수 검증) — 확인
+    - [x] Playwright로 RPC 실패를 강제(네트워크 가로채기 또는 잘못된 파라미터)했을 때 목록이 정상 렌더링되고 콘솔 에러만 남는지 확인 — 브라우저 `page.route` 가로채기는 서버 사이드 RPC 호출(Server Component → Supabase)에는 적용되지 않아, 대신 `authenticated` 권한을 일시 회수해 강제 실패시킨 뒤 위젯 0/0/0 폴백 + 목록 정상 렌더링 + 콘솔에 `[lib/queries/stats] stats_my_work_summary 조회 실패` 로그만 남는 것을 확인, 이후 권한 즉시 원복
+  - **범위 밖 유지**: 부서 단위 요약(관리자 대시보드가 이미 담당), 위젯 커스터마이징(표시 지표 선택), 위젯을 다른 페이지로 확산하는 것, "이번 주 마감"의 정확한 목록 필터를 위한 신규 상한 날짜 필터 축(위 결정 메모 참고 — Task 040 범위 밖)
 
 - **Task 041: 주간업무일지 작성 중 임시저장 구현 (F042)**
   - [ ] **스코프 확정 (착수 첫 단계)** — 저장 대상은 `WeeklyLogFormData`(`lib/schemas/weekly-log.ts`)의 **9개 필드 전부**(`title`, `work_type`, `importance`, `content`, `start_date`, `target_end_date`, `estimated_mm`, `estimated_cost`, `partner_company`). 이 타입은 전부 문자열·숫자·문자열 배열이라 **JSON 직렬화가 온전히 가능**하다. **첨부파일은 `File` 객체라 직렬화 불가 → 명시적으로 제외**하고, 복원 배너에 "첨부파일은 복원되지 않습니다" 문구를 노출한다

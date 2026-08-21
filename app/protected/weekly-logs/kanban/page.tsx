@@ -15,6 +15,7 @@ type WeeklyLogKanbanSearchParams = {
   status?: string;
   from?: string;
   to?: string;
+  author?: string;
 };
 
 async function WeeklyLogKanbanContent({
@@ -50,6 +51,7 @@ async function WeeklyLogKanbanContent({
     q: params.q,
     from: params.from,
     to: params.to,
+    author: params.author,
   });
 
   const [columns, departmentRows] = await Promise.all([
@@ -77,6 +79,7 @@ async function WeeklyLogKanbanContent({
       currentStatus={filters.status}
       currentFrom={filters.from}
       currentTo={filters.to}
+      currentAuthorId={filters.author}
       currentUserDepartmentId={profile.department_id}
       isAdmin={isAdmin}
       // 카드의 "지연" 표시(목표종료일 경과)는 서버 렌더링 시점 날짜를 그대로 기준으로 삼아
