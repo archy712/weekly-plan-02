@@ -127,16 +127,18 @@ export function WeeklyLogTable({
                 {formatDate(item.target_end_date)}
               </TableCell>
               <TableCell className="py-3 pr-4 text-right">
-                <StatusBadge status={item.status} />
-                {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-                    구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
-                    완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(displayProgress와
-                    동일한 규칙). */}
-                {(item.status === "completed" ? 100 : item.progress) > 0 && (
-                  <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-                    진척률 {item.status === "completed" ? 100 : item.progress}%
-                  </p>
-                )}
+                <div className="flex items-center justify-end gap-1.5">
+                  <StatusBadge status={item.status} />
+                  {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
+                      구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
+                      완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(displayProgress와
+                      동일한 규칙). 배지와 같은 줄에 붙여 행마다 줄 수가 달라지는 것을 막는다. */}
+                  {(item.status === "completed" ? 100 : item.progress) > 0 && (
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {item.status === "completed" ? 100 : item.progress}%
+                    </span>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

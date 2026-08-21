@@ -92,21 +92,12 @@ export function WeeklyLogKanbanCardContent({
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
         </span>
         {overdue && <span className="font-medium">지연</span>}
+        {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
+            구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. 별도
+            막대 블록 대신 날짜 줄에 인라인으로 붙여, 카드마다 진척률 유무로 높이가
+            달라지지 않게 한다(목록 테이블과 동일한 원칙). */}
+        {displayProgress > 0 && <span>· {displayProgress}%</span>}
       </div>
-
-      {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-          구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. */}
-      {displayProgress > 0 && (
-        <div className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-primary/20">
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${displayProgress}%` }}
-            />
-          </div>
-          <span className="shrink-0">{displayProgress}%</span>
-        </div>
-      )}
 
       <WeeklyLogReactionCounts up={item.reaction_up_count} down={item.reaction_down_count} />
     </div>

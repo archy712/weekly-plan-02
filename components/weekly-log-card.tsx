@@ -42,7 +42,18 @@ export function WeeklyLogCard({
             )}
           </Link>
         </CardTitle>
-        <StatusBadge status={item.status} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <StatusBadge status={item.status} />
+          {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
+              구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. 배지와
+              같은 줄에 붙여, 카드마다 진척률 유무로 CardContent 줄 수가 달라지지 않게 한다
+              (목록 테이블과 동일한 원칙). */}
+          {displayProgress > 0 && (
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {displayProgress}%
+            </span>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-1 p-4 pt-0 text-sm text-muted-foreground">
         {showAuthor && (
@@ -58,9 +69,6 @@ export function WeeklyLogCard({
         <span>
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
         </span>
-        {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-            구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. */}
-        {displayProgress > 0 && <span>진척률 {displayProgress}%</span>}
         <WeeklyLogReactionCounts up={item.reaction_up_count} down={item.reaction_down_count} />
       </CardContent>
     </Card>
