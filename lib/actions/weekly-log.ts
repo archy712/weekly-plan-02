@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html-server";
 import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
+import { PROGRESS_MAX, PROGRESS_MIN } from "@/lib/constants/progress";
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 import { z } from "zod";
@@ -16,6 +17,8 @@ const workTypeUpdateSchema = z
   .min(1, "업무 타입을 1개 이상 선택해주세요");
 
 const importanceUpdateSchema = z.number().int().min(IMPORTANCE_MIN).max(IMPORTANCE_MAX);
+
+const progressUpdateSchema = z.number().int().min(PROGRESS_MIN).max(PROGRESS_MAX);
 
 export type WeeklyLogActionResult =
   | { success: true }
@@ -203,6 +206,42 @@ export async function updateWeeklyLogImportanceAction(
 
   if (error) {
     return { success: false, error: "업무 중요도 변경 중 오류가 발생했습니다." };
+  }
+  if (!updated) {
+    return { success: false, error: "변경 권한이 없거나 존재하지 않는 항목입니다." };
+  }
+
+  revalidatePath("/protected/weekly-logs");
+  revalidatePath(`/protected/weekly-logs/${id}`);
+  return { success: true };
+}
+
+// 진척률(F048 ad hoc) — 중요도와 동일한 슬라이더 인라인 편집 패턴. "목표진척률"은 저장하지
+// 않는 계산값(lib/utils.ts의 computeTargetProgress)이라 이 액션은 실제 진척률만 다룬다.
+export async function updateWeeklyLogProgressAction(
+  id: string,
+  progress: number,
+): Promise<WeeklyLogActionResult> {
+  const parsed = progressUpdateSchema.safeParse(progress);
+  if (!parsed.success) {
+    return { success: false, error: "진척률을 확인해주세요." };
+  }
+
+  const supabase = await createClient();
+  const { data, error: claimsError } = await supabase.auth.getClaims();
+  if (claimsError || !data?.claims) {
+    return { success: false, error: "로그인이 필요합니다." };
+  }
+
+  const { data: updated, error } = await supabase
+    .from("weekly_logs")
+    .update({ progress: parsed.data })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { success: false, error: "진척률 변경 중 오류가 발생했습니다." };
   }
   if (!updated) {
     return { success: false, error: "변경 권한이 없거나 존재하지 않는 항목입니다." };

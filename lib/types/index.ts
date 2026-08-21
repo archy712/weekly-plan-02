@@ -108,6 +108,7 @@ export type WeeklyLogDetail = Pick<
   | "department_id"
   | "work_type"
   | "importance"
+  | "progress"
   | "estimated_mm"
   | "estimated_cost"
   | "partner_company"

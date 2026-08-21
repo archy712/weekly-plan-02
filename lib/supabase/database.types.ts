@@ -1703,6 +1703,7 @@ export type Database = {
           id: string
           importance: number
           partner_company: string | null
+          progress: number
           start_date: string
           status: string
           target_end_date: string
@@ -1720,6 +1721,7 @@ export type Database = {
           id?: string
           importance?: number
           partner_company?: string | null
+          progress?: number
           start_date: string
           status?: string
           target_end_date: string
@@ -1737,6 +1739,7 @@ export type Database = {
           id?: string
           importance?: number
           partner_company?: string | null
+          progress?: number
           start_date?: string
           status?: string
           target_end_date?: string

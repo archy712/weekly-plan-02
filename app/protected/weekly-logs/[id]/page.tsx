@@ -8,6 +8,7 @@ import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton
 import { getWeeklyLogComments } from "@/lib/queries/comments";
 import { getWeeklyLogReactionSummary } from "@/lib/queries/reactions";
 import { getWeeklyLogChangeHistory } from "@/lib/queries/weekly-log-history";
+import { formatDate } from "@/lib/format";
 import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 
 async function WeeklyLogDetailContent({
@@ -43,7 +44,7 @@ async function WeeklyLogDetailContent({
   const { data: log, error: logError } = await supabase
     .from("weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, estimated_mm, estimated_cost, partner_company, departments:departments(name, organization_id), profiles:profiles(email)",
+      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, progress, estimated_mm, estimated_cost, partner_company, departments:departments(name, organization_id), profiles:profiles(email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -120,6 +121,7 @@ async function WeeklyLogDetailContent({
         department_id: log.department_id,
         work_type: log.work_type as WeeklyLogWorkType[],
         importance: log.importance as WeeklyLogImportance,
+        progress: log.progress,
         estimated_mm: log.estimated_mm,
         estimated_cost: log.estimated_cost,
         partner_company: log.partner_company,
@@ -134,6 +136,9 @@ async function WeeklyLogDetailContent({
       currentUserId={data.claims.sub}
       isAdmin={profile.role === "admin"}
       workTypeOptions={workTypeOptions}
+      // 목표진척률(computeTargetProgress)·기존 지연 판정(칸반·타임라인·"내 업무" 위젯)과
+      // 동일하게 호출부(Node의 new Date())에서 today를 계산해 내려준다.
+      todayIso={formatDate(new Date())}
     />
   );
 }

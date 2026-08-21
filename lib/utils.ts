@@ -106,6 +106,24 @@ export function addDaysToDateString(value: string, days: number): string {
   return toDateOnlyString(date);
 }
 
+// 목표진척률(%): 시작일~목표종료일 전체 기간 대비 오늘까지 지난 일수의 비율. 주간업무
+// 상세 페이지가 사용자가 슬라이더로 입력한 실제 진척률과 비교해 지연 여부를 판단하는
+// 기준값으로 쓴다(DB에 저장하지 않고 매 렌더링마다 계산). todayIso를 호출부에서 넘겨받는
+// 이유는 F040 "내 업무" 위젯·칸반·타임라인의 지연 판정과 동일하다 — Postgres 세션
+// 타임존이나 서버 로컬 시각이 아니라 항상 호출부(Node의 new Date())가 계산한 KST
+// 기준으로 맞추기 위함. 100%를 넘기지 않도록 클램프하고, 시작일=종료일(당일 업무)이면
+// 오늘이 그 날짜에 도달한 순간 100%로 취급한다.
+export function computeTargetProgress(
+  startDate: string,
+  endDate: string,
+  todayIso: string,
+): number {
+  const totalDays = diffDays(endDate, startDate);
+  if (totalDays <= 0) return todayIso >= startDate ? 100 : 0;
+  const elapsedDays = diffDays(todayIso, startDate);
+  return Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+}
+
 // This check can be removed, it is just for tutorial purposes
 export const hasEnvVars =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&

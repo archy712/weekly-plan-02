@@ -54,8 +54,9 @@ import {
   IMPORTANCE_MAX,
   IMPORTANCE_MIN,
 } from "@/lib/constants/importance";
+import { PROGRESS_MAX, PROGRESS_MIN, PROGRESS_STEP } from "@/lib/constants/progress";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
-import { formatThousandsInput } from "@/lib/utils";
+import { cn, computeTargetProgress, formatThousandsInput } from "@/lib/utils";
 import type {
   WeeklyLogDetail,
   WeeklyLogImportance,
@@ -69,6 +70,7 @@ import {
   updateWeeklyLogStatusAction,
   updateWeeklyLogWorkTypeAction,
   updateWeeklyLogImportanceAction,
+  updateWeeklyLogProgressAction,
   updateWeeklyLogAction,
 } from "@/lib/actions/weekly-log";
 
@@ -80,12 +82,16 @@ export function WeeklyLogDetailView({
   currentUserId,
   isAdmin,
   workTypeOptions,
+  todayIso,
 }: {
   log: WeeklyLogDetail;
   canWrite: boolean;
   currentUserId: string;
   isAdmin: boolean;
   workTypeOptions: WorkTypeOption[];
+  // 목표진척률 계산 기준일 — 칸반·타임라인·"내 업무" 위젯의 지연 판정과 동일하게 호출부
+  // (Node의 new Date())에서 계산해 내려받는다(서버 컴포넌트가 매 요청 새로 계산).
+  todayIso: string;
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -99,6 +105,9 @@ export function WeeklyLogDetailView({
   // (onValueCommit). 저장 실패 시 롤백할 "마지막으로 저장된 값"을 별도로 추적해야 한다 —
   // importance state 자체는 드래그 중 계속 바뀌므로 실패 시점의 "이전 값"으로 쓸 수 없다.
   const savedImportanceRef = useRef<WeeklyLogImportance>(log.importance);
+  const [progress, setProgress] = useState(log.progress);
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
+  const savedProgressRef = useRef(log.progress);
   const [isDeleting, setIsDeleting] = useState(false);
   // isDeleting 리렌더 반영 전에 도착하는 연속 클릭(더블클릭)을 막기 위한 동기 가드.
   const isDeletingRef = useRef(false);
@@ -202,6 +211,27 @@ export function WeeklyLogDetailView({
     }
   };
 
+  const handleProgressCommit = async (next: number) => {
+    if (next === savedProgressRef.current) return;
+    setIsUpdatingProgress(true);
+    try {
+      const result = await updateWeeklyLogProgressAction(log.id, next);
+      if (!result.success) {
+        setProgress(savedProgressRef.current);
+        toast.error(result.error);
+        return;
+      }
+      savedProgressRef.current = next;
+      toast.success(`진척률이 ${next}%로 변경되었습니다.`);
+      router.refresh();
+    } catch {
+      setProgress(savedProgressRef.current);
+      toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsUpdatingProgress(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (isDeletingRef.current) return;
     isDeletingRef.current = true;
@@ -221,6 +251,13 @@ export function WeeklyLogDetailView({
       setIsDeleting(false);
     }
   };
+
+  // 목표진척률: 시작일~목표종료일 대비 오늘 위치(%, 100 초과分은 클램프). 저장하지 않고
+  // 매 렌더링마다 계산한다 — DB에 별도 컬럼을 두지 않는 이유는 lib/utils.ts 참고.
+  const targetProgress = computeTargetProgress(log.start_date, log.target_end_date, todayIso);
+  // 완료된 업무는 진척률이 목표에 못 미쳐도 "지연"으로 보지 않는다 — 칸반·타임라인의
+  // 기존 지연 판정(status !== "completed")과 동일한 원칙.
+  const delayed = status !== "completed" && progress < targetProgress;
 
   const backLink = (
     <Link
@@ -272,6 +309,16 @@ export function WeeklyLogDetailView({
         <div className="flex shrink-0 items-center gap-1.5">
           <Badge variant="secondary">중요도: {formatImportanceLabel(importance)}</Badge>
           <StatusBadge status={status} />
+          {/* 진척률이 목표진척률에 못 미치면(완료 제외) 표시 — canWrite 여부와 무관하게
+              모든 열람자에게 노출한다(중요도·진행상태 배지와 동일한 공개 범위). */}
+          {delayed && (
+            <Badge
+              variant="destructive"
+              title={`진척률 ${progress}%, 목표진척률 ${targetProgress}%`}
+            >
+              지연
+            </Badge>
+          )}
         </div>
       </div>
       {canWrite ? (
@@ -315,6 +362,33 @@ export function WeeklyLogDetailView({
         <span>
           {formatDate(log.start_date)} ~ {formatDate(log.target_end_date)}
         </span>
+      </div>
+      {/* 진척률 대 목표진척률 — 열람 권한과 무관하게 항상 노출한다(중요도·진행상태
+          배지와 동일한 공개 범위). 목표진척률은 타임라인 뷰의 "오늘" 세로선과 동일한
+          시각 언어(세로 마커)로 실제 진척률 막대 위에 겹쳐 그려 한눈에 비교할 수 있게
+          한다 — 숫자 두 개를 각각 읽고 암산으로 비교하게 하는 것보다 직관적이다. */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">진척률</span>
+          <span className="text-muted-foreground">
+            진척률 {progress}% · 목표진척률 {targetProgress}%
+          </span>
+        </div>
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-primary/20">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all",
+              delayed ? "bg-destructive" : "bg-primary",
+            )}
+            style={{ width: `${progress}%` }}
+          />
+          <div
+            className="bg-foreground/70 absolute inset-y-0 w-0.5"
+            style={{ left: `${targetProgress}%` }}
+            title={`목표진척률 ${targetProgress}%`}
+            aria-hidden
+          />
+        </div>
       </div>
       {(log.estimated_mm != null || log.estimated_cost != null || log.partner_company) && (
         <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-4 py-3 text-sm">
@@ -382,6 +456,28 @@ export function WeeklyLogDetailView({
               {IMPORTANCE_LEVELS.map((level) => (
                 <span key={level}>{formatImportanceLabel(level)}</span>
               ))}
+            </div>
+          </div>
+          {/* 진척률 계산 방법이 마땅치 않아(자동 산출 대신) 사용자가 직접 슬라이더로
+              입력한다 — 업무 중요도 슬라이더와 동일한 드래그 중 로컬 반영 + 손을 뗄 때만
+              저장(onValueCommit) 패턴. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="progress">진척률 {progress}%</Label>
+            <Slider
+              id="progress"
+              min={PROGRESS_MIN}
+              max={PROGRESS_MAX}
+              step={PROGRESS_STEP}
+              value={[progress]}
+              disabled={isUpdatingProgress}
+              onValueChange={([next]) => setProgress(next)}
+              onValueCommit={([next]) => handleProgressCommit(next)}
+              aria-label="진척률"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
             </div>
           </div>
           <div className="flex justify-end gap-2">
