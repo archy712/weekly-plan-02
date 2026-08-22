@@ -469,6 +469,100 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 
 ---
 
+### Phase 7: UI/UX 사용성 개선 (ui-markup-specialist 검토 기반, 2026-08-22 추가)
+
+> **배경**: v2(F040~F047) 완료 후, 사용자가 "사용성을 극대화하고 shadcn/ui·lucide 아이콘을 최대한 활용하고 싶다"는 요청으로 `ui-markup-specialist` 에이전트에 전체 화면 UI/UX 검토를 의뢰했다. 핵심 발견: `/component-gallery`에 shadcn 컴포넌트 38종 이상이 데모로 있지만 실제 업무 화면에서는 `Tooltip`/`Command`/`HoverCard`/`Breadcrumb`/`Empty` 등이 **전혀 쓰이지 않고** 있고, 다크모드 토큰 사용은 이미 전 화면에서 일관되게 잘 지켜지고 있다. 아래 10개 Task는 그 검토에서 나온 개선안을 **임팩트 대비 비용 우선순위**로 정렬한 것이며, 사용자가 **1개씩 순서대로 실행**할 예정이다. 기존 아키텍처(낙관적 업데이트, 부서 기반 권한, `cacheComponents: true`, `sonner` 토스트, `LoadingBar`/`DimOnPending` soft-navigation)는 그대로 유지한 채 그 위에 얹는 개선만 다룬다.
+>
+> **선행 조건**: 없음(Phase 1~6과 독립, DB 변경 없는 순수 클라이언트/마크업 작업). **순서 원칙**: 아래 순번이 곧 실행 순서(상→중→하 우선순위). Task 완료 후 다음 Task 착수 전 항상 중단하고 사용자 지시를 대기한다(기존 개발 워크플로우 3번 규칙 그대로 적용).
+
+- **Task 051: `Tooltip` 컴포넌트 전면 도입 (F048)** ✅
+  - [x] 브라우저 기본 `title` 속성을 shadcn `ui/tooltip.tsx`(cmdk와 달리 이미 설치돼 있으나 `ui/sidebar.tsx` 내부용으로만 쓰이고 업무 화면엔 미적용)로 교체. 대상: 상세 페이지 지연 배지(`components/weekly-log-detail-view.tsx`의 `title={...}` 지점), 목표진척률 마커(`title="목표진척률 N%"`), `components/html-editor.tsx` 툴바 버튼 8개(`title={label}`)
+  - [x] `TooltipProvider`를 어느 레벨에 둘지 결정(각 사용처마다 개별 vs `app/layout.tsx` 전역 1곳) — **전역 1곳으로 결정**, `app/layout.tsx`의 `ThemeProvider` 안쪽에서 `{children}`과 `<Toaster />`를 함께 감싸도록 배치(중복 provider 방지)
+  - [x] 모바일 터치 환경에서 툴팁이 아예 안 뜨는 문제(브라우저 기본 `title`의 한계)가 실제로 해소되는지 실기기/에뮬레이터로 확인 — **이 Task 범위에서는 데스크탑 hover 동작 검증까지만 수행**(아래 테스트 결과 참고). Radix Tooltip은 모바일 터치에서 기본적으로 트리거되지 않는 것이 알려진 제약이라, 모바일 접근성 보강이 필요해지면 별도 Task로 판단
+  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/html-editor.tsx`, `components/ui/tooltip.tsx`(변경 없음, 기존 컴포넌트 재사용), `app/layout.tsx`
+  - **수락 기준**: 위 지점 전부에서 `title` 속성이 제거되고 `Tooltip`으로 대체되며, 라이트/다크 양쪽에서 테마 토큰(`bg-foreground`/`text-background`)을 쓰고, 데스크탑 hover에서 정상 동작한다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task051-iuii7a@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] 상세 페이지 지연 배지 hover → "진척률 N%, 목표진척률 N%" 툴팁 노출 확인(로그 `신규 직원 업무 교육`, 진척률 25%·목표진척률 74%로 실측)
+    - [x] 목표진척률 마커(진척률 막대 위 세로선, 2×8px) hover → "목표진척률 74%" 툴팁 노출 확인(마커가 `aria-hidden`이라 정확한 좌표 계산 후 포인터 이벤트로 검증)
+    - [x] 작성 폼(`/protected/weekly-logs/new`) 에디터 툴바 "굵게" 버튼 hover → 툴팁 노출 확인, `title` 속성이 스냅샷에서 사라지고 `aria-label`만 남은 것 확인
+    - [x] 다크 모드 전환 후 동일 지점(에디터 툴바) 재확인 — 배경/텍스트 색 반전 정상, 가독성 문제 없음
+    - [x] 콘솔 에러 0건(전 시나리오)
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts`로 이 Task와 무관한 사전 존재 항목)
+
+- **Task 052: 칸반보드 모바일 반응형 개선 (F049)** ✅
+  - [x] `components/weekly-log-kanban-view.tsx`의 `grid grid-cols-1 lg:grid-cols-3`이 1024px 미만에서 3개 컬럼을 세로로 통째로 쌓아 칸반 본연의 기능(상태별 분포 한눈에 보기)을 잃는 문제 해결
+  - [x] 두 대안 중 결정: (A) `ui/tabs.tsx`(이미 설치)로 모바일 전용 상태 탭 전환 — **채택**. (B) 컬럼을 가로 스크롤은 미채택
+    - **계획과 다르게 처리한 부분**: 계획에는 "`sm:hidden`에 Tabs, `hidden lg:grid`로 기존 3열 유지"라고 적었으나, 구현 중 **`WeeklyLogKanbanColumn`을 Tabs용과 grid용으로 두 번 렌더링하면 `useDroppable({ id: status })`가 같은 id로 두 번 등록돼 dnd-kit이 깨지는 문제**를 실측으로 확인했다(두 인스턴스가 동시에 마운트되고 CSS로만 안 보이게 하는 것이라 dnd-kit 컨텍스트에는 둘 다 잡힘). 대신 컬럼 컴포넌트는 **그리드 안에 한 번만** 렌더링하고, 각 컬럼을 감싸는 wrapper `div`에 `cn(activeMobileStatus === status ? "block" : "hidden", "lg:block")`로 표시 여부만 CSS 토글했다. 탭 스위처(`Tabs`/`TabsList`/`TabsTrigger`, `lg:hidden`)는 `activeMobileStatus` 상태를 그리드와 공유하는 controlled 컴포넌트로 별도 배치하고 `TabsContent`는 사용하지 않았다(Radix Tabs의 기본 언마운트 동작이 필요 없어서). 브레이크포인트도 `sm` 대신 기존 그리드와 동일한 `lg`로 통일해 sm~lg 사이(태블릿)에서 컬럼이 또 쌓이는 구간이 생기지 않게 했다.
+  - [x] 뷰 전환(목록/칸반/타임라인, `components/weekly-log-view-switcher.tsx`)과 함께 쓸 때 모바일에서 탭이 이중으로 겹쳐 보이지 않는지 확인 — 뷰 스위처(상단)와 상태 탭(그 아래)이 시각적으로 구분되어 겹치지 않음을 스크린샷으로 확인
+  - **관련 파일**: `components/weekly-log-kanban-view.tsx`, `components/ui/tabs.tsx`(변경 없음, 기존 컴포넌트 재사용)
+  - **수락 기준**: 375px~414px 폭 뷰포트에서 계획/진행중/완료 상태를 한 화면 전환으로 확인할 수 있고, 1024px 이상에서는 기존 3열 레이아웃이 그대로 유지된다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task052-x9k2p@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles/536 weekly_logs 기준선 원복 확인):
+    - [x] 390px 뷰포트 → "예정/진행중/완료" 탭 스위처 노출, "예정" 탭에 해당 컬럼 카드만 표시(다른 두 컬럼은 스크롤해도 나오지 않음) 확인
+    - [x] "진행중" 탭 클릭 → 즉시 진행중 컬럼 카드로 전환 확인(선택 탭 밑줄 이동 포함)
+    - [x] 768px(태블릿) → 탭 스위처가 그대로 유지되고 컬럼이 쌓이는 구간 없음을 확인(계획에 없던 sm~lg 사각지대 우려 해소)
+    - [x] 1280px(데스크탑) → 탭 스위처가 사라지고 기존 3열 그리드가 정상 유지됨을 확인
+    - [x] 드래그와 무관한 "진행상태 이동" 드롭다운이 모바일 탭 뷰에서도 정상 동작 확인 — Commerce시스템팀 소속 실제 로그 1건("데이터 마이그레이션 검토")을 예정→진행중으로 이동시켜 탭 카운트 배지(예정 5→4, 진행중 12→13)와 목록 갱신을 실시간으로 확인, 테스트 후 SQL로 상태를 `planned`로 원복하고 이 과정에서 트리거로 생성된 `weekly_log_change_history` 2건도 함께 삭제해 실사용자 데이터에 흔적을 남기지 않음
+    - [x] 콘솔 에러 0건(전 시나리오)
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
+
+- **Task 053: 필터 영역 시각적 일관성 통일 + 모바일 반응형 보완 (F050)** ✅
+  - [x] `components/dashboard-filters.tsx`(기존 `flex flex-wrap items-center gap-2`만 있고 카드 컨테이너 없음)를 `components/weekly-log-list-view.tsx`가 이미 쓰는 `rounded-lg border bg-muted/20 p-3` 카드 스타일로 통일
+  - [x] 목록 필터(검색 `w-56`, 팀 `w-48`, 상태 `w-36` 등 고정폭)와 대시보드 필터의 고정폭 클래스를 `w-full sm:w-*` 형태로 바꿔 좁은 화면에서 줄바꿈이 어수선해지지 않게 함
+  - [x] `ui/sheet.tsx` 기반 "필터" 버튼 대안은 **미채택** — `w-full sm:w-*` 반응형 전환만으로 375px에서 필터가 카드 안에 깔끔히 세로로 쌓이는 것을 실측 확인했고(아래 테스트 결과), Sheet로 필터를 별도 패널로 숨기면 오히려 클릭 한 번이 더 필요해져 비용 대비 이득이 낮다고 판단
+    - **계획과 다르게 처리한 부분**: "관련 파일"에 없던 `components/weekly-log-kanban-view.tsx`와 `components/date-range-filter.tsx`도 함께 수정했다 — 칸반 페이지의 검색/팀/상태 필터가 목록 페이지와 완전히 동일한 마크업을 중복 보유하고 있어(Task 052에서 확인) 목록만 고치면 화면마다 "필터 영역"이 다시 어긋나는 것을 실측으로 확인했고, `DateRangeFilter`는 목록·칸반·대시보드 3곳이 공유하는 컴포넌트라 날짜 입력(`w-40` 고정)도 함께 반응형으로 바꾸지 않으면 같은 카드 안에서 위쪽 필터 줄만 반응형이고 날짜 줄은 그대로인 불일치가 남기 때문이다.
+  - **관련 파일**: `components/dashboard-filters.tsx`, `components/weekly-log-list-view.tsx`, `components/weekly-log-kanban-view.tsx`(계획에 없던 추가), `components/date-range-filter.tsx`(계획에 없던 추가)
+  - **수락 기준**: 목록·칸반·대시보드 세 화면의 필터 영역이 동일한 카드 컨테이너 스타일을 쓰고, 375px 폭에서 필터 컨트롤이 카드 밖으로 밀리거나 겹치지 않는다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task053-m7q4z@example.com`을 실제 회원가입 플로우로 생성 후 SQL로 `role='admin'` 임시 승격(대시보드 확인용, `auth.uid() IS NULL` 직접 DB 접속 경로라 자기상승 방지 트리거 비대상), 종료 시 완전 삭제, 65 profiles/536 weekly_logs 기준선 원복 확인):
+    - [x] 1280px 데스크탑 → 대시보드 필터가 목록·칸반과 동일한 카드(테두리+`bg-muted/20`) 스타일로 렌더링 확인
+    - [x] 390px 모바일 → 대시보드/목록/칸반 세 화면 모두 검색·Select·날짜 입력이 카드 폭을 꽉 채우며 한 줄에 하나씩 세로로 쌓이고, 카드 밖으로 밀리거나 겹치는 요소 없음을 스크린샷으로 확인
+    - [x] 콘솔 에러 0건(전 시나리오)
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
+
+- **Task 054: 헤더 `Command` 팔레트(⌘K) 신설 (F051)**
+  - [ ] `components/ui/command.tsx`(cmdk 기반, 이미 설치되어 있으나 `/component-gallery` 데모 외 미사용)로 헤더에 `⌘K`/`Ctrl K` 단축키로 여는 `CommandDialog` 신설
+  - [ ] 1차 스코프: 정적 이동 메뉴만 제공 — 목록/칸반/타임라인, 신규 작성, 관리자 대시보드/부서/업무타입/사용자 관리(관리자에게만 노출), 프로필. 백엔드 검색 연동은 범위 밖
+  - [ ] 단축키 리스너는 `components/site-header.tsx` 또는 별도 클라이언트 컴포넌트(`components/command-palette.tsx` 신규)에 두고, 입력 필드에 포커스가 있을 때 단축키가 오작동하지 않는지 확인(Tiptap 에디터·검색창 등)
+  - [ ] 모바일에서는 단축키 대신 헤더/모바일 시트에 트리거 버튼(아이콘) 노출
+  - **관련 파일**: `components/site-header.tsx`, `components/command-palette.tsx`(신규), `components/ui/command.tsx`, `components/mobile-nav.tsx`
+  - **수락 기준**: 데스크탑에서 `⌘K`(Mac)/`Ctrl K`(Win)로 팔레트가 열리고 각 메뉴 클릭 시 해당 라우트로 정상 이동하며, 관리자 전용 메뉴는 일반 사용자에게 노출되지 않는다. 모바일에서도 트리거 버튼으로 동일하게 접근 가능하다.
+
+- **Task 055: 사용자 관리 `HoverCard` 프리뷰 (F052)**
+  - [ ] `components/user-admin-table.tsx`의 아바타에 `ui/hover-card.tsx`(이미 설치, 미사용)를 달아 마우스 오버 시 이름/아바타/역할/소속 팀 요약을 페이지 이동 없이 보여줌
+  - [ ] 터치 기기(hover 없음)에서의 폴백 동작 확인(클릭 시 상세 페이지로 이동하는 기존 동작과 충돌하지 않게)
+  - **관련 파일**: `components/user-admin-table.tsx`, `components/ui/hover-card.tsx`
+  - **수락 기준**: 데스크탑에서 아바타에 마우스를 올리면 카드가 뜨고, 클릭 시 기존처럼 상세 페이지로 이동하는 동작은 그대로 유지된다.
+
+- **Task 056: 상세 페이지·작성 폼 섹션 구분 강화 (F053)**
+  - [ ] `components/weekly-log-detail-view.tsx`: 예상 M/M·예상 금액·협력회사 요약 블록(`border bg-muted/30`)에 `Users`/`Coins`/`Building2` 등 lucide 아이콘을 라벨 앞에 추가해 다른 텍스트 뭉치와 구분
+  - [ ] `components/weekly-log-form.tsx`: 날짜/업무타입/중요도/진척률/업무명/본문/추가정보/첨부 순으로 나열된 필드 사이에 `ui/separator.tsx`(이미 설치)로 "기본 정보 / 업무 내용 / 추가 정보" 구간을 나누고, `FormLabel` 옆에 소형 아이콘(`CalendarDays`/`Tag`/`Gauge`) 추가
+  - [ ] 상세 페이지 전체를 `Tabs`로 나누는 안(개요/진행관리/이력·댓글)은 정보 공개 범위가 바뀌는 트레이드오프가 있어 **이 Task 범위에서는 제외**하고 아이콘·Separator 수준의 저비용 개선만 적용
+  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/weekly-log-form.tsx`, `components/ui/separator.tsx`
+  - **수락 기준**: 상세·작성 화면에서 각 정보 그룹의 경계가 시각적으로 구분되고, 라이트/다크 양쪽에서 아이콘 색상이 테마 토큰(`text-muted-foreground` 등)을 따른다.
+
+- **Task 057: 관리자 대시보드 차트 `Tabs` 그룹화 검토 (F054)**
+  - [ ] `app/protected/admin/dashboard/page.tsx`의 차트 7종 + 파이차트 2종 + 요약 카드를 "요약/진척률", "분포(부서·상태·업무타입·중요도)", "추이·업무량" 3개 탭으로 묶는 안을 프로토타입으로 구현
+  - [ ] 이 변경은 "대시보드를 스크롤로 훑어보는" 기존 사용 패턴과 상충할 수 있어(검토 리포트의 확신도 "중간" 항목) **적용 전 사용자 확인 필수** — 프로토타입을 먼저 보여주고 채택 여부를 결정
+  - **관련 파일**: `app/protected/admin/dashboard/page.tsx`, `components/dashboard-*-chart.tsx` 각 파일, `components/ui/tabs.tsx`
+  - **수락 기준**: 탭 전환 시 각 차트가 정상 렌더링되고, 사용자가 프로토타입을 확인한 뒤 채택/반려를 결정한다(반려 시 이 Task는 "적용 안 함"으로 종료 가능).
+
+- **Task 058: 빈 상태·다운로드 메뉴 아이콘 보강 (F055)**
+  - [ ] `components/empty-state.tsx`에 `icon?: LucideIcon` prop 추가 — 검색 결과 0건은 `SearchX`, 진짜 빈 목록은 `FileText`처럼 문맥별 아이콘 사용(현재는 항상 `FileText` 고정). 기존 `ui/empty.tsx`(설치돼 있으나 미사용) 프리미티브로 교체할지도 함께 검토
+  - [ ] `components/weekly-log-list-view.tsx`의 PDF/Excel 다운로드 `DropdownMenuItem`에 각각 `FileText`(PDF)/`FileSpreadsheet`(Excel) 아이콘 추가
+  - **관련 파일**: `components/empty-state.tsx`, `components/ui/empty.tsx`, `components/weekly-log-list-view.tsx`
+  - **수락 기준**: 검색 결과 없음/빈 목록/다운로드 메뉴 각각에서 문맥에 맞는 아이콘이 표시된다.
+
+- **Task 059: 상세 페이지 `Breadcrumb` 추가 (F056)**
+  - [ ] `components/weekly-log-detail-view.tsx` 상단에 `ui/breadcrumb.tsx`(이미 설치, 미사용)로 "주간업무 / {부서명} / {제목}" 경로 표시
+  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/ui/breadcrumb.tsx`
+  - **수락 기준**: 상세 페이지 진입 시 소속 부서·목록으로의 경로가 한눈에 보이고, 각 구간 클릭 시 해당 목록/필터로 이동한다.
+
+- **Task 060: 사용자 역할 `Badge` variant 분화 (F057)**
+  - [ ] `components/user-role-select.tsx`/`components/user-admin-table.tsx`에서 역할(일반/관리자/슈퍼관리자)을 표시할 때 `Badge` variant를 역할별로 다르게(예: 슈퍼관리자=`destructive`, 관리자=`secondary`, 일반=`outline`) 적용해 테이블에서 훑어보기 쉽게 함
+  - **관련 파일**: `components/user-role-select.tsx`, `components/user-admin-table.tsx`
+  - **수락 기준**: 사용자 관리 목록에서 역할별로 배지 색상이 즉시 구분되며, 기존 역할 변경(Select) 동작은 그대로 유지된다.
+
+---
+
 ## 기능 ID 커버리지 매핑
 
 | 기능 ID | 기능명 | 담당 Task |
@@ -482,6 +576,16 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 | F046 | 검색 결과 하이라이팅 | Task 047 |
 | F047 | 캘린더/타임라인 뷰 | Task 048 (**착수 게이트 있음 — 범위 밖 종료 가능**) |
 | — | 통합 검증·마감 | Task 049, Task 050 |
+| F048 | Tooltip 컴포넌트 전면 도입 | Task 051 |
+| F049 | 칸반보드 모바일 반응형 개선 | Task 052 |
+| F050 | 필터 영역 시각적 일관성·반응형 통일 | Task 053 |
+| F051 | 헤더 Command 팔레트 | Task 054 |
+| F052 | 사용자 관리 HoverCard 프리뷰 | Task 055 |
+| F053 | 상세·작성 폼 섹션 구분 강화 | Task 056 |
+| F054 | 대시보드 차트 Tabs 그룹화 | Task 057 (**적용 전 사용자 확인 필수 — 반려 시 범위 밖 종료 가능**) |
+| F055 | 빈 상태·다운로드 메뉴 아이콘 보강 | Task 058 |
+| F056 | 상세 페이지 Breadcrumb | Task 059 |
+| F057 | 사용자 역할 Badge variant 분화 | Task 060 |
 
 ## 데이터 모델 변경 요약 (v1 대비)
 
