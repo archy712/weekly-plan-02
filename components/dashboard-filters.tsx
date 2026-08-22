@@ -101,13 +101,17 @@ export function DashboardFilters({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // 목록/칸반 페이지의 필터 카드(weekly-log-list-view.tsx, weekly-log-kanban-view.tsx)와
+    // 동일한 카드 컨테이너로 감싸 "필터 영역"이라는 동일 개념이 화면마다 다르게 보이지
+    // 않게 통일한다. Select 폭도 동일하게 좁은 화면에서는 꽉 채우고(w-full) sm 이상에서만
+    // 고정폭으로 되돌려, 375px 화면에서 옆으로 밀리지 않고 세로로 쌓이게 한다.
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 p-3">
       {isSuperAdmin && (
         <Select
           value={currentOrgId ?? DASHBOARD_ALL_ORGANIZATIONS}
           onValueChange={(value) => navigate({ org: value })}
         >
-          <SelectTrigger className="w-48" aria-label="부문 필터">
+          <SelectTrigger className="w-full sm:w-48" aria-label="부문 필터">
             <SelectValue placeholder="부문 선택" />
           </SelectTrigger>
           <SelectContent>
@@ -122,7 +126,7 @@ export function DashboardFilters({
       )}
       {hasDivisions && (
         <Select value={selectedDivisionId} onValueChange={(value) => navigate({ division: value })}>
-          <SelectTrigger className="w-48" aria-label="부서 필터">
+          <SelectTrigger className="w-full sm:w-48" aria-label="부서 필터">
             <SelectValue placeholder="부서 선택" />
           </SelectTrigger>
           <SelectContent>
@@ -139,7 +143,7 @@ export function DashboardFilters({
         value={currentDepartmentId}
         onValueChange={(value) => navigate({ department: value })}
       >
-        <SelectTrigger className="w-48" aria-label="팀 필터">
+        <SelectTrigger className="w-full sm:w-48" aria-label="팀 필터">
           <SelectValue placeholder="팀 선택" />
         </SelectTrigger>
         <SelectContent>

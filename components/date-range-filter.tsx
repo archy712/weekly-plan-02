@@ -42,7 +42,7 @@ export function DateRangeFilter({
         onChange={(e) => onFromChange(e.target.value)}
         aria-label="시작일 이후"
         max={to}
-        className="w-40"
+        className="w-full sm:w-40"
       />
       <span className="text-muted-foreground text-sm">~</span>
       <Input
@@ -51,7 +51,7 @@ export function DateRangeFilter({
         onChange={(e) => onToChange(e.target.value)}
         aria-label="종료일 이전"
         min={from}
-        className="w-40"
+        className="w-full sm:w-40"
       />
       {(from || to) && (
         <Button type="button" variant="ghost" size="sm" onClick={onReset}>

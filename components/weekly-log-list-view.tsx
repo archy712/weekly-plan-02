@@ -425,21 +425,24 @@ export function WeeklyLogListView({
           어디까지인지" 스캔하기 어렵다는 피드백에 따른 개선. */}
       <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex w-full items-center gap-2 sm:w-auto"
+          >
             <Input
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="제목 또는 내용으로 검색"
               aria-label="주간업무일지 검색"
-              className="w-56"
+              className="w-full sm:w-56"
             />
             <Button type="submit" variant="outline" size="icon" aria-label="검색">
               <Search className="size-4" />
             </Button>
           </form>
           <Select value={currentDepartmentId} onValueChange={handleDepartmentChange}>
-            <SelectTrigger className="w-48" aria-label="팀 필터">
+            <SelectTrigger className="w-full sm:w-48" aria-label="팀 필터">
               <SelectValue placeholder="팀 선택" />
             </SelectTrigger>
             <SelectContent>
@@ -452,7 +455,7 @@ export function WeeklyLogListView({
             </SelectContent>
           </Select>
           <Select value={currentStatus} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-36" aria-label="진행상태 필터">
+            <SelectTrigger className="w-full sm:w-36" aria-label="진행상태 필터">
               <SelectValue placeholder="진행상태 선택" />
             </SelectTrigger>
             <SelectContent>
