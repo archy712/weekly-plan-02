@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WeeklyLogKanbanColumn } from "@/components/weekly-log-kanban-column";
 import { WeeklyLogKanbanCardContent } from "@/components/weekly-log-kanban-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
@@ -108,6 +109,16 @@ export function WeeklyLogKanbanView({
   const [columns, setColumns] = useState<ColumnMap>(() => toColumnMap(initialColumns));
   const [loadingMoreStatus, setLoadingMoreStatus] = useState<WeeklyLogStatus | null>(null);
   const [activeItem, setActiveItem] = useState<WeeklyLogListItem | null>(null);
+  // lg 미만(태블릿·모바일)에서 3개 컬럼을 세로로 통째로 쌓으면 칸반 본연의 "상태별 분포를
+  // 한눈에 본다"는 목적이 무너지므로(스크롤을 한참 내려야 다음 상태를 볼 수 있음), 좁은
+  // 화면에서는 탭으로 한 번에 컬럼 1개만 보여준다. 3개 컬럼 컴포넌트를 두 번 렌더링하는
+  // 대신(useDroppable id가 중복 등록돼 dnd-kit이 깨짐) 아래 그리드의 각 컬럼 wrapper에
+  // CSS로만 표시 여부를 토글한다 — lg 이상에서는 이 상태와 무관하게 항상 3열 전부 보인다.
+  const [activeMobileStatus, setActiveMobileStatus] = useState<WeeklyLogStatus>(
+    STATUS_ORDER.includes(currentStatus as WeeklyLogStatus)
+      ? (currentStatus as WeeklyLogStatus)
+      : STATUS_ORDER[0],
+  );
 
   // 마우스로 카드를 살짝 누르기만 해도(제목 클릭 등) 드래그로 오인되지 않도록 최소 이동
   // 거리를 둔다 — 목록 페이지와 달리 카드 전체가 드래그 핸들이라 클릭과의 구분이 필요하다.
@@ -121,6 +132,11 @@ export function WeeklyLogKanbanView({
     setPrevKey(filterKey);
     setColumns(toColumnMap(initialColumns));
     setSearchInput(currentSearchQuery ?? "");
+    setActiveMobileStatus(
+      STATUS_ORDER.includes(currentStatus as WeeklyLogStatus)
+        ? (currentStatus as WeeklyLogStatus)
+        : STATUS_ORDER[0],
+    );
   }
 
   const navigate = (overrides: {
@@ -412,27 +428,51 @@ export function WeeklyLogKanbanView({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
+          {/* lg 미만(태블릿·모바일)에서는 탭으로 컬럼 1개만 보여준다(아래 그리드 wrapper의
+              CSS 토글과 짝을 이룸) — 상태별 분포를 한 화면에서 확인할 수 있는 칸반의
+              목적을 좁은 화면에서도 유지한다. lg 이상에서는 그리드가 항상 3열을 다
+              보여주므로 이 스위처 자체를 감춘다. */}
+          <Tabs
+            value={activeMobileStatus}
+            onValueChange={(value) => setActiveMobileStatus(value as WeeklyLogStatus)}
+            className="lg:hidden"
+          >
+            <TabsList className="w-full">
+              {STATUS_ORDER.map((status) => (
+                <TabsTrigger key={status} value={status} className="flex-1">
+                  {getStatusLabel(status)}
+                  <span className="text-muted-foreground tabular-nums">
+                    {columns[status].total}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
           {/* 상태 컬럼은 항상 3개로 고정이라 가변 개수의 가로 스크롤 대신 그리드로 배치한다.
-              lg 미만(태블릿·모바일)에서는 1열로 쌓아 각 컬럼이 화면 폭을 꽉 채우고, lg
-              이상(데스크탑)에서는 3열이 컨테이너 폭 전체를 균등하게 채운다 — 컬럼 폭을
-              고정값(w-72)으로 두면 모바일에서 다음 컬럼이 애매하게 잘려 보이고, 데스크탑
-              에서는 넓은 화면에서 오른쪽에 빈 여백이 남는 문제가 있었다. */}
+              lg 이상(데스크탑)에서는 3열이 컨테이너 폭 전체를 균등하게 채운다 — 컬럼 폭을
+              고정값(w-72)으로 두면 데스크탑에서 넓은 화면에 빈 여백이 남는 문제가 있었다.
+              lg 미만에서는 3개 컬럼 컴포넌트를 전부 렌더링하되(두 번 렌더링하면 useDroppable
+              id가 중복 등록돼 dnd-kit이 깨짐), 위 탭에서 고른 상태만 CSS로 보이게 한다. */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {STATUS_ORDER.map((status) => (
-              <WeeklyLogKanbanColumn
+              <div
                 key={status}
-                status={status}
-                items={columns[status].items}
-                total={columns[status].total}
-                hasMore={columns[status].hasMore}
-                isLoadingMore={loadingMoreStatus === status}
-                onLoadMore={() => loadMoreColumn(status)}
-                onMoveStatus={(item, target) => void moveItem(item, target)}
-                currentUserDepartmentId={currentUserDepartmentId}
-                isAdmin={isAdmin}
-                todayIso={todayIso}
-                query={currentSearchQuery}
-              />
+                className={cn(activeMobileStatus === status ? "block" : "hidden", "lg:block")}
+              >
+                <WeeklyLogKanbanColumn
+                  status={status}
+                  items={columns[status].items}
+                  total={columns[status].total}
+                  hasMore={columns[status].hasMore}
+                  isLoadingMore={loadingMoreStatus === status}
+                  onLoadMore={() => loadMoreColumn(status)}
+                  onMoveStatus={(item, target) => void moveItem(item, target)}
+                  currentUserDepartmentId={currentUserDepartmentId}
+                  isAdmin={isAdmin}
+                  todayIso={todayIso}
+                  query={currentSearchQuery}
+                />
+              </div>
             ))}
           </div>
           <DragOverlay>
