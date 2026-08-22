@@ -24,14 +24,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { HeadProfileCombobox } from "@/components/head-profile-combobox";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { createOrganizationAction, updateOrganizationAction } from "@/lib/actions/organization";
 import { NONE_SELECT_VALUE } from "@/lib/constants/select";
 import { organizationSchema, type OrganizationFormData } from "@/lib/schemas/organization";
@@ -119,21 +113,14 @@ export function OrganizationFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>부문장</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="부문장 선택" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={NONE_SELECT_VALUE}>지정 안 함</SelectItem>
-                        {(headCandidates ?? []).map((candidate) => (
-                          <SelectItem key={candidate.id} value={candidate.id}>
-                            {candidate.name ?? candidate.email ?? "이름 미등록"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <HeadProfileCombobox
+                        candidates={headCandidates ?? []}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="팀원 이름 또는 이메일로 검색"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

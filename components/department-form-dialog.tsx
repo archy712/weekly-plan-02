@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { HeadProfileCombobox } from "@/components/head-profile-combobox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -223,21 +224,14 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>팀장</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="팀장 선택" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={NONE_SELECT_VALUE}>지정 안 함</SelectItem>
-                        {props.headCandidates.map((candidate) => (
-                          <SelectItem key={candidate.id} value={candidate.id}>
-                            {candidate.name ?? candidate.email ?? "이름 미등록"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <HeadProfileCombobox
+                        candidates={props.headCandidates}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="팀원 이름 또는 이메일로 검색"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
