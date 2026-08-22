@@ -27,7 +27,7 @@ import {
   type DepartmentWorkload,
 } from "@/components/dashboard-workload-chart";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
-import type { Department, DepartmentFilter } from "@/lib/types";
+import type { Department, DepartmentFilter, Division } from "@/lib/types";
 
 // 목록 페이지(app/protected/weekly-logs/page.tsx)와 동일한 방어: 형식이 올바르지 않은
 // from/to는 500 크래시 대신 조용히 무시한다.
@@ -38,6 +38,7 @@ const TREND_MONTHS = 6;
 
 type DashboardSearchParams = {
   org?: string;
+  division?: string;
   department?: string;
   from?: string;
   to?: string;
@@ -59,6 +60,7 @@ async function DashboardContent({
 
   const {
     org: orgParam,
+    division: divisionParam,
     department: departmentParam,
     from: fromParam,
     to: toParam,
@@ -112,6 +114,21 @@ async function DashboardContent({
   const { data: departmentRows } = await departmentQuery;
   const departments: Department[] = departmentRows ?? [];
 
+  // 부서(division) Select도 부문과 동일한 조직 범위를 따른다 — 위 "부서 관리" 화면
+  // (app/protected/admin/divisions/page.tsx)과 동일한 스코프 쿼리 패턴. RPC에는 division
+  // 파라미터가 없으므로(CLAUDE.md "divisions 테이블" 절) 이 목록은 팀 Select의 선택지를
+  // 좁히는 순수 UI 필터로만 쓰인다.
+  let divisionQuery = supabase
+    .from("divisions")
+    .select("id, name, created_at, archived_at, organization_id, head_profile_id")
+    .order("name");
+  if (selectedOrgId) {
+    divisionQuery = divisionQuery.eq("organization_id", selectedOrgId);
+  }
+  const { data: divisionRows } = await divisionQuery;
+  const divisions: Division[] = divisionRows ?? [];
+  const selectedDivisionId = divisionParam || undefined;
+
   const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend, reactionStats] =
     await Promise.all([
       getLogsByDepartment(range, selectedOrgId),
@@ -150,6 +167,8 @@ async function DashboardContent({
           currentTo={toDate}
           organizations={organizations}
           currentOrgId={selectedOrgId}
+          divisions={divisions}
+          currentDivisionId={selectedDivisionId}
         />
         <DimOnPending className="flex flex-col gap-6">
           <DashboardSummaryCards statusStats={statusStats} monthlyTrend={monthlyTrend} />
