@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/empty-state";
 import { MentionInput } from "@/components/mention-input";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { formatRelativeTime } from "@/lib/format";
+import { COMMENT_MAX_LENGTH } from "@/lib/schemas/comment";
 import { cn } from "@/lib/utils";
 import {
   createCommentAction,
@@ -192,7 +193,11 @@ function CommentItem({
             <span className="text-sm font-medium">
               {comment.author_name ?? comment.author_email ?? "알 수 없는 사용자"}
             </span>
-            <span className="text-xs text-muted-foreground">
+            {/* formatRelativeTime()은 Date.now() 기준이라, 서버 렌더와 클라이언트
+                하이드레이션 사이 시간차로 "방금 전"→"1분 전" 같은 경계를 넘으면 텍스트가
+                달라질 수 있다 — React가 클라이언트 값으로 정상 렌더링하므로 기능상 문제는
+                없고 콘솔 경고만 발생해 suppressHydrationWarning으로 막는다. */}
+            <span className="text-xs text-muted-foreground" suppressHydrationWarning>
               {formatRelativeTime(comment.created_at)}
             </span>
             {!comment.deleted_at && comment.updated_at !== comment.created_at && (
@@ -204,7 +209,14 @@ function CommentItem({
             <p className="text-sm italic text-muted-foreground">삭제된 댓글입니다.</p>
           ) : isEditing ? (
             <div className="mt-1 flex flex-col gap-2">
-              <MentionInput value={editContent} onChange={setEditContent} disabled={isBusy} rows={2} autoFocus />
+              <MentionInput
+                value={editContent}
+                onChange={setEditContent}
+                disabled={isBusy}
+                rows={2}
+                autoFocus
+                maxLength={COMMENT_MAX_LENGTH}
+              />
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -280,6 +292,7 @@ function CommentItem({
                 disabled={isBusy}
                 rows={2}
                 autoFocus
+                maxLength={COMMENT_MAX_LENGTH}
               />
               <div className="flex justify-end gap-2">
                 <Button
@@ -354,6 +367,14 @@ export function WeeklyLogCommentSection({
     return map;
   }, [comments]);
 
+  // 목록 페이지의 comment_count(lib/queries/weekly-logs.ts, .is("deleted_at", null))와
+  // 동일한 기준으로 센다 — 소프트 삭제된 댓글은 "삭제된 댓글입니다" placeholder로만 남을 뿐
+  // 실제 내용이 없으므로 집계에서 제외해야 화면 간 숫자가 어긋나지 않는다.
+  const activeCommentCount = useMemo(
+    () => comments.filter((comment) => !comment.deleted_at).length,
+    [comments],
+  );
+
   const handleChanged = () => router.refresh();
 
   const handleCreate = async () => {
@@ -383,7 +404,7 @@ export function WeeklyLogCommentSection({
 
   return (
     <div className="flex flex-col gap-4 border-t pt-6">
-      <h2 className="text-lg font-semibold">댓글 {comments.length}개</h2>
+      <h2 className="text-lg font-semibold">댓글 {activeCommentCount}개</h2>
 
       <div className="flex flex-col gap-2">
         <MentionInput
@@ -392,9 +413,12 @@ export function WeeklyLogCommentSection({
           placeholder="댓글을 입력하세요. @를 입력해 동료를 멘션할 수 있습니다."
           disabled={isSubmitting}
           rows={3}
+          maxLength={COMMENT_MAX_LENGTH}
         />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{newContent.length}/2000</span>
+          <span className="text-xs text-muted-foreground">
+            {newContent.length}/{COMMENT_MAX_LENGTH}
+          </span>
           <Button type="button" size="sm" disabled={isSubmitting} onClick={handleCreate}>
             댓글 등록
           </Button>

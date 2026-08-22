@@ -43,6 +43,7 @@ export function MentionInput({
   disabled,
   autoFocus,
   rows = 3,
+  maxLength,
 }: {
   id?: string;
   value: string;
@@ -51,6 +52,7 @@ export function MentionInput({
   disabled?: boolean;
   autoFocus?: boolean;
   rows?: number;
+  maxLength?: number;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -119,6 +121,7 @@ export function MentionInput({
         disabled={disabled}
         autoFocus={autoFocus}
         rows={rows}
+        maxLength={maxLength}
         onChange={(event) => {
           const nextValue = event.target.value;
           onChange(nextValue);

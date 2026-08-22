@@ -286,8 +286,10 @@ export function WeeklyLogDetailView({
   // 진척률 막대가 0%로 보이는 모순을 없애기 위함. DB의 실제 progress 값은 건드리지
   // 않는다(상태를 다시 진행중으로 되돌리면 원래 값이 그대로 남아 있어야 하므로).
   const displayProgress = isCompleted ? 100 : progress;
-  // 완료된 업무는 진척률이 목표에 못 미쳐도 "지연"으로 보지 않는다 — 칸반·타임라인의
-  // 기존 지연 판정(status !== "completed")과 동일한 원칙.
+  // 완료된 업무는 진척률이 목표에 못 미쳐도 "진척 부진"으로 보지 않는다 — 칸반·타임라인의
+  // 지연 판정(status !== "completed")과 동일한 원칙. 다만 판정 기준 자체(진척률 vs
+  // 목표진척률)는 칸반·타임라인의 마감일 기준 "지연"과 다르므로 변수명은 delayed지만
+  // 화면 라벨은 "지연"이 아니라 "진척 부진"을 쓴다(위 배지 렌더링부 참고).
   const delayed = !isCompleted && progress < targetProgress;
   // progress는 DB CHECK 제약상 nullable이 아니라 "입력 안 함"과 "실제로 0%"를 구분할
   // 별도 상태가 없다 — 기본값 0을 "아직 입력 안 함"으로 간주해 입력을 유도한다. 완료된
@@ -360,11 +362,15 @@ export function WeeklyLogDetailView({
           <Badge variant="secondary">중요도: {formatImportanceLabel(importance)}</Badge>
           <StatusBadge status={status} />
           {/* 진척률이 목표진척률에 못 미치면(완료 제외) 표시 — canWrite 여부와 무관하게
-              모든 열람자에게 노출한다(중요도·진행상태 배지와 동일한 공개 범위). */}
+              모든 열람자에게 노출한다(중요도·진행상태 배지와 동일한 공개 범위). 라벨은
+              "지연"이 아니라 "진척 부진"으로 표기한다 — 칸반·타임라인·"내 업무" 위젯의
+              "지연"(마감일 기준, status≠completed && target_end_date<today)과 이 배지의
+              판정 기준(진척률 vs 목표진척률)이 서로 달라, 같은 "지연" 라벨을 쓰면 화면마다
+              다른 기준으로 같은 단어가 표시되어 혼동을 준다(코드리뷰 Task 076). */}
           {delayed && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="destructive">지연</Badge>
+                <Badge variant="destructive">진척 부진</Badge>
               </TooltipTrigger>
               <TooltipContent>
                 진척률 {progress}%, 목표진척률 {targetProgress}%
