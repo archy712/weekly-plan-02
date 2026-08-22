@@ -606,10 +606,19 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] 콘솔 에러 0건
     - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 이전 Task들과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
 
-- **Task 060: 사용자 역할 `Badge` variant 분화 (F057)**
-  - [ ] `components/user-role-select.tsx`/`components/user-admin-table.tsx`에서 역할(일반/관리자/슈퍼관리자)을 표시할 때 `Badge` variant를 역할별로 다르게(예: 슈퍼관리자=`destructive`, 관리자=`secondary`, 일반=`outline`) 적용해 테이블에서 훑어보기 쉽게 함
+- **Task 060: 사용자 역할 `Badge` variant 분화 (F057)** ✅
+  - [x] `components/user-role-select.tsx`에 로드맵 예시 그대로 `ROLE_BADGE_VARIANT`(슈퍼관리자=`destructive`, 관리자=`secondary`, 일반=`outline`) 맵을 `ROLE_LABELS` 옆에 신설·export하고, `components/user-admin-table.tsx`의 HoverCard 프리뷰 배지(기존 `variant="outline"` 고정)에 적용
+    - **계획과 다르게 처리한 부분**: 테이블의 역할 컬럼 자체는 Badge가 아니라 인라인 편집용 `Select`(`UserRoleSelect`)라 "Badge variant 적용" 대상이 명확하지 않았다 — `SelectItem`(드롭다운 옵션)이 아니라 **닫힌 상태에서 항상 보이는 트리거의 표시값**에 적용해야 "훑어보기" 목적에 맞는다고 판단해, `SelectValue`의 `children`을 현재 `value` state로 직접 렌더링하도록 바꾸고 그 안에 `badgeVariants({variant})` 클래스를 적용한 `span`을 넣었다(`Badge` 컴포넌트 자체(`div`)를 쓰면 `SelectValue`/`SelectItem`이 렌더링하는 `span` 안에 `div`가 중첩되어 유효하지 않은 HTML이 되므로, 이미 export돼 있는 `badgeVariants` cva 함수만 재사용). `SelectItem`(펼친 드롭다운의 선택지)은 기존 그대로 일반 텍스트로 남겨 변경 범위를 트리거 표시로 한정했다. 이 컴포넌트를 재사용하는 `user-admin-table.tsx`(목록 인라인)·`user-admin-card.tsx`(모바일 카드)·`user-admin-detail.tsx`(상세 페이지 역할 변경 폼) 3곳 모두 컴포넌트 자체 변경 없이 색상 구분을 상속받는다. `components/user-admin-detail.tsx` 상단의 별도 하드코딩 배지(`user.role === "user" ? "secondary" : "success"`, admin/superadmin이 색상으로 구분되지 않는 기존 결함)는 로드맵의 "관련 파일" 목록에 없어 손대지 않았다(Task 058에서 세운 관례— 관련 파일 목록 밖은 다른 세션에서 별도 판단).
   - **관련 파일**: `components/user-role-select.tsx`, `components/user-admin-table.tsx`
-  - **수락 기준**: 사용자 관리 목록에서 역할별로 배지 색상이 즉시 구분되며, 기존 역할 변경(Select) 동작은 그대로 유지된다.
+  - **수락 기준**: 사용자 관리 목록에서 역할별로 배지 색상이 즉시 구분되며, 기존 역할 변경(Select) 동작은 그대로 유지된다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task060-pw3j9@example.com`을 실제 회원가입 플로우로 생성 후 SQL로 `role='admin'` 임시 승격(관리자 콘솔 접근용, `auth.uid() IS NULL` 직접 DB 접속 경로라 자기상승 방지 트리거 비대상), 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] `/protected/admin/users` 목록에서 일반 사용자(outline, 테두리만)·관리자(secondary, 연회색 채움)·슈퍼관리자(destructive, 빨강 채움) 3단계가 육안으로 즉시 구분됨을 셀 단위 스크린샷으로 확인
+    - [x] 아바타 HoverCard 프리뷰의 역할 배지도 동일하게 슈퍼관리자가 destructive로 노출됨을 확인(기존엔 항상 outline 고정)
+    - [x] 상세 페이지(`/protected/admin/users/{id}`)의 "역할 및 소속 팀 변경" Select 트리거에도 동일한 배지 색상 적용, 드롭다운을 펼치면 선택지 3개는 기존처럼 일반 텍스트로 노출되는 것을 확인(트리거만 배지, 옵션 목록은 미변경)
+    - [x] `access1.dummy@example.com`(일반 사용자)을 실제로 "관리자"로 변경 → 트리거 배지가 즉시 outline→secondary로 바뀌고 성공 토스트 노출 확인, 이후 "일반 사용자"로 되돌려 SQL로 `role='user'` 원복 확인(실사용자 더미 데이터에 흔적 남기지 않음)
+    - [x] 라이트 모드에서도 3색 배지 대비 재확인 — 모두 테마 토큰(`bg-secondary`/`bg-destructive`/`text-foreground`) 기반이라 반전 정상
+    - [x] 콘솔 에러 0건
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 이전 Task들과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
 
 ---
 
