@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { CommandPaletteProvider, CommandPaletteTrigger } from "@/components/command-palette";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell, NotificationsProvider } from "@/components/notification-bell";
 import { UserAccountMenu } from "@/components/user-account-menu";
@@ -67,6 +68,47 @@ async function getNavUser(): Promise<NavUser> {
 export async function HeaderNav() {
   const user = await getNavUser();
   const navLinks = getNavLinks(user);
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  const desktopNav = (
+    <div className="hidden md:flex items-center gap-4">
+      {user &&
+        navLinks.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="font-medium hover:underline"
+          >
+            {link.label}
+          </Link>
+        ))}
+      {user ? (
+        <div className="flex items-center gap-2">
+          <CommandPaletteTrigger />
+          <NotificationBell />
+          <UserAccountMenu
+            email={user.email}
+            avatarKey={user.avatarKey}
+            role={user.role}
+          />
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link href="/auth/login">로그인</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/auth/sign-up">회원가입</Link>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+  const mobileNav = (
+    <div className="md:hidden">
+      <MobileNav navLinks={user ? navLinks : []} user={user} />
+    </div>
+  );
 
   return (
     <NotificationsProvider
@@ -74,40 +116,19 @@ export async function HeaderNav() {
       initialUnreadCount={user?.unreadCount ?? 0}
       initialNotifications={user?.notifications ?? []}
     >
-      <div className="hidden md:flex items-center gap-4">
-        {user &&
-          navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="font-medium hover:underline"
-            >
-              {link.label}
-            </Link>
-          ))}
-        {user ? (
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <UserAccountMenu
-              email={user.email}
-              avatarKey={user.avatarKey}
-              role={user.role}
-            />
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link href="/auth/login">로그인</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/auth/sign-up">회원가입</Link>
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="md:hidden">
-        <MobileNav navLinks={user ? navLinks : []} user={user} />
-      </div>
+      {user ? (
+        // 팔레트는 로그인 사용자에게만 필요하다(단축키 리스너·관리자 메뉴 분기가
+        // 비로그인 방문자에게는 의미가 없음) — Provider 자체를 마운트하지 않는다.
+        <CommandPaletteProvider isAdmin={isAdmin}>
+          {desktopNav}
+          {mobileNav}
+        </CommandPaletteProvider>
+      ) : (
+        <>
+          {desktopNav}
+          {mobileNav}
+        </>
+      )}
     </NotificationsProvider>
   );
 }

@@ -14,6 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { CommandPaletteTrigger } from "@/components/command-palette";
 import { LogoutButton } from "@/components/logout-button";
 import { NotificationBell } from "@/components/notification-bell";
 import { getAvatarPreset } from "@/lib/constants/avatars";
@@ -42,7 +43,12 @@ export function MobileNav({
     // 바깥에 둔다(Realtime 구독 자체는 header-nav.tsx의 NotificationsProvider 하나만
     // 가지며, 이 컴포넌트는 그 컨텍스트를 구독하는 표시 전용 <NotificationBell />을 씀).
     <div className="flex items-center gap-1">
-      {user && <NotificationBell />}
+      {user && (
+        <>
+          <CommandPaletteTrigger />
+          <NotificationBell />
+        </>
+      )}
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="메뉴 열기">
