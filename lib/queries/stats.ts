@@ -26,6 +26,12 @@ import type {
 // 모든 함수에 공통으로 전달한다(departmentId를 생략해 "전체 부서"를 선택해도 다른 조직의
 // 부서/로그가 섞이지 않도록 하는 최종 방어선 — URL의 department 쿼리 파라미터가 다른
 // 조직 부서로 조작되더라도 RPC가 organization_id 불일치 시 걸러낸다).
+//
+// divisionId(부문 아래 선택적 계층, CLAUDE.md "divisions 테이블" 절)도 동일한 이유로 모든
+// 함수에 공통 전달한다 — departmentId 없이 "전체 팀"을 선택한 채 특정 부서(division)만
+// 골랐을 때, 그 부서에 속한 팀의 로그만 집계되도록 하는 서버 사이드 필터다(마이그레이션
+// extend_stats_rpc_division_scope, 대시보드 부서 필터가 dropdown만 좁히고 실제 차트는
+// 여전히 조직 전체를 집계하던 버그 수정).
 
 // Server Component에서 Fluid compute 대응을 위해 매 호출마다 새 클라이언트를 만든다
 // (전역 변수에 저장하지 않음, CLAUDE.md 명시).
@@ -34,12 +40,14 @@ import type {
 export async function getLogsByDepartment(
   range: StatsDateRange = {},
   organizationId?: string,
+  divisionId?: string,
 ): Promise<DepartmentLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_department", {
     from_date: range.from,
     to_date: range.to,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {
@@ -55,6 +63,7 @@ export async function getLogsByStatus(
   range: StatsDateRange = {},
   departmentId?: string,
   organizationId?: string,
+  divisionId?: string,
 ): Promise<StatusLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_status", {
@@ -62,6 +71,7 @@ export async function getLogsByStatus(
     to_date: range.to,
     dept_id: departmentId,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {
@@ -77,6 +87,7 @@ export async function getLogsByWorkType(
   range: StatsDateRange = {},
   departmentId?: string,
   organizationId?: string,
+  divisionId?: string,
 ): Promise<WorkTypeLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_work_type", {
@@ -84,6 +95,7 @@ export async function getLogsByWorkType(
     to_date: range.to,
     dept_id: departmentId,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {
@@ -99,6 +111,7 @@ export async function getLogsByImportance(
   range: StatsDateRange = {},
   departmentId?: string,
   organizationId?: string,
+  divisionId?: string,
 ): Promise<ImportanceLogStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_by_importance", {
@@ -106,6 +119,7 @@ export async function getLogsByImportance(
     to_date: range.to,
     dept_id: departmentId,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {
@@ -121,12 +135,14 @@ export async function getMonthlyTrend(
   months: number = 6,
   departmentId?: string,
   organizationId?: string,
+  divisionId?: string,
 ): Promise<MonthlyLogTrend[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_logs_monthly_trend", {
     months,
     dept_id: departmentId,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {
@@ -143,6 +159,7 @@ export async function getReactionsSummary(
   range: StatsDateRange = {},
   departmentId?: string,
   organizationId?: string,
+  divisionId?: string,
 ): Promise<ReactionSummaryStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_reactions_summary", {
@@ -150,6 +167,7 @@ export async function getReactionsSummary(
     to_date: range.to,
     dept_id: departmentId,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {
@@ -167,6 +185,7 @@ export async function getWorkloadSummary(
   range: StatsDateRange = {},
   departmentId?: string,
   organizationId?: string,
+  divisionId?: string,
 ): Promise<WorkloadSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("stats_workload_summary", {
@@ -174,6 +193,7 @@ export async function getWorkloadSummary(
     to_date: range.to,
     dept_id: departmentId,
     org_id: organizationId,
+    div_id: divisionId,
   });
 
   if (error) {

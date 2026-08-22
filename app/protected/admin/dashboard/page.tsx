@@ -115,9 +115,10 @@ async function DashboardContent({
   const departments: Department[] = departmentRows ?? [];
 
   // 부서(division) Select도 부문과 동일한 조직 범위를 따른다 — 위 "부서 관리" 화면
-  // (app/protected/admin/divisions/page.tsx)과 동일한 스코프 쿼리 패턴. RPC에는 division
-  // 파라미터가 없으므로(CLAUDE.md "divisions 테이블" 절) 이 목록은 팀 Select의 선택지를
-  // 좁히는 순수 UI 필터로만 쓰인다.
+  // (app/protected/admin/divisions/page.tsx)과 동일한 스코프 쿼리 패턴. stats_* RPC에도
+  // org_id/dept_id와 동일한 컨벤션으로 div_id가 추가되어 있어(마이그레이션
+  // extend_stats_rpc_division_scope), 이 필터는 팀 Select의 선택지를 좁히는 것뿐 아니라
+  // 실제 차트 데이터도 선택된 부서 범위로 제한한다.
   let divisionQuery = supabase
     .from("divisions")
     .select("id, name, created_at, archived_at, organization_id, head_profile_id")
@@ -127,16 +128,21 @@ async function DashboardContent({
   }
   const { data: divisionRows } = await divisionQuery;
   const divisions: Division[] = divisionRows ?? [];
-  const selectedDivisionId = divisionParam || undefined;
+  // 존재하지 않거나 선택된 조직 범위 밖의 division id가 URL에 조작되어 들어온 경우
+  // "전체 부서"로 안전하게 폴백(위 조직 id 검증과 동일한 방어).
+  const selectedDivisionId =
+    divisionParam && divisions.some((division) => division.id === divisionParam)
+      ? divisionParam
+      : undefined;
 
   const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend, reactionStats] =
     await Promise.all([
-      getLogsByDepartment(range, selectedOrgId),
-      getLogsByStatus(range, departmentId, selectedOrgId),
-      getLogsByWorkType(range, departmentId, selectedOrgId),
-      getLogsByImportance(range, departmentId, selectedOrgId),
-      getMonthlyTrend(TREND_MONTHS, departmentId, selectedOrgId),
-      getReactionsSummary(range, departmentId, selectedOrgId),
+      getLogsByDepartment(range, selectedOrgId, selectedDivisionId),
+      getLogsByStatus(range, departmentId, selectedOrgId, selectedDivisionId),
+      getLogsByWorkType(range, departmentId, selectedOrgId, selectedDivisionId),
+      getLogsByImportance(range, departmentId, selectedOrgId, selectedDivisionId),
+      getMonthlyTrend(TREND_MONTHS, departmentId, selectedOrgId, selectedDivisionId),
+      getReactionsSummary(range, departmentId, selectedOrgId, selectedDivisionId),
     ]);
 
   // stats_workload_summary는 부서별 그룹화 없이 단일 행 요약만 반환하므로(Task 030),

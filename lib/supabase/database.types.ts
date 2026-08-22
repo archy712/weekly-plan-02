@@ -1917,7 +1917,12 @@ export type Database = {
         Returns: undefined
       }
       stats_logs_by_department: {
-        Args: { from_date?: string; org_id?: string; to_date?: string }
+        Args: {
+          div_id?: string
+          from_date?: string
+          org_id?: string
+          to_date?: string
+        }
         Returns: {
           completed_count: number
           department_id: string
@@ -1930,6 +1935,7 @@ export type Database = {
       stats_logs_by_importance: {
         Args: {
           dept_id?: string
+          div_id?: string
           from_date?: string
           org_id?: string
           to_date?: string
@@ -1942,6 +1948,7 @@ export type Database = {
       stats_logs_by_status: {
         Args: {
           dept_id?: string
+          div_id?: string
           from_date?: string
           org_id?: string
           to_date?: string
@@ -1954,6 +1961,7 @@ export type Database = {
       stats_logs_by_work_type: {
         Args: {
           dept_id?: string
+          div_id?: string
           from_date?: string
           org_id?: string
           to_date?: string
@@ -1964,7 +1972,12 @@ export type Database = {
         }[]
       }
       stats_logs_monthly_trend: {
-        Args: { dept_id?: string; months?: number; org_id?: string }
+        Args: {
+          dept_id?: string
+          div_id?: string
+          months?: number
+          org_id?: string
+        }
         Returns: {
           completed_count: number
           created_count: number
@@ -1982,6 +1995,7 @@ export type Database = {
       stats_reactions_summary: {
         Args: {
           dept_id?: string
+          div_id?: string
           from_date?: string
           org_id?: string
           to_date?: string
@@ -1994,6 +2008,7 @@ export type Database = {
       stats_workload_summary: {
         Args: {
           dept_id?: string
+          div_id?: string
           from_date?: string
           org_id?: string
           to_date?: string

@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { NONE_SELECT_VALUE } from "@/lib/constants/select";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
 import type { Department, DepartmentFilter, Division, Organization } from "@/lib/types";
 
@@ -19,10 +18,12 @@ import type { Department, DepartmentFilter, Division, Organization } from "@/lib
 // 자체를 넘기지 않아(=undefined) 이 선택지 자체가 렌더링되지 않는다.
 export const DASHBOARD_ALL_ORGANIZATIONS = "all";
 
-// 부문 아래 선택적으로 존재하는 부서(division) 필터의 "전체 부서" 선택지. stats_* RPC에는
-// division 파라미터가 없다 — divisions는 departments.division_id를 통한 순수 클라이언트
-// 사이드 그룹핑일 뿐이라(CLAUDE.md "divisions 테이블" 절), 이 필터는 팀(department) Select의
-// 선택지를 부서 단위로 좁혀주는 용도로만 쓰이고 RPC 호출에는 영향을 주지 않는다.
+// 부문 아래 선택적으로 존재하는 부서(division) 필터의 "전체 부서" 선택지. stats_* RPC에도
+// org_id/dept_id와 동일한 컨벤션으로 div_id가 추가되어 있어(마이그레이션
+// extend_stats_rpc_division_scope), 부서를 선택하면 팀 Select의 선택지뿐 아니라 실제 차트
+// 데이터도 그 부서에 속한 팀으로 제한된다. div_id는 실제 division uuid만 받을 수 있어
+// (departments.division_id is null인 "부서 미배정 팀만" 같은 조건은 표현할 수 없다), 이
+// 필터는 "부서 없음" 선택지 없이 실재하는 division만 나열한다.
 const ALL_DIVISIONS_FILTER = "all";
 
 // 대시보드 자체 필터(조직·부서·기간). 목록 페이지(weekly-log-list-view.tsx)와 동일하게
@@ -56,20 +57,15 @@ export function DashboardFilters({
   const { navigate: navigateWithProgress } = useNavigationProgress();
   const isSuperAdmin = organizations !== undefined;
   const hasDivisions = divisions.length > 0;
-  const hasUnassignedDepartments = departments.some((dept) => !dept.division_id);
   const selectedDivisionId = currentDivisionId ?? ALL_DIVISIONS_FILTER;
 
-  // 부서 선택 시 팀 Select의 선택지를 그 부서에 속한 팀만으로 좁힌다(department-form-dialog의
-  // 부문→부서 캐스케이딩과 동일한 정신). RPC에는 division 파라미터가 없으므로 서버 재조회가
-  // 아니라 이미 내려받은 departments 배열을 클라이언트에서 필터링하는 것으로 충분하다.
+  // 부서 선택 시 팀 Select의 선택지도 그 부서에 속한 팀만으로 좁힌다(department-form-dialog의
+  // 부문→부서 캐스케이딩과 동일한 정신) — 실제 차트 데이터 필터링은 서버(page.tsx)가 div_id를
+  // RPC에 전달해 처리하므로, 여기서는 이미 내려받은 departments 배열을 그대로 재사용한다.
   const departmentOptions =
     selectedDivisionId === ALL_DIVISIONS_FILTER
       ? departments
-      : departments.filter((dept) =>
-          selectedDivisionId === NONE_SELECT_VALUE
-            ? !dept.division_id
-            : dept.division_id === selectedDivisionId,
-        );
+      : departments.filter((dept) => dept.division_id === selectedDivisionId);
 
   const navigate = (overrides: {
     org?: string;
@@ -131,9 +127,6 @@ export function DashboardFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_DIVISIONS_FILTER}>전체 부서</SelectItem>
-            {hasUnassignedDepartments && (
-              <SelectItem value={NONE_SELECT_VALUE}>부서 없음</SelectItem>
-            )}
             {divisions.map((division) => (
               <SelectItem key={division.id} value={division.id}>
                 {division.archived_at ? `${division.name} (비활성)` : division.name}
