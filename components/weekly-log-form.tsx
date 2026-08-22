@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type UseFormReturn } from "react-hook-form";
+import { CalendarDays, Gauge, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { HtmlEditor } from "@/components/html-editor";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import type { PendingAttachment } from "@/hooks/use-weekly-log-attachments";
@@ -35,6 +37,20 @@ import {
 import { weeklyLogSchema, type WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WeeklyLogAttachment, WorkTypeOption } from "@/lib/types";
 import { formatThousandsInput } from "@/lib/utils";
+
+// 필드가 길게 나열돼 경계가 안 보인다는 피드백에 따라(F053) "기본 정보/업무 내용/추가 정보"
+// 3개 구간으로 나누는 라벨 붙은 구분선. 장식용이라 Separator 자체는 decorative(기본값)로 두고
+// 별도 role/aria는 추가하지 않는다 — 텍스트 라벨이 이미 스크린 리더로 읽힌다.
+function FormSectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="shrink-0 text-xs font-semibold tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <Separator className="flex-1" />
+    </div>
+  );
+}
 
 export function WeeklyLogForm({
   defaultValues,
@@ -111,13 +127,17 @@ export function WeeklyLogForm({
   return (
     <Form {...form}>
       <form onSubmit={handleFormSubmit} className="flex flex-col gap-6">
+        <FormSectionDivider label="기본 정보" />
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="start_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>시작일</FormLabel>
+                <FormLabel className="flex items-center gap-1.5">
+                  <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
+                  시작일
+                </FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
                 </FormControl>
@@ -130,7 +150,10 @@ export function WeeklyLogForm({
             name="target_end_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>목표종료일</FormLabel>
+                <FormLabel className="flex items-center gap-1.5">
+                  <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
+                  목표종료일
+                </FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
                 </FormControl>
@@ -147,7 +170,10 @@ export function WeeklyLogForm({
           name="work_type"
           render={() => (
             <FormItem>
-              <FormLabel>업무 타입</FormLabel>
+              <FormLabel className="flex items-center gap-1.5">
+                <Tag className="size-3.5 text-muted-foreground" aria-hidden />
+                업무 타입
+              </FormLabel>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
                 {workTypeOptions.map(({ name: type, archived }) => (
                   <FormField
@@ -223,7 +249,8 @@ export function WeeklyLogForm({
           name="progress"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
+              <FormLabel className="flex items-center gap-1.5">
+                <Gauge className="size-3.5 text-muted-foreground" aria-hidden />
                 진척률{" "}
                 <span className="text-muted-foreground font-normal">{field.value}%</span>
               </FormLabel>
@@ -247,6 +274,7 @@ export function WeeklyLogForm({
             </FormItem>
           )}
         />
+        <FormSectionDivider label="업무 내용" />
         <FormField
           control={form.control}
           name="title"
@@ -273,6 +301,7 @@ export function WeeklyLogForm({
             </FormItem>
           )}
         />
+        <FormSectionDivider label="추가 정보" />
         <div className="grid gap-4 sm:grid-cols-3">
           <FormField
             control={form.control}

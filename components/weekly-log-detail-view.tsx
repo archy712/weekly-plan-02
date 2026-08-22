@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Building2, Coins, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -505,19 +505,22 @@ export function WeeklyLogDetailView({
       {(log.estimated_mm != null || log.estimated_cost != null || log.partner_company) && (
         <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-4 py-3 text-sm">
           {log.estimated_mm != null && (
-            <div>
+            <div className="flex items-center gap-1.5">
+              <Users className="size-3.5 text-muted-foreground" aria-hidden />
               <span className="text-muted-foreground">예상 소요 M/M</span>{" "}
               <span className="font-medium">{log.estimated_mm} M/M</span>
             </div>
           )}
           {log.estimated_cost != null && (
-            <div>
+            <div className="flex items-center gap-1.5">
+              <Coins className="size-3.5 text-muted-foreground" aria-hidden />
               <span className="text-muted-foreground">예상 소요 금액(단위:원)</span>{" "}
               <span className="font-medium">{formatCurrency(log.estimated_cost)}</span>
             </div>
           )}
           {log.partner_company && (
-            <div>
+            <div className="flex items-center gap-1.5">
+              <Building2 className="size-3.5 text-muted-foreground" aria-hidden />
               <span className="text-muted-foreground">관련 협력 회사</span>{" "}
               <span className="font-medium">{log.partner_company}</span>
             </div>
