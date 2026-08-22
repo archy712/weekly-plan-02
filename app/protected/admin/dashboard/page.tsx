@@ -17,6 +17,7 @@ import {
 import { DASHBOARD_ALL_ORGANIZATIONS, DashboardFilters } from "@/components/dashboard-filters";
 import { DimOnPending, NavigationProgressProvider } from "@/components/navigation-progress";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
 import { DashboardDepartmentChart } from "@/components/dashboard-department-chart";
 import { DashboardStatusChart } from "@/components/dashboard-status-chart";
@@ -224,34 +225,52 @@ async function DashboardContent({
           currentDivisionId={selectedDivisionId}
         />
         <DimOnPending className="flex flex-col gap-6">
-          <DashboardSummaryCards statusStats={statusStats} monthlyTrend={monthlyTrend} />
-          {showProgressCharts && (
-            <div className="flex flex-col gap-6">
-              {showDivisionProgressChart && (
-                <DashboardProgressChart
-                  title="부서별 진척률"
-                  description="선택한 부문·기간 기준 부서(division)별 양호/지연/미등록 비율입니다."
-                  rows={divisionProgressRows}
-                  emptyDescription="선택한 부문·기간에 등록된 주간업무일지가 없습니다."
-                />
+          {/* F054 프로토타입(Task 057, 채택 여부 결정 전) — 차트 9종 + 요약 카드를
+              스크롤 하나로 훑어보던 기존 화면을 3개 탭으로 묶어본다. 로드맵이 지정한
+              3개 탭 이름("요약/진척률", "분포", "추이·업무량")을 그대로 쓴다. */}
+          <Tabs defaultValue="summary" className="w-full">
+            <TabsList>
+              <TabsTrigger value="summary">요약 · 진척률</TabsTrigger>
+              <TabsTrigger value="distribution">분포</TabsTrigger>
+              <TabsTrigger value="trend">추이 · 업무량</TabsTrigger>
+            </TabsList>
+            <TabsContent value="summary" className="flex flex-col gap-6 pt-4">
+              <DashboardSummaryCards statusStats={statusStats} monthlyTrend={monthlyTrend} />
+              {showProgressCharts && (
+                <div className="flex flex-col gap-6">
+                  {showDivisionProgressChart && (
+                    <DashboardProgressChart
+                      title="부서별 진척률"
+                      description="선택한 부문·기간 기준 부서(division)별 양호/지연/미등록 비율입니다."
+                      rows={divisionProgressRows}
+                      emptyDescription="선택한 부문·기간에 등록된 주간업무일지가 없습니다."
+                    />
+                  )}
+                  <DashboardProgressChart
+                    title="팀별 진척률"
+                    description="선택한 부문·기간 기준 팀별 양호/지연/미등록 비율입니다."
+                    rows={departmentProgressRows}
+                    emptyDescription="선택한 조건에 등록된 주간업무일지가 없습니다."
+                  />
+                </div>
               )}
-              <DashboardProgressChart
-                title="팀별 진척률"
-                description="선택한 부문·기간 기준 팀별 양호/지연/미등록 비율입니다."
-                rows={departmentProgressRows}
-                emptyDescription="선택한 조건에 등록된 주간업무일지가 없습니다."
-              />
-            </div>
-          )}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <DashboardDepartmentChart data={departmentStats} />
-            <DashboardStatusChart data={statusStats} />
-            <DashboardWorkTypeChart data={workTypeStats} />
-            <DashboardImportanceChart data={importanceStats} />
-            <DashboardTrendChart data={monthlyTrend} />
-            <DashboardReactionChart data={reactionStats} />
-            <DashboardWorkloadChart data={workloadRows} />
-          </div>
+            </TabsContent>
+            <TabsContent value="distribution" className="pt-4">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <DashboardDepartmentChart data={departmentStats} />
+                <DashboardStatusChart data={statusStats} />
+                <DashboardWorkTypeChart data={workTypeStats} />
+                <DashboardImportanceChart data={importanceStats} />
+              </div>
+            </TabsContent>
+            <TabsContent value="trend" className="pt-4">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <DashboardTrendChart data={monthlyTrend} />
+                <DashboardReactionChart data={reactionStats} />
+                <DashboardWorkloadChart data={workloadRows} />
+              </div>
+            </TabsContent>
+          </Tabs>
         </DimOnPending>
       </div>
     </NavigationProgressProvider>
