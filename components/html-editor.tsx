@@ -16,6 +16,7 @@ import {
 
 import { PROSE_CONTENT_CLASS } from "@/components/html-content";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html";
 
@@ -194,16 +195,20 @@ function ToolbarButton({
   onClick: () => void;
 }) {
   return (
-    <Button
-      type="button"
-      variant={active ? "secondary" : "ghost"}
-      size="icon-sm"
-      aria-label={label}
-      aria-pressed={active}
-      title={label}
-      onClick={onClick}
-    >
-      <Icon className="size-4" />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant={active ? "secondary" : "ghost"}
+          size="icon-sm"
+          aria-label={label}
+          aria-pressed={active}
+          onClick={onClick}
+        >
+          <Icon className="size-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }

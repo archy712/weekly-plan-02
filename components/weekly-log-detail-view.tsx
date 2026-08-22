@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { StatusBadge } from "@/components/status-badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 // 편집 폼은 Tiptap 에디터(html-editor)를 끌고 오는 무거운 청크라, 대부분 읽기 전용인 상세
 // 페이지 초기 번들에서 분리한다 — "수정"을 눌러 isEditing이 될 때만 동적으로 로드한다.
 const WeeklyLogForm = dynamic(
@@ -339,12 +340,14 @@ export function WeeklyLogDetailView({
           {/* 진척률이 목표진척률에 못 미치면(완료 제외) 표시 — canWrite 여부와 무관하게
               모든 열람자에게 노출한다(중요도·진행상태 배지와 동일한 공개 범위). */}
           {delayed && (
-            <Badge
-              variant="destructive"
-              title={`진척률 ${progress}%, 목표진척률 ${targetProgress}%`}
-            >
-              지연
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="destructive">지연</Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                진척률 {progress}%, 목표진척률 {targetProgress}%
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -450,12 +453,16 @@ export function WeeklyLogDetailView({
             // 목표진척률 마커가 채워진 막대 안쪽에 들어가면 막대와 같은 계열 색이라
             // 구분이 안 되므로, ring-background로 배경색 테두리를 둘러 어떤 색 위에
             // 있어도(빈 트랙이든 success/warning 막대든) 항상 도드라지게 한다.
-            <div
-              className="bg-foreground ring-background absolute inset-y-0 w-0.5 ring-2"
-              style={{ left: `${targetProgress}%` }}
-              title={`목표진척률 ${targetProgress}%`}
-              aria-hidden
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="bg-foreground ring-background absolute inset-y-0 w-0.5 ring-2"
+                  style={{ left: `${targetProgress}%` }}
+                  aria-hidden
+                />
+              </TooltipTrigger>
+              <TooltipContent>목표진척률 {targetProgress}%</TooltipContent>
+            </Tooltip>
           )}
         </div>
         {canWrite && isQuickEditOpen && (
