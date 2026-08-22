@@ -518,31 +518,67 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] 콘솔 에러 0건(전 시나리오)
     - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
 
-- **Task 054: 헤더 `Command` 팔레트(⌘K) 신설 (F051)**
-  - [ ] `components/ui/command.tsx`(cmdk 기반, 이미 설치되어 있으나 `/component-gallery` 데모 외 미사용)로 헤더에 `⌘K`/`Ctrl K` 단축키로 여는 `CommandDialog` 신설
-  - [ ] 1차 스코프: 정적 이동 메뉴만 제공 — 목록/칸반/타임라인, 신규 작성, 관리자 대시보드/부서/업무타입/사용자 관리(관리자에게만 노출), 프로필. 백엔드 검색 연동은 범위 밖
-  - [ ] 단축키 리스너는 `components/site-header.tsx` 또는 별도 클라이언트 컴포넌트(`components/command-palette.tsx` 신규)에 두고, 입력 필드에 포커스가 있을 때 단축키가 오작동하지 않는지 확인(Tiptap 에디터·검색창 등)
-  - [ ] 모바일에서는 단축키 대신 헤더/모바일 시트에 트리거 버튼(아이콘) 노출
-  - **관련 파일**: `components/site-header.tsx`, `components/command-palette.tsx`(신규), `components/ui/command.tsx`, `components/mobile-nav.tsx`
-  - **수락 기준**: 데스크탑에서 `⌘K`(Mac)/`Ctrl K`(Win)로 팔레트가 열리고 각 메뉴 클릭 시 해당 라우트로 정상 이동하며, 관리자 전용 메뉴는 일반 사용자에게 노출되지 않는다. 모바일에서도 트리거 버튼으로 동일하게 접근 가능하다.
+- **Task 054: 헤더 `Command` 팔레트(⌘K) 신설 (F051)** ✅
+  - [x] `components/ui/command.tsx`(cmdk 기반, 이미 설치되어 있으나 `/component-gallery` 데모 외 미사용)로 헤더에 `⌘K`/`Ctrl K` 단축키로 여는 `CommandDialog` 신설
+  - [x] 1차 스코프: 정적 이동 메뉴만 제공 — 목록/칸반/타임라인, 신규 작성, 관리자 콘솔, 프로필(관리자 전용 메뉴는 관리자에게만 노출). 백엔드 검색 연동은 범위 밖
+    - **계획과 다르게 처리한 부분**: 로드맵 문구는 관리자 메뉴로 "대시보드/부서/업무타입/사용자 관리" 4개만 예시로 들었으나, 실제 관리자 콘솔(`components/admin-tab-nav.tsx`)은 이미 6개 탭(대시보드·부문 관리·부서 관리·팀 관리·업무타입 관리·사용자 관리, 위 CLAUDE.md "슈퍼관리자 등급"/"`divisions` 테이블" 절 참고)으로 확장돼 있어, 팔레트도 6개 탭 전부를 등록했다(일부만 등록하면 팔레트가 실제 콘솔 내비게이션보다 빈약해짐).
+  - [x] 단축키 리스너는 별도 클라이언트 컴포넌트(`components/command-palette.tsx` 신규)에 두고, 입력 필드에 포커스가 있을 때 단축키가 오작동하지 않는지 확인(Tiptap 에디터·검색창 등) — `document`에 `capture: true`로 등록해 Tiptap 에디터(contenteditable)의 자체 키 핸들러보다 먼저 가로채고 `preventDefault`+`stopPropagation`으로 하위 전파를 차단
+  - [x] 모바일에서는 단축키 대신 헤더/모바일 시트에 트리거 버튼(아이콘) 노출 — `components/notification-bell.tsx`의 Provider/Context 분리 패턴(데스크탑·모바일 두 위치에서 같은 상태 공유)을 그대로 재사용해 `CommandPaletteProvider`(상태·Dialog 렌더)/`CommandPaletteTrigger`(트리거 버튼, Provider 밖에서는 조용히 null) 두 컴포넌트로 분리
+  - **관련 파일**: `components/command-palette.tsx`(신규), `components/header-nav.tsx`(데스크탑 트리거 배치, `CommandPaletteProvider`로 로그인 사용자 영역 감싸기), `components/mobile-nav.tsx`(모바일 트리거 배치), `components/ui/command.tsx`(변경 없음, 기존 컴포넌트 재사용)
+  - **수락 기준**: 데스크탑에서 `⌘K`(Mac)/`Ctrl K`(Win)로 팔레트가 열리고 각 메뉴 클릭 시 해당 라우트로 정상 이동하며, 관리자 전용 메뉴는 일반 사용자에게 노출되지 않는다. 모바일에서도 트리거 버튼으로 동일하게 접근 가능하다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task054-cp7x2@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] 1280px 데스크탑, 일반 사용자로 `Ctrl K` → 팔레트 오픈, "보기"(목록/칸반보드/타임라인)·"작성"(새 주간업무일지 작성)·"계정"(프로필) 3개 그룹만 노출되고 "관리자" 그룹은 없음을 확인
+    - [x] 검색창에 "타임라인" 입력 → cmdk 내장 매칭으로 해당 항목만 필터링되는 것을 확인, 클릭 → `/protected/weekly-logs/timeline`로 정상 이동 및 다이얼로그 자동 닫힘 확인
+    - [x] 작성 폼(`/protected/weekly-logs/new`) Tiptap 에디터에 텍스트 입력 후 `Ctrl K` → 팔레트가 열리고 에디터 본문은 그대로 유지(글자 유실·엉뚱한 문자 삽입 없음)됨을 확인, `Escape`로 닫은 뒤 콘솔 에러 0건 확인
+    - [x] 390px 모바일 뷰포트 → 헤더의 검색 아이콘(트리거 버튼) 탭으로 동일한 다이얼로그가 열림을 확인
+    - [x] SQL로 QA 계정을 `role='admin'`으로 승격 후 재진입 → 팔레트에 "관리자" 그룹 6개 항목(대시보드/부문 관리/부서 관리/팀 관리/업무타입 관리/사용자 관리) 전부 노출 확인, "사용자 관리" 클릭 → `/protected/admin/users`로 정상 이동 확인
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 Task 051에서 확인된 것과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
+  - **범위 밖 유지**: 백엔드 검색 연동(제목/작성자 등 실데이터 검색), 최근 방문 이력 기반 정렬
 
-- **Task 055: 사용자 관리 `HoverCard` 프리뷰 (F052)**
-  - [ ] `components/user-admin-table.tsx`의 아바타에 `ui/hover-card.tsx`(이미 설치, 미사용)를 달아 마우스 오버 시 이름/아바타/역할/소속 팀 요약을 페이지 이동 없이 보여줌
-  - [ ] 터치 기기(hover 없음)에서의 폴백 동작 확인(클릭 시 상세 페이지로 이동하는 기존 동작과 충돌하지 않게)
-  - **관련 파일**: `components/user-admin-table.tsx`, `components/ui/hover-card.tsx`
-  - **수락 기준**: 데스크탑에서 아바타에 마우스를 올리면 카드가 뜨고, 클릭 시 기존처럼 상세 페이지로 이동하는 동작은 그대로 유지된다.
+- **Task 055: 사용자 관리 `HoverCard` 프리뷰 (F052)** ✅
+  - [x] `components/user-admin-table.tsx`의 아바타에 `ui/hover-card.tsx`(이미 설치, 미사용)를 달아 마우스 오버 시 이름/아바타/역할/소속 팀 요약을 페이지 이동 없이 보여줌 — `HoverCardTrigger asChild`로 `Avatar`를 감싸 포인터/포커스 핸들러만 얹었다(기존 `<Link>` 안에 중첩된 `<a>`를 새로 만들지 않기 위해 `asChild` 필수). 역할 라벨은 `components/user-role-select.tsx`의 `ROLE_LABELS`를 `export`해 재사용(중복 정의 방지)
+  - [x] 터치 기기(hover 없음)에서의 폴백 동작 확인(클릭 시 상세 페이지로 이동하는 기존 동작과 충돌하지 않게) — Radix `@radix-ui/react-hover-card` 소스(`node_modules`)를 실측한 결과 `pointerType === "touch"`인 이벤트는 열기/닫기 핸들러 자체에서 무시하도록 이미 구현돼 있어(`event.pointerType === "touch" ? void 0 : eventHandler()`), 별도 분기 코드 없이도 터치에서는 호버 카드가 아예 열리지 않고 기존 `<Link>` 클릭 이동만 남는다
+  - **계획과 다르게 처리한 부분**: `HoverCardTrigger asChild`가 자식(`Avatar`)의 `data-slot="avatar"`를 자신의 `data-slot="hover-card-trigger"`로 덮어쓰는 것을 테스트 중 실측했다(Radix `Slot`이 트리거 자신의 `data-slot`을 우선). 시각적 클래스(`group/avatar`, `data-size` 등)는 그대로 보존돼 기능·스타일에는 영향이 없지만, 이 셀 안에서 `[data-slot="avatar"]` 선택자로 아바타를 찾는 코드(테스트 등)가 있다면 `[data-slot="hover-card-trigger"]`를 대신 써야 한다는 점을 기록해둔다.
+  - **관련 파일**: `components/user-admin-table.tsx`, `components/user-role-select.tsx`(`ROLE_LABELS` export), `components/ui/hover-card.tsx`(변경 없음, 기존 컴포넌트 재사용)
+  - **수락 기준**: 데스크탑에서 아바타에 마우스를 올리면 카드가 뜨고, 클릭 시 기존처럼 상세 페이지로 이동하는 동작은 그대로 유지된다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task055-hc3n9@example.com`을 실제 회원가입 플로우로 관리자 승격 후 생성해 검증, 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] 1280px 데스크탑 `/protected/admin/users`에서 아바타 hover → 200ms 후 이름/이메일/역할 배지/소속 팀이 담긴 카드 노출 확인(`access1.dummy@example.com` 행으로 실측: "김도윤 / access1.dummy@example.com / 일반 사용자 / 접근제어 프로젝트팀")
+    - [x] 카드가 뜬 상태에서 아바타 클릭 → `/protected/admin/users/{id}` 상세 페이지로 정상 이동 확인(호버 카드가 클릭을 가로채지 않음)
+    - [x] 라이트 모드 전환 후 동일 지점 재확인 — 배경/텍스트 색 반전 정상, 테마 토큰(`bg-popover`/`text-popover-foreground`) 기반이라 가독성 문제 없음
+    - [x] 콘솔 에러 0건
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
+  - **범위 밖 유지**: 모바일 카드 목록(`components/user-admin-card.tsx`)은 이미 이름/소속 팀/역할이 카드에 직접 노출돼 있어 호버 프리뷰가 불필요 — 대상에서 제외(로드맵 "관련 파일"에도 명시되지 않음)
 
-- **Task 056: 상세 페이지·작성 폼 섹션 구분 강화 (F053)**
-  - [ ] `components/weekly-log-detail-view.tsx`: 예상 M/M·예상 금액·협력회사 요약 블록(`border bg-muted/30`)에 `Users`/`Coins`/`Building2` 등 lucide 아이콘을 라벨 앞에 추가해 다른 텍스트 뭉치와 구분
-  - [ ] `components/weekly-log-form.tsx`: 날짜/업무타입/중요도/진척률/업무명/본문/추가정보/첨부 순으로 나열된 필드 사이에 `ui/separator.tsx`(이미 설치)로 "기본 정보 / 업무 내용 / 추가 정보" 구간을 나누고, `FormLabel` 옆에 소형 아이콘(`CalendarDays`/`Tag`/`Gauge`) 추가
-  - [ ] 상세 페이지 전체를 `Tabs`로 나누는 안(개요/진행관리/이력·댓글)은 정보 공개 범위가 바뀌는 트레이드오프가 있어 **이 Task 범위에서는 제외**하고 아이콘·Separator 수준의 저비용 개선만 적용
-  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/weekly-log-form.tsx`, `components/ui/separator.tsx`
-  - **수락 기준**: 상세·작성 화면에서 각 정보 그룹의 경계가 시각적으로 구분되고, 라이트/다크 양쪽에서 아이콘 색상이 테마 토큰(`text-muted-foreground` 등)을 따른다.
+- **Task 056: 상세 페이지·작성 폼 섹션 구분 강화 (F053)** ✅
+  - [x] `components/weekly-log-detail-view.tsx`: 예상 M/M·예상 금액·협력회사 요약 블록(`border bg-muted/30`)에 `Users`/`Coins`/`Building2` lucide 아이콘을 라벨 앞에 추가해 다른 텍스트 뭉치와 구분
+  - [x] `components/weekly-log-form.tsx`: 날짜/업무타입/중요도/진척률/업무명/본문/추가정보/첨부 순으로 나열된 필드 사이에 `ui/separator.tsx`(이미 설치)로 "기본 정보 / 업무 내용 / 추가 정보" 구간을 나누고, `FormLabel` 옆에 소형 아이콘(`CalendarDays`/`Tag`/`Gauge`) 추가
+    - **계획과 다르게 처리한 부분**: 로드맵은 3개 아이콘을 "FormLabel 옆" 전반에 쓰라고만 적었으나, 실제로는 필드 유형별로 1:1 매핑해 적용했다 — 시작일·목표종료일 두 날짜 필드는 공통으로 `CalendarDays`, 업무 타입은 `Tag`, 진척률은 `Gauge`(계량기 은유가 퍼센트 진행률에 가장 잘 맞음). 업무 중요도에는 로드맵이 준 3개 아이콘 중 어느 것도 자연스럽게 맞지 않아 아이콘을 추가하지 않았다(과잉 추가 방지). 구간 구분선은 `Separator` 단독이 아니라 구간명을 함께 표시하는 라벨 붙은 구분선(`FormSectionDivider`, 라벨 텍스트 + `flex-1 Separator`)으로 구현했다 — 로드맵이 정한 "기본 정보/업무 내용/추가 정보"라는 구체적 이름 3개가 화면에 실제로 보여야 그 이름이 의미가 있다고 판단했다(장식용 가로줄만으로는 구간 이름이 전달되지 않음).
+  - [x] 상세 페이지 전체를 `Tabs`로 나누는 안(개요/진행관리/이력·댓글)은 정보 공개 범위가 바뀌는 트레이드오프가 있어 **이 Task 범위에서는 제외**하고 아이콘·Separator 수준의 저비용 개선만 적용
+  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/weekly-log-form.tsx`, `components/ui/separator.tsx`(변경 없음, 기존 컴포넌트 재사용)
+  - **수락 기준**: 상세·작성 화면에서 각 정보 그룹의 경계가 시각적으로 구분되고, 라이트/다크 양쪽에서 아이콘 색상이 테마 토큰(`text-muted-foreground` 등)을 따른다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task056-fs8k1@example.com`을 실제 회원가입 플로우로 생성해 실제 로그 1건 작성 후 검증, 로그·계정 모두 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] 작성 폼(`/protected/weekly-logs/new`)에서 "기본 정보"(날짜·업무타입·중요도·진척률) / "업무 내용"(업무명·본문) / "추가 정보"(M/M·금액·협력사·첨부) 3개 구간이 라벨+구분선으로 시각적으로 분리됨을 스크린샷으로 확인, 시작일·목표종료일·업무타입·진척률 라벨 앞에 각각 아이콘 노출 확인
+    - [x] M/M `2.5`, 금액 `1,000,000`, 협력사 `테스트 협력사`를 채운 로그를 실제로 저장 → 상세 페이지의 요약 블록에 Users/Coins/Building2 아이콘이 각 라벨 앞에 정상 노출됨을 확인
+    - [x] "수정" 버튼으로 편집 폼 재진입 → 동일한 3개 구간 구분선·아이콘이 편집 모드(`WeeklyLogForm` 재사용 경로)에서도 그대로 유지됨을 확인
+    - [x] 다크 모드 전환 후 상세·편집 화면 모두 재확인 — 아이콘·구분선·라벨 색상이 테마 토큰 기반이라 반전 정상, 가독성 문제 없음
+    - [x] 콘솔 에러 0건(전 시나리오)
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
 
-- **Task 057: 관리자 대시보드 차트 `Tabs` 그룹화 검토 (F054)**
-  - [ ] `app/protected/admin/dashboard/page.tsx`의 차트 7종 + 파이차트 2종 + 요약 카드를 "요약/진척률", "분포(부서·상태·업무타입·중요도)", "추이·업무량" 3개 탭으로 묶는 안을 프로토타입으로 구현
-  - [ ] 이 변경은 "대시보드를 스크롤로 훑어보는" 기존 사용 패턴과 상충할 수 있어(검토 리포트의 확신도 "중간" 항목) **적용 전 사용자 확인 필수** — 프로토타입을 먼저 보여주고 채택 여부를 결정
-  - **관련 파일**: `app/protected/admin/dashboard/page.tsx`, `components/dashboard-*-chart.tsx` 각 파일, `components/ui/tabs.tsx`
+- **Task 057: 관리자 대시보드 차트 `Tabs` 그룹화 검토 (F054)** ✅
+  - [x] `app/protected/admin/dashboard/page.tsx`의 차트 7종 + 파이차트 2종 + 요약 카드를 "요약/진척률", "분포(부서·상태·업무타입·중요도)", "추이·업무량" 3개 탭으로 묶는 안을 프로토타입으로 구현
+    - **계획과 다르게 처리한 부분**: 로드맵의 "파이차트 2종"은 실측 결과 사실이 아니었다 — `components/dashboard-progress-chart.tsx`의 코드 주석을 확인한 결과 부문/부서 진척률 차트는 이미 이전 Task에서 파이(small multiples)에서 100% 누적 가로 막대로 교체돼 있었다(파이 조각의 각도는 그룹 간 비교가 어려운 인코딩이라는 이유, 옆의 "건수" 막대 차트와 시각 언어 통일 목적). 실제 파이 차트는 `dashboard-status-chart.tsx`(진행상태 분포 도넛) 1종뿐이다. 탭 그룹화 자체(차트를 3개 카테고리로 묶는 것)는 로드맵 설계 그대로 구현했다.
+  - [x] 이 변경은 "대시보드를 스크롤로 훑어보는" 기존 사용 패턴과 상충할 수 있어(검토 리포트의 확신도 "중간" 항목) **적용 전 사용자 확인 필수** — 프로토타입을 실제 코드로 구현해 Playwright 스크린샷으로 보여준 뒤 사용자가 "채택(유지)"을 선택해 확정했다
+  - **관련 파일**: `app/protected/admin/dashboard/page.tsx`(`Tabs`/`TabsList`/`TabsTrigger`/`TabsContent`로 기존 3개 블록 재구성), `components/ui/tabs.tsx`(변경 없음, 기존 컴포넌트 재사용) — 개별 `dashboard-*-chart.tsx` 파일은 위치만 옮겨졌을 뿐 내부 구현은 수정하지 않았다
+  - **수락 기준**: 3개 탭 전환이 정상 동작하고, 각 탭의 차트가 필터(부문/부서/팀/기간)와 정상 연동된다. **충족 확인 및 사용자 채택 확정.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task057-dt4v2@example.com`을 실제 회원가입 플로우로 admin 승격 후 생성해 검증, 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] "요약 · 진척률" 탭(기본 선택) → 요약 카드 4장 + 부서별/팀별 진척률 누적 막대 정상 렌더링 확인
+    - [x] "분포" 탭 → 팀별 건수·진행상태 분포(도넛)·업무 타입별 건수·업무 중요도 분포 4개 차트 정상 렌더링 확인, 도넛 차트가 새로 mount되는 탭 전환 시점에도 크기 계산이 정상(0폭 렌더링 없음)임을 확인
+    - [x] "추이 · 업무량" 탭 → 월별 추이·추천/비추천·팀별 예상 M/M·금액 3개 차트 정상 렌더링 확인
+    - [x] **"추이 · 업무량" 탭이 선택된 상태에서 팀 필터를 "Commerce시스템팀"으로 변경** → URL이 soft navigation으로 갱신되고 차트 데이터는 필터링된 값으로 바뀌었지만 **선택된 탭은 그대로 유지됨을 확인**(로드맵이 우려한 "필터 변경 시 탭이 초기화되는" 문제 없음 — Radix `Tabs`의 비제어 상태가 서버 데이터 갱신에 의해 리마운트되지 않기 때문)
+    - [x] 390px 모바일 뷰포트 → 탭 목록이 필터 카드 아래에서 줄바꿈 없이 정상 렌더링됨을 확인
+    - [x] 콘솔 에러 0건(전 시나리오)
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
+  - **범위 밖 유지**: 탭 선택 상태를 URL 쿼리 파라미터로 영속화하는 것(새로고침 시 탭이 기본값으로 돌아가는 것은 허용 가능한 손실로 판단, 필터 변경 중에는 이미 유지됨을 확인했으므로 우선순위 낮음)
   - **수락 기준**: 탭 전환 시 각 차트가 정상 렌더링되고, 사용자가 프로토타입을 확인한 뒤 채택/반려를 결정한다(반려 시 이 Task는 "적용 안 함"으로 종료 가능).
 
 - **Task 058: 빈 상태·다운로드 메뉴 아이콘 보강 (F055)**
