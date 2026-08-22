@@ -16,6 +16,9 @@ const UNIQUE_VIOLATION = "23505";
 const FOREIGN_KEY_VIOLATION = "23503";
 const RLS_VIOLATION = "42501";
 
+// 이름과 달리 관리자 권한은 확인하지 않는다 — 로그인 여부만 확인하고, 실제 쓰기 권한
+// (조직 범위 포함)은 work_types의 INSERT/UPDATE/DELETE RLS(is_admin() AND
+// organization_id = current_organization_id())에 위임한다(의도된 설계).
 async function requireLoggedIn(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<{ userId: string } | { error: string }> {

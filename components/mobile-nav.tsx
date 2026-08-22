@@ -19,17 +19,9 @@ import { LogoutButton } from "@/components/logout-button";
 import { NotificationBell } from "@/components/notification-bell";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
-import type { NotificationListItem, UserRole } from "@/lib/types";
+import type { NavUser } from "@/lib/types";
 
 type NavLink = { href: string; label: string };
-type NavUser = {
-  id: string;
-  email: string;
-  role: UserRole;
-  avatarKey: string;
-  unreadCount: number;
-  notifications: NotificationListItem[];
-} | null;
 
 export function MobileNav({
   navLinks,

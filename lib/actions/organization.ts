@@ -21,6 +21,9 @@ function toNullableId(value: string): string | null {
   return value === NONE_SELECT_VALUE ? null : value;
 }
 
+// 이름과 달리 관리자 권한은 확인하지 않는다 — 로그인 여부만 확인하고, 실제 쓰기 권한
+// (조직 생성은 슈퍼관리자 전용, 수정은 is_admin() AND organization_id = current_organization_id()
+// 이거나 슈퍼관리자면 전 조직)은 organizations의 INSERT/UPDATE RLS에 위임한다(의도된 설계).
 async function requireLoggedIn(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<{ userId: string } | { error: string }> {

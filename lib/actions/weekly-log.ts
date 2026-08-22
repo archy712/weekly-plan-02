@@ -20,6 +20,10 @@ const importanceUpdateSchema = z.number().int().min(IMPORTANCE_MIN).max(IMPORTAN
 
 const progressUpdateSchema = z.number().int().min(PROGRESS_MIN).max(PROGRESS_MAX);
 
+// weekly-log-reaction.ts의 toggleWeeklyLogReactionAction과 동일한 형식 검증 — 잘못된
+// UUID도 결국 RLS/Postgres가 걸러내지만, 이 파일의 다른 액션들과 일관되게 형식만 미리 확인한다.
+const weeklyLogIdSchema = z.string().uuid();
+
 export type WeeklyLogActionResult =
   | { success: true }
   | { success: false; error: string };
@@ -112,6 +116,9 @@ export async function updateWeeklyLogAction(
   id: string,
   values: WeeklyLogFormData,
 ): Promise<WeeklyLogActionResult> {
+  if (!weeklyLogIdSchema.safeParse(id).success) {
+    return { success: false, error: "잘못된 요청입니다." };
+  }
   const parsed = weeklyLogSchema.safeParse(values);
   if (!parsed.success) {
     return {
@@ -150,6 +157,9 @@ export async function updateWeeklyLogWorkTypeAction(
   id: string,
   workType: WeeklyLogWorkType[],
 ): Promise<WeeklyLogActionResult> {
+  if (!weeklyLogIdSchema.safeParse(id).success) {
+    return { success: false, error: "잘못된 요청입니다." };
+  }
   const parsed = workTypeUpdateSchema.safeParse(workType);
   if (!parsed.success) {
     return {
@@ -187,6 +197,9 @@ export async function updateWeeklyLogImportanceAction(
   id: string,
   importance: number,
 ): Promise<WeeklyLogActionResult> {
+  if (!weeklyLogIdSchema.safeParse(id).success) {
+    return { success: false, error: "잘못된 요청입니다." };
+  }
   const parsed = importanceUpdateSchema.safeParse(importance);
   if (!parsed.success) {
     return { success: false, error: "업무 중요도를 확인해주세요." };
@@ -223,6 +236,9 @@ export async function updateWeeklyLogProgressAction(
   id: string,
   progress: number,
 ): Promise<WeeklyLogActionResult> {
+  if (!weeklyLogIdSchema.safeParse(id).success) {
+    return { success: false, error: "잘못된 요청입니다." };
+  }
   const parsed = progressUpdateSchema.safeParse(progress);
   if (!parsed.success) {
     return { success: false, error: "진척률을 확인해주세요." };
@@ -254,6 +270,9 @@ export async function updateWeeklyLogProgressAction(
 }
 
 export async function deleteWeeklyLogAction(id: string): Promise<WeeklyLogActionResult> {
+  if (!weeklyLogIdSchema.safeParse(id).success) {
+    return { success: false, error: "잘못된 요청입니다." };
+  }
   const supabase = await createClient();
   const { data, error: claimsError } = await supabase.auth.getClaims();
   if (claimsError || !data?.claims) {
@@ -282,6 +301,9 @@ export async function updateWeeklyLogStatusAction(
   id: string,
   status: WeeklyLogStatus,
 ): Promise<WeeklyLogActionResult> {
+  if (!weeklyLogIdSchema.safeParse(id).success) {
+    return { success: false, error: "잘못된 요청입니다." };
+  }
   const supabase = await createClient();
   const { data, error: claimsError } = await supabase.auth.getClaims();
   if (claimsError || !data?.claims) {

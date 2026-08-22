@@ -302,3 +302,14 @@ export type NotificationListItem = Notification & {
   actor_avatar_key: string;
   weekly_log_title: string | null;
 };
+
+// 헤더(데스크탑 header-nav.tsx/모바일 mobile-nav.tsx)가 공유하는 로그인 사용자 요약 —
+// 두 컴포넌트에 중복 정의되어 있던 것을 여기로 옮겼다. 비로그인 상태는 null로 표현한다.
+export type NavUser = {
+  id: string;
+  email: string;
+  role: UserRole;
+  avatarKey: string;
+  unreadCount: number;
+  notifications: NotificationListItem[];
+} | null;

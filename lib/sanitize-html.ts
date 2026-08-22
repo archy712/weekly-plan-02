@@ -35,6 +35,11 @@ if (isBrowser) {
   });
 }
 
+// 계약: SSR 패스(isBrowser=false)에서는 sanitize를 건너뛰고 원본을 그대로 반환한다 —
+// 위 모듈 주석대로 이 함수는 "DB에서 읽어온, 저장 시점에 이미
+// lib/sanitize-html-server.ts로 sanitize된 값"에만 호출해야 안전하다. 신뢰할 수 없는
+// 원본 HTML(사용자가 방금 입력한 값 등)을 이 함수에 SSR 중 직접 넘기면 sanitize가 조용히
+// 스킵된다 — 새 호출부를 추가할 때 이 전제가 성립하는지 반드시 확인할 것.
 export function sanitizeWeeklyLogContent(html: string): string {
   if (!isBrowser) {
     return html;

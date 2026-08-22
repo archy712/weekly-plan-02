@@ -7,16 +7,7 @@ import { NotificationBell, NotificationsProvider } from "@/components/notificati
 import { UserAccountMenu } from "@/components/user-account-menu";
 import { getRecentNotifications, getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { createClient } from "@/lib/supabase/server";
-import type { NotificationListItem, UserRole } from "@/lib/types";
-
-type NavUser = {
-  id: string;
-  email: string;
-  role: UserRole;
-  avatarKey: string;
-  unreadCount: number;
-  notifications: NotificationListItem[];
-} | null;
+import type { NavUser, UserRole } from "@/lib/types";
 
 function getNavLinks(user: NavUser): { href: string; label: string }[] {
   if (!user) {
