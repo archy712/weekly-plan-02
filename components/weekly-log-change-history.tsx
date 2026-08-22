@@ -69,7 +69,9 @@ export function WeeklyLogChangeHistorySection({
                     </span>
                     (으)로 변경
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  {/* formatRelativeTime()의 SSR/CSR 시간차로 인한 잠재적 텍스트 불일치 —
+                      weekly-log-comment-section.tsx와 동일한 이유로 suppressHydrationWarning. */}
+                  <span className="text-xs text-muted-foreground" suppressHydrationWarning>
                     {formatRelativeTime(item.created_at)}
                   </span>
                 </li>

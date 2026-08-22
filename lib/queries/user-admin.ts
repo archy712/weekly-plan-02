@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { createClient } from "@/lib/supabase/server";
 import { escapeLikePattern } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER, ALL_ROLES_FILTER } from "@/lib/types";
@@ -47,8 +49,14 @@ export async function getScopedDepartments(
 }
 
 // page.tsx는 searchParams에서, 서버 액션은 클라이언트가 보낸 값에서 필터/정렬을 만든다.
-// 후자는 신뢰할 수 없는 입력이므로 role을 방어적으로 정규화한다(department는 조직 스코프의
-// .in(...)이 최종 방어선이라 그대로 통과시킨다).
+// 후자는 신뢰할 수 없는 입력이므로 role을 방어적으로 정규화한다. department는 조직
+// 스코프의 .in(department_id, departmentIds)이 "다른 조직 데이터 접근"은 막아주지만,
+// applyUserFilters()가 이와 별개로 .eq("department_id", filters.department)를 AND로
+// 추가하므로 department_id(uuid 컬럼)에 형식이 아예 유효하지 않은 값(임의 문자열)이
+// 들어오면 .in()과 무관하게 Postgrest가 22P02를 던져 countUsers/fetchUserRows가 그대로
+// 500으로 죽는다 — 그래서 이 필터도 UUID 형식만은 여기서 미리 검증한다.
+const departmentIdSchema = z.string().uuid();
+
 export function normalizeUserAdminFilters(raw: {
   department?: string | null;
   role?: string | null;
@@ -58,8 +66,12 @@ export function normalizeUserAdminFilters(raw: {
     raw.role && VALID_ROLES.includes(raw.role as UserRole)
       ? (raw.role as UserRole)
       : ALL_ROLES_FILTER;
+  const department =
+    raw.department && departmentIdSchema.safeParse(raw.department).success
+      ? raw.department
+      : ALL_DEPARTMENTS_FILTER;
   return {
-    department: raw.department || ALL_DEPARTMENTS_FILTER,
+    department,
     role,
     q: (raw.q ?? "").trim(),
   };

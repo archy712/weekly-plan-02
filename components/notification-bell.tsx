@@ -153,7 +153,9 @@ export function NotificationBell() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm leading-snug">{formatNotificationMessage(notification)}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    {/* formatRelativeTime()의 SSR/CSR 시간차로 인한 잠재적 텍스트 불일치 —
+                        weekly-log-comment-section.tsx와 동일한 이유로 suppressHydrationWarning. */}
+                    <p className="mt-0.5 text-xs text-muted-foreground" suppressHydrationWarning>
                       {formatRelativeTime(notification.created_at)}
                     </p>
                   </div>

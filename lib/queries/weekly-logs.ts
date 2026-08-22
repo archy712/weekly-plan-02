@@ -45,10 +45,17 @@ const STATUS_SORT_RANK: Record<WeeklyLogStatus, number> = {
 
 const dateParamSchema = z.string().date();
 
+// department_id/author_id는 uuid 컬럼이라 .eq()에 문법적으로 유효하지 않은 값(임의
+// 문자열)이 들어가면 Postgrest가 22P02(invalid input syntax)를 던져 이 필터를 쓰는
+// 모든 호출부(fetchWeeklyLogRows/countWeeklyLogs/칸반)가 그대로 500으로 죽는다 — 새
+// UUID 컬럼 필터 축을 추가할 때는 반드시 이 스키마로 정규화할 것.
+const uuidParamSchema = z.string().uuid();
+
 // page.tsx는 searchParams에서, 서버 액션은 클라이언트가 보낸 값에서 필터를 만든다. 후자는
 // 신뢰할 수 없는 입력이므로(weekly_logs SELECT가 전 부서 공개라 권한 상승 위험은 없지만
-// 잘못된 값이 PostgREST 필터를 깨뜨리지 않도록) 상태·날짜를 방어적으로 정규화한다.
-// department는 RLS로 보호되는 공개 조회라 그대로 통과시킨다.
+// 잘못된 값이 PostgREST 필터를 깨뜨리지 않도록) 상태·날짜·부서/작성자 id를 방어적으로
+// 정규화한다. department/author는 RLS로 보호되는 공개 조회라 "존재하지 않는 id"까지는
+// 걸러낼 필요가 없지만(그냥 0건), UUID 형식 자체는 아닌 값은 쿼리가 죽기 전에 걸러낸다.
 export function normalizeWeeklyLogFilters(raw: {
   department?: string | null;
   status?: string | null;
@@ -69,13 +76,17 @@ export function normalizeWeeklyLogFilters(raw: {
     [from, to] = [to, from];
   }
 
-  // author는 department와 마찬가지로 RLS(전 부서 공개 SELECT)로 보호되는 공개 조회라
-  // 값 자체의 유효성(존재하는 사용자 id인지)을 여기서 검증하지 않고 그대로 통과시킨다 —
-  // 존재하지 않는 id를 넘기면 그냥 0건이 나올 뿐이다.
-  const author = raw.author && raw.author.trim() ? raw.author.trim() : undefined;
+  const department =
+    raw.department && uuidParamSchema.safeParse(raw.department).success
+      ? raw.department
+      : ALL_DEPARTMENTS_FILTER;
+
+  const trimmedAuthor = raw.author?.trim();
+  const author =
+    trimmedAuthor && uuidParamSchema.safeParse(trimmedAuthor).success ? trimmedAuthor : undefined;
 
   return {
-    department: raw.department || ALL_DEPARTMENTS_FILTER,
+    department,
     status,
     q: (raw.q ?? "").trim(),
     from,

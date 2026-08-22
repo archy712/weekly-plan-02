@@ -99,10 +99,6 @@ async function DashboardContent({
     }
   }
 
-  const selectedDepartment: DepartmentFilter = departmentParam || ALL_DEPARTMENTS_FILTER;
-  const departmentId =
-    selectedDepartment === ALL_DEPARTMENTS_FILTER ? undefined : selectedDepartment;
-
   let fromDate = fromParam && dateParamSchema.safeParse(fromParam).success ? fromParam : undefined;
   let toDate = toParam && dateParamSchema.safeParse(toParam).success ? toParam : undefined;
   if (fromDate && toDate && fromDate > toDate) {
@@ -121,6 +117,16 @@ async function DashboardContent({
   }
   const { data: departmentRows } = await departmentQuery;
   const departments: Department[] = departmentRows ?? [];
+  // orgParam/divisionParam과 동일하게, 조회된(선택된 조직 범위로 스코프된) 부서 목록에
+  // 실제로 존재하는 id일 때만 채택하고, 아니면 "전체 팀"으로 안전하게 폴백한다. RPC가
+  // org_id와 AND 조건으로 걸려 있어 현재는 범위 밖 값을 넣어도 0건이 될 뿐이지만, 이
+  // 폴백을 빠뜨리면 향후 RPC 시그니처 변경 시 조용히 조직 간 데이터 유출로 이어질 수 있다.
+  const selectedDepartment: DepartmentFilter =
+    departmentParam && departments.some((department) => department.id === departmentParam)
+      ? departmentParam
+      : ALL_DEPARTMENTS_FILTER;
+  const departmentId =
+    selectedDepartment === ALL_DEPARTMENTS_FILTER ? undefined : selectedDepartment;
 
   // 부서(division) Select도 부문과 동일한 조직 범위를 따른다 — 위 "부서 관리" 화면
   // (app/protected/admin/divisions/page.tsx)과 동일한 스코프 쿼리 패턴. stats_* RPC에도
