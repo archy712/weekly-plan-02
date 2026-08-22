@@ -108,7 +108,7 @@ update departments set archived_at = null where id = '<department-id>';
 
 ## 7. 알림(notifications) 보존 정책
 
-멘션·댓글·대댓글 발생 시 `notifications` 테이블에 알림이 자동 생성됩니다(`docs/ROADMAP_v1.md` Task 034, DB 트리거로만 생성되고 클라이언트 직접 INSERT는 불가능). 활동량에 비례해 무한히 쌓이는 테이블이라 보존 정책이 필요합니다. 이 프로젝트는 v2 Task 044(F041)에서 `pg_cron`을 최초로 도입했으므로(9절 참고) 아래 절차를 잡으로 자동화하는 것도 가능하지만, **현재는 여전히 수동/주기적 실행**으로만 정책을 확정해둔 상태입니다(9절 "알림 보존 정책과의 관계" 참고).
+멘션·댓글·대댓글 발생 시 `notifications` 테이블에 알림이 자동 생성됩니다(`docs/ROADMAP_v1.md` Task 034, DB 트리거로만 생성되고 클라이언트 직접 INSERT는 불가능). 활동량에 비례해 무한히 쌓이는 테이블이라 보존 정책이 필요합니다. **v2 Phase 8 Task 061(F058)부터 `pg_cron` 잡(`weekly_log_notification_cleanup`)으로 자동 실행됩니다** — Task 034 도입 당시엔 "수동/주기적 실행"으로만 정책을 확정해뒀지만, F041로 `pg_cron` 자체가 이미 검증된 인프라가 된 뒤라 자동화를 미룰 이유가 사라졌습니다(9절 "등록된 잡" 참고).
 
 **정책**: `read_at`이 채워진(읽은) 알림 중 **90일이 지난 것만** 삭제합니다. **읽지 않은 알림은 아무리 오래돼도 삭제하지 않습니다** — 사용자가 아직 확인하지 못한 알림을 시간 경과만으로 지우면 알림 시스템의 목적(놓친 멘션·댓글을 알려주는 것) 자체가 훼손되기 때문입니다.
 
@@ -118,9 +118,9 @@ where read_at is not null
   and read_at < now() - interval '90 days';
 ```
 
-- 이 SQL은 Supabase 대시보드 SQL Editor 또는 `mcp__supabase__execute_sql`로 직접 실행합니다. `read_at`/`recipient_id`만 변경 가능한 컬럼 보호 트리거(`prevent_unauthorized_notification_update()`)는 UPDATE만 검사하고 DELETE는 막지 않으므로, 직접 DB 접속(`auth.uid()`가 없는 연결)에서는 별도 우회 없이 그대로 동작합니다.
-- 실행 주기는 매월 1회 정도를 권장합니다(트래픽이 많지 않은 초기 단계 기준, 필요시 조정). 향후 실행 빈도가 잦아지거나 수동 실행을 잊는 문제가 생기면 Supabase의 `pg_cron` 확장(`mcp__supabase__list_extensions`로 설치 여부 확인 가능)으로 이 DELETE 문을 스케줄링하는 것을 검토하세요 — 이번 Task 034 범위에서는 구현하지 않고 절차 문서화까지만 수행했습니다.
+- **정상 운영 시에는 위 절차를 수동으로 실행할 필요가 없습니다** — `weekly_log_notification_cleanup` 잡이 매월 1일 03:00 UTC(12:00 KST)에 동일한 SQL을 자동 실행합니다. 이 SQL은 예외 상황(잡이 실패했거나 즉시 정리가 필요한 경우) 대응용으로만 남겨두며, Supabase 대시보드 SQL Editor 또는 `mcp__supabase__execute_sql`로 직접 실행할 수 있습니다. `read_at`/`recipient_id`만 변경 가능한 컬럼 보호 트리거(`prevent_unauthorized_notification_update()`)는 UPDATE만 검사하고 DELETE는 막지 않으므로, 직접 DB 접속(`auth.uid()`가 없는 연결)에서는 별도 우회 없이 그대로 동작합니다.
 - 삭제 대상 건수를 먼저 확인하고 싶다면 `delete` 대신 `select count(*) from notifications where read_at is not null and read_at < now() - interval '90 days';`로 미리 조회한 뒤 실행하세요.
+- 잡 실행 이력은 9절의 `cron.job_run_details` 조회로 확인합니다(`jobname = 'weekly_log_notification_cleanup'`으로 필터).
 
 ## 8. 성능 점검 절차 및 결과 (Task 039, F032)
 
@@ -149,6 +149,7 @@ MVP 이후 누적된 애플리케이션 전반의 성능을 **실측 기반**으
 
 - **목록 서버사이드 페이지네이션**: 현재 목록은 `LIMIT` 없이 필터 결과 전체를 로드하고 클라이언트가 정렬·슬라이스(`PAGE_SIZE=20`)한다. 318건 0.94ms라 현재 무해하나, 10배(3천)·100배(3만)에서는 페이로드와 2차 조회가 함께 커진다. 서버 페이지네이션은 정렬·검색(title/content 병합)·페이지네이션 의미를 전부 서버로 옮기는 아키텍처 변경이라 회귀 위험이 크고 Task 039 범위 밖("아키텍처 재작성 수준 리팩터링" 제외). **weekly_logs가 수천 건대에 진입하면 그때 별도 Task로 착수**를 권장. PDF/Excel 다운로드가 필터 결과 전체를 한 번에 불러오는 구조도 동일 시점에 재검토.
 - **미인덱스 FK 3종**(`weekly_log_attachments.department_id`·`.uploaded_by`, `weekly_log_reactions.user_id`): 조회 핫패스는 `weekly_log_id` 선두 인덱스/`unique(weekly_log_id, user_id)`가 이미 커버한다. 단독 인덱스는 부서/프로필 삭제 시 CASCADE 스캔(희소한 관리 작업)에만 이득이고, 특히 reactions는 토글이 잦은 쓰기 핫패스라 인덱스 쓰기 오버헤드 > 이득. **인덱스 추가 안 함(의도된 설계)** — 어드바이저 performance INFO는 baseline 유지.
+- **미인덱스 FK 4종 — `divisions`/`head_profile_id` ad hoc 확장분**(`departments.division_id`, `departments.head_profile_id`, `divisions.head_profile_id`, `organizations.head_profile_id`, v2 Phase 8 Task 063, F060): 위 3종과 근거가 다르다 — 이번엔 **쓰기가 잦아서 기각**이 아니라 **테이블이 극소 규모라 아직 이득이 없어서 보류**다. 실측(2026-08-22 기준) `organizations` 10행·`divisions` 2행·`departments` 11행으로, `division_id`가 걸리는 대시보드 7개 `stats_*` RPC의 `d.division_id = div_id` 필터(예: `stats_logs_by_department`)와 `head_profile_id`가 걸리는 `clear_stale_head_assignments()` 트리거(`profiles.department_id` 변경마다 3개 테이블에 `where head_profile_id = ...` 실행, 함수 정의를 `pg_get_functiondef`로 직접 확인)는 둘 다 시퀀셜 스캔이 사실상 무비용인 규모다. 이 4개 테이블은 부서/반응처럼 쓰기가 잦은 핫패스가 아니라 관리자 전용 저빈도 쓰기 테이블이라 인덱스 추가 비용도 무시할 만하지만, "측정된 효과가 없는 변경은 반영하지 않는다"는 8절 원칙을 그대로 적용해 **지금은 추가하지 않음(보류, 위 3종과 달리 영구 기각이 아님)**. **재검토 시점**: 조직·부서·팀 수가 수백 단위로 늘어 `stats_*` RPC의 `departments` 조인이나 `clear_stale_head_assignments()` 트리거 실행이 눈에 띄게 느려지면 그때 `create index concurrently`로 4개를 한 번에 추가 — 어드바이저 재조회로 해당 INFO 항목이 사라지는지 확인.
 - **`departments_organization_id_idx` 미사용**: 향후 조직 필터링 대비 유지(무해).
 - **관리자 부서 페이지의 부서별 N×2 count 쿼리**: 부서 8건 규모에서 이미 `Promise.all` 병렬. 사내 도구 규모에서 허용.
 
@@ -157,7 +158,7 @@ MVP 이후 누적된 애플리케이션 전반의 성능을 **실측 기반**으
 - `npm run build` green, `npx tsc --noEmit` 0오류. 미인증 보호 경로 → `/auth/login` 307 리다이렉트 유지(proxy matcher 변경이 인증을 깨지 않음 실측).
 - **인증 계정이 필요한 전 플로우 Playwright E2E 회귀와 2계정 교차 사용자 누수 확인은 6절 프로덕션 스모크와 동일하게 사용자 작업으로 대기** — 배포 도메인 또는 테스트 로그인을 제공하면 Playwright MCP로 함께 수행 가능.
 
-## 9. `pg_cron` 잡 운영 (Task 044, F041)
+## 9. `pg_cron` 잡 운영 (Task 044/061, F041/F058)
 
 이 프로젝트 최초로 `pg_cron` 확장을 사용하는 기능(정기 작성 리마인더)이 도입됐습니다. `cron.schedule()` 호출은 테이블·함수 마이그레이션과 달리 로컬 `supabase/migrations/`나 `mcp__supabase__list_migrations` 이력에 코드로 남지 않고 **DB 내부 `cron.job` 테이블에만 존재**하므로, 이 문서가 사실상 유일한 기록입니다.
 
@@ -168,6 +169,7 @@ MVP 이후 누적된 애플리케이션 전반의 성능을 **실측 기반**으
 | jobname | schedule (UTC) | KST 환산 | 명령 | 목적 |
 |---|---|---|---|---|
 | `weekly_log_reminder` | `0 6 * * 5` (매주 금요일 06:00) | 매주 금요일 15:00 | `select public.create_weekly_log_reminders()` | 이번 주(월~일)와 기간이 겹치는 로그가 하나도 없는 사용자에게 `notifications`(`type='reminder'`) 생성. 수신자는 `department_id`가 있고 `notify_on_reminder=true`이며 `is_active=true`(ERP 로그인 허용 계정)인 사람으로 한정 |
+| `weekly_log_notification_cleanup` | `0 3 1 * *` (매월 1일 03:00) | 매월 1일 12:00 | `delete from notifications where read_at is not null and read_at < now() - interval '90 days'` | 7절의 알림 보존 정책(읽은 지 90일 지난 알림만 삭제) 자동 실행. Task 061(F058, Phase 8)에서 추가 — 등록 직후 합성 테스트 행(읽음 처리 후 `read_at`을 120일 전으로 지정)으로 실제 삭제 동작을 1회 검증하고 정리함 |
 
 ### 조회·점검
 
@@ -216,7 +218,25 @@ select cron.schedule(
 
 ### 알림 보존 정책(7절)과의 관계
 
-7절의 "읽은 알림 90일 경과분 삭제"는 여전히 **수동 실행**입니다. `pg_cron`이 이제 설치되어 있으므로 이 DELETE 문도 별도 잡(예: `weekly_log_notification_cleanup`이라는 다른 jobname)으로 등록해 자동화할 수 있지만, Task 044 범위에서는 리마인더 잡만 등록했습니다. 자동화가 필요해지면 위 "등록된 잡" 절의 패턴을 그대로 따라 새 잡을 추가하세요(잡 이름 접두사 `weekly_log_`를 유지해 공유 DB의 다른 도메인 잡과 구분할 것).
+7절의 "읽은 알림 90일 경과분 삭제"는 **`weekly_log_notification_cleanup` 잡으로 자동 실행됩니다**(Task 061, F058). 재등록·중단 절차는 위 리마인더 잡과 동일한 패턴을 씁니다 — `jobname`만 `weekly_log_notification_cleanup`으로 바꿔서:
+
+```sql
+-- 일시 중단 / 재개
+select cron.alter_job(job_id := (select jobid from cron.job where jobname = 'weekly_log_notification_cleanup'), active := false);
+select cron.alter_job(job_id := (select jobid from cron.job where jobname = 'weekly_log_notification_cleanup'), active := true);
+
+-- 완전 삭제
+select cron.unschedule('weekly_log_notification_cleanup');
+
+-- 재등록(주기를 바꿀 때도 동일 — 같은 jobname으로 다시 호출하면 기존 잡을 대체)
+select cron.schedule(
+  'weekly_log_notification_cleanup',
+  '0 3 1 * *',
+  $$delete from notifications where read_at is not null and read_at < now() - interval '90 days'$$
+);
+```
+
+즉시 1회 실행하려면 7절의 DELETE 문을 직접 실행하면 됩니다(이 함수는 `SECURITY DEFINER` RPC가 아니라 순수 SQL 문이라 별도 함수 호출 없이 그대로 실행 가능).
 
 ## 10. 변경 이력(weekly_log_change_history) 보존 정책 (Task 045, F043)
 

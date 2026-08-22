@@ -620,6 +620,43 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] 콘솔 에러 0건
     - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 이전 Task들과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
 
+### Phase 8: 운영 정리 (ad hoc, 2026-08-22 추가)
+
+> **배경**: v2(F040~F057) 전체 마감 후, 사용자가 "다음 로드맵을 계획해달라"고 요청해 v1·v2 로드맵의 "범위 밖 유지" 기록·`docs/prd/PRD.md`·`docs/guides/`·Supabase 어드바이저를 실측 재검토했다. 새 기능을 제안하기 전에, **이미 스스로 미룬 이유가 지금은 사라졌거나 문서만 실제와 어긋난 항목 3건**을 먼저 정리하기로 사용자와 합의했다(위험이 낮고 하루 안에 끝낼 수 있는 항목만 선별, 나머지 후보 기능은 이후 별도 Phase로 검토).
+>
+> **선행 조건**: 없음. **순서 원칙**: Phase 7과 동일하게 Task 완료 후 다음 Task 착수 전 항상 중단하고 사용자 지시를 대기한다.
+
+- **Task 061: 알림 보존 정책 자동화 — `pg_cron` 잡 추가 (F058)** ✅
+  - [x] `docs/guides/deployment-ops.md` 7절의 수동 SQL(`delete from notifications where read_at is not null and read_at < now() - interval '90 days'`)을 `weekly_log_notification_cleanup`이라는 새 `pg_cron` 잡으로 등록. 9절이 이미 남긴 이유(F041 착수 당시 "같은 Task에 새 pg_cron 리스크를 두 개 쌓지 않겠다")는 리마인더 잡이 몇 주째 정상 동작 중인 지금은 더 이상 유효하지 않다고 판단해 그대로 진행
+  - [x] 등록 전 `select jobid, jobname, schedule, command, active from cron.job order by jobid`로 확인 — 기존 잡은 `weekly_log_reminder` 1건뿐, 충돌 없음 확인 후 `cron.schedule('weekly_log_notification_cleanup', '0 3 1 * *', $$delete ...$$)` 실행(jobid=2로 등록됨)
+  - [x] 스케줄은 매월 1일 03:00 UTC(12:00 KST)로 등록. 삭제 대상 건수 사전 조회 로깅은 별도 자동화 없이 7절에 "미리 조회하고 싶으면 이 SELECT를 실행" 안내로 남기는 것으로 충분하다고 판단(잡 자체가 매월 1회뿐이라 실행 전/후 자동 로그까지는 과한 엔지니어링)
+  - [x] `deployment-ops.md` 7절("정상 운영 시에는 수동 실행 불필요, 잡이 대신 수행"으로 갱신)·9절(등록된 잡 표에 새 행 추가 + "알림 보존 정책과의 관계" 절을 재등록/중단 SQL 포함하도록 재작성) 갱신
+  - **관련 파일**: `docs/guides/deployment-ops.md`(DB 변경은 Supabase MCP `execute_sql`로 직접 적용, 로컬 마이그레이션 파일에는 남지 않음 — 기존 `weekly_log_reminder`와 동일)
+  - **수락 기준**: `cron.job`에 `weekly_log_notification_cleanup` 잡이 등록되어 있고, 수동으로 즉시 1회 실행해 읽은 지 90일 지난 알림만 삭제됨을 확인하며, 문서가 최신 운영 방식을 반영한다. **충족 확인.**
+  - **테스트 결과** (Supabase MCP `execute_sql`로 실측 검증, 실사용자 데이터는 건드리지 않고 합성 테스트 행만 삽입 후 삭제):
+    - [x] 등록 직후 `delete from notifications where read_at is not null and read_at < now() - interval '90 days'`를 직접 1회 실행 → 대상 0건(현재 알림 62건 중 읽은 알림 1건, 아직 90일 경과분 없음) 확인, 에러 없음
+    - [x] `read_at`을 120일 전, `type='reminder'`(actor_id/weekly_log_id null 허용)로 지정한 합성 테스트 알림 1건을 실제 삽입 → 동일 DELETE 재실행 → 해당 행만 삭제되고 나머지 61건은 그대로 유지됨을 `id`로 재조회해 확인
+    - [x] 삭제 후 `notifications` 총계가 삽입 전 기준선(62건, 안 읽은 알림 61건)으로 정확히 원복됨을 확인 — 실사용자 데이터에 흔적 없음
+    - [x] `select jobid, jobname, schedule, command, active from cron.job`으로 `weekly_log_reminder`(기존)와 `weekly_log_notification_cleanup`(신규) 2개 잡이 공존하며 서로 다른 스케줄로 등록된 것을 확인
+
+- **Task 062: `docs/prd/PRD.md` 문서 드리프트 정정 (F059)** ✅
+  - [x] PRD.md "5. v2 이후에도 제외되는 기능"의 "부서 계층 구조(상위/하위 부서), 부서장 지정, 부서 통폐합(로그 일괄 이관)" 항목이 v2 마감 이후 ad hoc으로 구현된 `divisions` 테이블(조직→부서(선택)→팀 3단 계층)과 부문장·부서장·팀장 지정(`head_profile_id`)과 정면으로 모순됨을 확인 — CLAUDE.md에는 이미 정확히 반영되어 있으나 PRD.md만 누락된 상태였음
+  - [x] 실제로 구현된 것(division 계층, 3단계 장 지정)과 여전히 제외인 것(부서 통폐합·로그 일괄 이관, 임의 깊이의 재귀적 상하위 구조 — division은 고정 3단일 뿐 재귀 트리가 아님)을 구분해 5절 문구를 다시 씀
+  - [x] 6절 데이터 모델에 `divisions` 테이블 신규 추가, `organizations`/`departments` 필드 표에 `head_profile_id`(및 `departments.division_id`/`is_direct_report`) 행을 추가 — 5절의 "이제 지원됨" 주장을 데이터 모델 레벨에서도 뒷받침. 필드 존재 여부·nullable·`on delete set null` 등은 새로 주장하지 않고 `information_schema.columns`/`pg_constraint`(confdeltype='n' 3건 실측)로 직접 조회해 검증
+  - **계획과 다르게 처리한 부분(스코프를 의도적으로 좁힘)**: PRD.md 실측 결과 예상보다 드리프트가 훨씬 컸다 — "부서"라는 단어가 문서 전체에 104회 쓰이는데 전부 `departments`를 가리키고, CLAUDE.md가 이미 반영한 "조직→부문, 부서(department)→팀" 화면 표기 리네이밍이 PRD.md에는 **한 곳도 반영되지 않은 상태**였다. 게다가 4절 "v2 고도화 기능" 표는 원래 승인된 8건(F040~F047)에서 멈춰 있어 Phase 7 UI/UX 10건(F048~F057)과 Phase 8 운영 정리 3건(F058~F060)도 전혀 실려 있지 않았다. 이 세 가지(전면 용어 교체, 관리자 콘솔 페이지 상세 절 6개 tab 동기화, F048~F060 표 반영)를 전부 오늘 처리하면 "빠른 개선"이라는 애초 합의된 범위를 벗어나는 대규모 재작성이 되므로, **이번 Task는 실제 모순(5절)과 그 모순을 해소하는 데 꼭 필요한 최소 범위(6절 데이터 모델)로 한정**했다. 대신 4절 표 바로 아래에 "v2 마감 이후 ad hoc 확장이 이어졌다"는 단락을 추가해 divisions/head_profile_id·Phase 7·Phase 8의 존재와 `ROADMAP_V2.md` 참조 경로를 명시했다(v1이 "Phase 3 이후 ad hoc 확장"을 표 대신 서술로 처리한 기존 선례와 동일한 패턴). **부서→팀 전면 용어 교체와 관리자 콘솔 페이지 상세 절 동기화는 의도적으로 손대지 않았고, 별도 Task로 제안이 필요하면 사용자에게 먼저 확인받을 것.**
+  - **관련 파일**: `docs/prd/PRD.md`
+  - **수락 기준**: PRD.md가 CLAUDE.md·실제 구현 상태와 모순되지 않는다(5절 문구 자체의 정합성 기준으로 충족 — 문서 전체의 용어 통일까지는 이번 Task 범위 밖). **충족 확인.**
+  - **테스트 결과**: DB 실측(`information_schema.columns`, `pg_constraint`)으로 `divisions`/`organizations`/`departments`의 `head_profile_id` nullable 여부와 `on delete set null`(confdeltype='n') 3건, `departments.is_direct_report`(`not null default false`)·`division_id`(nullable) 컬럼 정의를 PRD.md 신규 서술과 대조해 전부 일치함을 확인. 코드 변경이 없는 순수 문서 Task라 별도 브라우저·QA 계정 검증은 불필요.
+
+- **Task 063: 미인덱싱 FK 4건 실측·판단 — `divisions`/`head_profile_id` ad hoc 확장분 (F060)** ✅
+  - [x] Supabase 어드바이저(performance, INFO)의 `unindexed_foreign_keys` 7건 중 **이미 v1 Task 039(8절)에서 측정 후 "의도된 설계"로 기각된 3건**(`weekly_log_attachments.department_id`/`.uploaded_by`, `weekly_log_reactions.user_id`)은 재론하지 않고, divisions/head_profile_id ad hoc 확장이 추가한 **나머지 4건**(`departments.division_id`, `departments.head_profile_id`, `divisions.head_profile_id`, `organizations.head_profile_id`)만 재검토
+  - [x] 8절과 동일한 "측정 먼저" 원칙 적용 — `organizations`(10행)·`divisions`(2행)·`departments`(11행) 실측 확인. `pg_get_functiondef`로 `clear_stale_head_assignments()`(profiles.department_id 변경마다 이 3테이블에 `where head_profile_id = ...` UPDATE 실행) 정의를 직접 조회하고, `stats_logs_by_department` 등 대시보드 `stats_*` RPC가 `d.division_id = div_id`로 `departments`를 필터링하는 것도 정의로 확인 — 둘 다 실제 쿼리 경로이지만 대상 테이블이 10~11행이라 시퀀셜 스캔 비용이 사실상 0
+  - [x] **결정: 지금은 인덱스 추가 안 함(보류, 기존 3건과 달리 영구 기각이 아님)** — 이 4건은 기존 3건(쓰기가 잦은 반응 토글·첨부파일 업로드 핫패스라 인덱스 쓰기 비용이 이득보다 큼)과 달리 쓰기가 드문 관리자 전용 테이블이라 인덱스 추가 비용도 무시할 만하지만, "측정된 효과가 없는 변경은 반영하지 않는다"는 8절 원칙을 동일하게 적용해 아직 이득이 없는 지금 시점엔 추가하지 않기로 결정. 재검토 시점(조직·부서·팀 수가 수백 단위로 늘어날 때)을 명시해 나중에 판단이 다시 필요할 때 근거를 재구성하지 않아도 되게 함
+  - [x] 결정 근거를 `docs/guides/deployment-ops.md` 8절 "기각/의도된 설계로 분류" 절에 새 항목으로 추가(기존 3종 항목과 이번 4종 항목의 근거가 "쓰기 비용" vs "테이블 크기"로 서로 다르다는 점을 명시)
+  - **관련 파일**: `docs/guides/deployment-ops.md`(인덱스를 추가하지 않기로 결정해 실제 DB 스키마 변경 없음)
+  - **수락 기준**: 4건 각각에 대해 근거 있는 결정(추가/보류)이 내려지고 문서에 기록되며, 인덱스를 추가했다면 어드바이저에서 해당 항목이 사라진다. **충족 확인**(보류로 결정했으므로 어드바이저 INFO 7건은 그대로 유지되는 것이 기대된 결과 — 재조회로 확인).
+  - **테스트 결과**: `mcp__supabase__get_advisors(type="performance")`를 결정 전/후 각각 재조회해 `unindexed_foreign_keys` 7건(기존 3건 + 신규 4건)이 그대로임을 확인(의도된 보류 결과와 일치, 스키마 변경이 없었으므로 당연한 결과). 코드 변경이 없는 순수 DB 실측·문서 Task라 별도 브라우저 검증은 불필요.
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -645,6 +682,9 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 | F055 | 빈 상태·다운로드 메뉴 아이콘 보강 | Task 058 |
 | F056 | 상세 페이지 Breadcrumb | Task 059 |
 | F057 | 사용자 역할 Badge variant 분화 | Task 060 |
+| F058 | 알림 보존 정책 자동화 (pg_cron) | Task 061 |
+| F059 | PRD.md 문서 드리프트 정정 | Task 062 |
+| F060 | 미인덱싱 FK 4건 실측·판단 | Task 063 |
 
 ## 데이터 모델 변경 요약 (v1 대비)
 

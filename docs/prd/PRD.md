@@ -118,9 +118,11 @@
 | **[F046]** | 검색 결과 하이라이팅 (v2) | 제목/내용 키워드 검색 시 목록·카드·칸반의 **제목**에서 매칭 구간을 `<mark>`로 강조(서버의 `ilike` 대소문자 무시 규칙과 동일하게 클라이언트에서 정규식 재현, 메타문자는 이스케이프해 오강조·크래시 방지). `dangerouslySetInnerHTML`을 쓰지 않고 React 노드로 조립. 목록 payload에 `content`가 없어 **제목만** 강조 가능하고, 내용에서만 매칭된 항목은 강조 없이 결과에만 포함됨(F032 성능 방향과의 트레이드오프로 의도된 범위) | 검색 결과에서 왜 이 항목이 걸렸는지 한눈에 보이지 않았던 탐색 마찰을 해소 | 주간업무일지 목록 페이지, 칸반보드 |
 | **[F047]** | 캘린더/타임라인 뷰 (v2) | 목록·칸반에 이은 세 번째 뷰. 지정한 기간(기본 이번 달, 최대 200건 렌더 후 초과 안내)의 업무를 시작일~목표종료일 막대(행 1개 = 업무 1건, 그룹핑 없음)로 시간축 위에 표시하고, 지연 건은 색을 바꾸지 않고 링(`ring-destructive`)으로 강조하며 오늘 위치에 세로 기준선을 그린다. 목록·칸반과 동일한 필터가 적용되고, 3개 뷰를 오가는 뷰 전환 탭(`목록`/`칸반보드`/`타임라인`)이 신설되어 세 화면 어디서든 전환 가능. 드래그로 일정 변경은 범위 밖(읽기 전용) | 칸반보드에 이은 자연스러운 다음 확장으로 제안되었으나 v2에서 비용 대비 우선순위가 가장 낮다고 사용자와 합의되어, 착수 전 재확인을 거쳐 구현이 확정됐다 | 주간업무일지 타임라인 페이지(신규), 목록/칸반보드(뷰 전환 탭) |
 
+> **v2 마감(Task 050) 이후에도 ad hoc 확장이 이어졌다** — v1이 Phase 3 이후 F025~F039를 ad hoc으로 추가했던 것과 같은 패턴이다. `divisions` 테이블(조직→부서(division, 선택)→팀 3단 계층)과 조직·부서·팀 각각의 장(長) 지정(`head_profile_id`, "직속" 더미 팀 우회 포함)이 이 표의 어떤 항목보다도 앞서 데이터 모델에 영향을 주므로 아래 6절에 반영했다(상세 근거는 CLAUDE.md "`divisions` 테이블"/"부문장·부서장·팀장" 절, 구현 이력은 커밋 `28f1393`~`a6dbcae` 참고). 이어서 기존 업무 화면에 shadcn 컴포넌트를 실제로 활용하는 UI/UX 개선 10건(Tooltip 전면 도입·칸반 모바일 반응형·필터 영역 통일·Command 팔레트·HoverCard 프리뷰·상세/작성 폼 섹션 구분·대시보드 Tabs 그룹화·빈 상태 아이콘·Breadcrumb·역할 Badge variant)과 운영 정리 3건(알림 보존 pg_cron 자동화·이 PRD 갱신·미인덱싱 FK 판단)이 구현됐다 — 이 표의 8건처럼 사전에 사용자 승인을 거친 계획이 아니라 실측 검토에서 도출된 후속 작업이라 개별 F-번호·표 형식 상세 스펙은 `docs/roadmap/ROADMAP_V2.md` Phase 7·8(F048~F060)에만 있고 이 표에는 싣지 않는다.
+
 ### 5. v2 이후에도 제외되는 기능
 
-- 부서 계층 구조(상위/하위 부서), 부서장 지정, 부서 통폐합(로그 일괄 이관)
+- 부서 통폐합(로그 일괄 이관), 임의 깊이의 재귀적 부서 계층(현재는 조직→부서(division, 선택)→팀 고정 3단 구조만 지원 — 위 ad hoc 확장 참고. **부서 계층·장(長) 지정 자체는 더 이상 제외 대상이 아님**)
 - 사용자 계정 삭제/비활성화, 초대 기반 가입, `user`/`admin`/`superadmin` 3단계를 넘어서는 역할 체계
 - 상대 기간 표현(`지난 분기` 등)의 동적 계산, 여러 기기 간 draft·프리셋 동기화(F042·F045는 기기별 `localStorage`)
 - 댓글 첨부파일, 이모지 반응, 댓글 검색·페이지네이션, 2단계 이상 대댓글
@@ -398,15 +400,32 @@
 | id | 고유 식별자 | UUID |
 | name | 조직명 | text, unique |
 | archived_at | 비활성화(소프트 삭제) 일시 | timestamp, nullable (null이면 활성 조직) |
+| head_profile_id | 부문장 | → profiles.id, nullable, on delete set null (v2 마감 이후 ad hoc — 반드시 이 조직 소속 팀원이어야 함, DB 트리거로 검증) |
 | created_at | 생성일시 | timestamp |
 
-### departments (부서)
+### divisions (부서, v2 마감 이후 ad hoc)
+
+화면 표기는 "부서"이지만 기존 `departments`(화면 표기 "팀")와는 다른 테이블이다 — 조직(부문)과 팀 사이에 선택적으로 얹는 그룹핑 계층. `departments.division_id`가 nullable FK이므로 팀은 이 계층 없이도 조직에 직접 속할 수 있다.
 
 | 필드 | 설명 | 타입/관계 |
 |------|------|----------|
 | id | 고유 식별자 | UUID |
-| name | 부서명 | text, unique |
-| organization_id | 소속 조직 | → organizations.id (v1 ad hoc, NOT NULL — 부서는 반드시 조직에 속함) |
+| name | 부서명 | text, `(organization_id, name)` 복합 unique |
+| organization_id | 소속 조직 | → organizations.id, NOT NULL |
+| head_profile_id | 부서장 | → profiles.id, nullable, on delete set null(이 부서 소속 팀원이어야 함, DB 트리거로 검증) |
+| archived_at | 비활성화(소프트 삭제) 일시 | timestamp, nullable (null이면 활성 부서) |
+| created_at | 생성일시 | timestamp |
+
+### departments (팀, 화면 표기는 "팀"이나 이 문서 전반의 "부서"는 이 테이블을 가리킴)
+
+| 필드 | 설명 | 타입/관계 |
+|------|------|----------|
+| id | 고유 식별자 | UUID |
+| name | 팀명 | text, unique |
+| organization_id | 소속 조직 | → organizations.id (v1 ad hoc, NOT NULL — 팀은 반드시 조직에 속함) |
+| division_id | 소속 부서(division) | → divisions.id, nullable (v2 마감 이후 ad hoc — 선택적 그룹핑, 미지정 시 조직에 직접 속함) |
+| head_profile_id | 팀장 | → profiles.id, nullable, on delete set null(v2 마감 이후 ad hoc — 이 팀 소속이어야 함, DB 트리거로 검증. 부문장·부서장처럼 특정 팀 없이 조직/부서 전체를 총괄하는 사람은 `is_direct_report=true`인 "직속" 더미 팀에 소속시켜 표현) |
+| is_direct_report | 부문장/부서장 전용 "직속" 더미 팀 여부 | boolean, 기본 false (v2 마감 이후 ad hoc) |
 | archived_at | 비활성화(소프트 삭제) 일시 | timestamp, nullable (v1, null이면 활성 부서) |
 | created_at | 생성일시 | timestamp |
 
