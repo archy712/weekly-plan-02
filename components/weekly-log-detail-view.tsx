@@ -442,13 +442,16 @@ export function WeeklyLogDetailView({
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              delayed ? "bg-destructive" : "bg-primary",
+              delayed ? "bg-warning" : "bg-success",
             )}
             style={{ width: `${displayProgress}%` }}
           />
           {!isCompleted && (
+            // 목표진척률 마커가 채워진 막대 안쪽에 들어가면 막대와 같은 계열 색이라
+            // 구분이 안 되므로, ring-background로 배경색 테두리를 둘러 어떤 색 위에
+            // 있어도(빈 트랙이든 success/warning 막대든) 항상 도드라지게 한다.
             <div
-              className="bg-foreground/70 absolute inset-y-0 w-0.5"
+              className="bg-foreground ring-background absolute inset-y-0 w-0.5 ring-2"
               style={{ left: `${targetProgress}%` }}
               title={`목표진척률 ${targetProgress}%`}
               aria-hidden
