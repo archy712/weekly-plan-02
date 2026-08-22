@@ -2,7 +2,9 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { AdminDepartmentFilters, ALL_ORGANIZATIONS_FILTER } from "@/components/admin-department-filters";
 import { AdminDepartmentsSkeleton } from "@/components/admin-departments-skeleton";
+import { DimOnPending, NavigationProgressProvider } from "@/components/navigation-progress";
 import { DepartmentCardList } from "@/components/department-card";
 import { DepartmentFormDialog } from "@/components/department-form-dialog";
 import { DepartmentRowActions } from "@/components/department-row-actions";
@@ -20,7 +22,16 @@ import {
 import { formatHeadName } from "@/lib/format";
 import type { HeadCandidate } from "@/lib/types";
 
-async function DepartmentsContent() {
+type AdminDepartmentsSearchParams = {
+  org?: string;
+  division?: string;
+};
+
+async function DepartmentsContent({
+  searchParams,
+}: {
+  searchParams: Promise<AdminDepartmentsSearchParams>;
+}) {
   const supabase = await createClient();
 
   // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
@@ -48,22 +59,43 @@ async function DepartmentsContent() {
 
   const organizations = organizationRows ?? [];
 
-  // 팀 추가/수정 다이얼로그의 "소속 부서" 선택지 — 부문과 동일하게 관리자 소속 부문
-  // 범위로 좁히고(슈퍼관리자는 전 부문), 다이얼로그가 현재 선택된 부문에 맞는 부서만
-  // 걸러서 보여준다(부서는 선택 사항이라 department-form-dialog.tsx가 빈 목록도 허용).
-  let divisionsQuery = supabase
+  // 목록 필터(?org=&division=). 부문 필터는 슈퍼관리자 전용(일반 관리자는 이미
+  // organizationId로 고정돼 있어 이 필터가 렌더링되지 않으므로 항상 undefined).
+  const params = await searchParams;
+  const requestedOrgId = isSuperAdmin ? params.org : undefined;
+  const selectedOrgId =
+    requestedOrgId && requestedOrgId !== ALL_ORGANIZATIONS_FILTER &&
+    organizations.some((org) => org.id === requestedOrgId)
+      ? requestedOrgId
+      : undefined;
+
+  // 팀 추가/수정 다이얼로그의 "소속 부서" 선택지 — 목록 필터와 무관하게 관리자 소속 부문
+  // 범위 전체가 필요하다(다이얼로그 자체가 내부에서 선택한 부문에 맞춰 다시 걸러 보여줌,
+  // department-form-dialog.tsx 참고). 부서는 선택 사항이라 빈 목록도 허용한다.
+  let allDivisionsQuery = supabase
     .from("divisions")
     .select("id, organization_id, name, archived_at, created_at, head_profile_id");
   if (!isSuperAdmin) {
-    divisionsQuery = divisionsQuery.eq("organization_id", organizationId);
+    allDivisionsQuery = allDivisionsQuery.eq("organization_id", organizationId);
   }
-  const { data: divisionRows, error: divisionsError } = await divisionsQuery.order("name");
+  const { data: allDivisionRows, error: divisionsError } = await allDivisionsQuery.order("name");
 
   if (divisionsError) {
     throw divisionsError;
   }
 
-  const divisions = divisionRows ?? [];
+  const allDivisions = allDivisionRows ?? [];
+
+  // "소속 부서" 필터 드롭다운에 노출할 선택지는 목록 필터(부문)로 좁힌 범위만 보여준다
+  // (선택된 부문이 없으면 관리자 범위 전체). dashboard-filters.tsx의 부문→부서 캐스케이딩과
+  // 동일한 원칙.
+  const divisionOptions = selectedOrgId
+    ? allDivisions.filter((division) => division.organization_id === selectedOrgId)
+    : allDivisions;
+  const selectedDivisionId =
+    params.division && divisionOptions.some((division) => division.id === params.division)
+      ? params.division
+      : undefined;
 
   let departmentsQuery = supabase
     .from("departments")
@@ -73,6 +105,11 @@ async function DepartmentsContent() {
     .order("name");
   if (!isSuperAdmin) {
     departmentsQuery = departmentsQuery.eq("organization_id", organizationId);
+  } else if (selectedOrgId) {
+    departmentsQuery = departmentsQuery.eq("organization_id", selectedOrgId);
+  }
+  if (selectedDivisionId) {
+    departmentsQuery = departmentsQuery.eq("division_id", selectedDivisionId);
   }
   const { data: departmentRows, error: departmentsError } = await departmentsQuery;
 
@@ -142,124 +179,140 @@ async function DepartmentsContent() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <DepartmentFormDialog
-          mode="create"
-          organizations={organizations}
-          divisions={divisions}
-          trigger={<Button>팀 추가</Button>}
-        />
-      </div>
-      {departments.length === 0 ? (
-        <EmptyState
-          title="등록된 팀이 없습니다"
-          description="팀 추가 버튼을 눌러 첫 팀을 만들어보세요."
-        />
-      ) : (
-        <>
-          {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 weekly-log 목록과
-              동일하게 md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
-          <DepartmentCardList
-            departments={departments}
-            organizations={organizations}
-            divisions={divisions}
-            headCandidatesByDepartment={headCandidatesByDepartment}
-            countMap={countMap}
-          />
-          <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
-                    팀명
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 부문
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 부서
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    팀장
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 인원 수
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    주간업무일지 수
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    상태
-                  </TableHead>
-                  <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
-                    액션
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {departments.map((department) => {
-                  const { memberCount, logCount } = countMap.get(department.id) ?? {
-                    memberCount: 0,
-                    logCount: 0,
-                  };
-                  const isArchived = Boolean(department.archived_at);
-
-                  return (
-                    <TableRow key={department.id}>
-                      <TableCell className="py-3 pl-4 font-medium">
-                        {department.name}
-                      </TableCell>
-                      <TableCell className="py-3 text-muted-foreground">
-                        {department.organization_name}
-                      </TableCell>
-                      <TableCell className="py-3 text-muted-foreground">
-                        {department.division_name ?? "-"}
-                      </TableCell>
-                      <TableCell className="py-3 text-muted-foreground">
-                        {formatHeadName(
-                          department.head_profile_id
-                            ? { name: department.head_name, email: department.head_email }
-                            : null,
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3 tabular-nums text-muted-foreground">
-                        {memberCount}명
-                      </TableCell>
-                      <TableCell className="py-3 tabular-nums text-muted-foreground">
-                        {logCount}건
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <Badge variant={isArchived ? "secondary" : "success"}>
-                          {isArchived ? "비활성" : "활성"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 pr-4">
-                        <DepartmentRowActions
-                          department={department}
-                          organizations={organizations}
-                          divisions={divisions}
-                          headCandidates={headCandidatesByDepartment.get(department.id) ?? []}
-                          memberCount={memberCount}
-                          logCount={logCount}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+    <NavigationProgressProvider>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminDepartmentFilters
+              organizations={isSuperAdmin ? organizations : undefined}
+              currentOrgId={selectedOrgId}
+              divisions={divisionOptions}
+              currentDivisionId={selectedDivisionId}
+            />
           </div>
-        </>
-      )}
-    </div>
+          <DepartmentFormDialog
+            mode="create"
+            organizations={organizations}
+            divisions={allDivisions}
+            trigger={<Button>팀 추가</Button>}
+          />
+        </div>
+        <DimOnPending className="flex flex-col gap-4">
+          {departments.length === 0 ? (
+            <EmptyState
+              title="등록된 팀이 없습니다"
+              description="팀 추가 버튼을 눌러 첫 팀을 만들어보세요."
+            />
+          ) : (
+            <>
+              {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 weekly-log 목록과
+                  동일하게 md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
+              <DepartmentCardList
+                departments={departments}
+                organizations={organizations}
+                divisions={allDivisions}
+                headCandidatesByDepartment={headCandidatesByDepartment}
+                countMap={countMap}
+              />
+              <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
+                        팀명
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        소속 부문
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        소속 부서
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        팀장
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        소속 인원 수
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        주간업무일지 수
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        상태
+                      </TableHead>
+                      <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
+                        액션
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {departments.map((department) => {
+                      const { memberCount, logCount } = countMap.get(department.id) ?? {
+                        memberCount: 0,
+                        logCount: 0,
+                      };
+                      const isArchived = Boolean(department.archived_at);
+
+                      return (
+                        <TableRow key={department.id}>
+                          <TableCell className="py-3 pl-4 font-medium">
+                            {department.name}
+                          </TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {department.organization_name}
+                          </TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {department.division_name ?? "-"}
+                          </TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {formatHeadName(
+                              department.head_profile_id
+                                ? { name: department.head_name, email: department.head_email }
+                                : null,
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 tabular-nums text-muted-foreground">
+                            {memberCount}명
+                          </TableCell>
+                          <TableCell className="py-3 tabular-nums text-muted-foreground">
+                            {logCount}건
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge variant={isArchived ? "secondary" : "success"}>
+                              {isArchived ? "비활성" : "활성"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 pr-4">
+                            <DepartmentRowActions
+                              department={department}
+                              organizations={organizations}
+                              divisions={allDivisions}
+                              headCandidates={headCandidatesByDepartment.get(department.id) ?? []}
+                              memberCount={memberCount}
+                              logCount={logCount}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </DimOnPending>
+      </div>
+    </NavigationProgressProvider>
   );
 }
 
-export default function AdminDepartmentsPage() {
+type AdminDepartmentsPageProps = {
+  searchParams: Promise<AdminDepartmentsSearchParams>;
+};
+
+export default function AdminDepartmentsPage({ searchParams }: AdminDepartmentsPageProps) {
   return (
     <Suspense fallback={<AdminDepartmentsSkeleton />}>
-      <DepartmentsContent />
+      <DepartmentsContent searchParams={searchParams} />
     </Suspense>
   );
 }

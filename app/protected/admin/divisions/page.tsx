@@ -2,7 +2,9 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { AdminDivisionFilters, ALL_ORGANIZATIONS_FILTER } from "@/components/admin-division-filters";
 import { AdminDivisionsSkeleton } from "@/components/admin-divisions-skeleton";
+import { DimOnPending, NavigationProgressProvider } from "@/components/navigation-progress";
 import { DivisionCardList } from "@/components/division-card";
 import { DivisionFormDialog } from "@/components/division-form-dialog";
 import { DivisionRowActions } from "@/components/division-row-actions";
@@ -20,7 +22,15 @@ import {
 import { formatHeadName } from "@/lib/format";
 import type { HeadCandidate } from "@/lib/types";
 
-async function DivisionsContent() {
+type AdminDivisionsSearchParams = {
+  org?: string;
+};
+
+async function DivisionsContent({
+  searchParams,
+}: {
+  searchParams: Promise<AdminDivisionsSearchParams>;
+}) {
   const supabase = await createClient();
 
   // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
@@ -48,6 +58,17 @@ async function DivisionsContent() {
 
   const organizations = organizationRows ?? [];
 
+  // 슈퍼관리자 전용 "소속 부문" 필터(?org=). 대시보드와 동일하게 존재하지 않거나 자기
+  // 범위 밖인 값은 "전체 부문"으로 폴백한다(일반 관리자는 이미 organizationId로 고정돼
+  // 있어 이 필터가 렌더링되지 않으므로 항상 undefined).
+  const params = await searchParams;
+  const requestedOrgId = isSuperAdmin ? params.org : undefined;
+  const selectedOrgId =
+    requestedOrgId && requestedOrgId !== ALL_ORGANIZATIONS_FILTER &&
+    organizations.some((org) => org.id === requestedOrgId)
+      ? requestedOrgId
+      : undefined;
+
   let divisionsQuery = supabase
     .from("divisions")
     .select(
@@ -56,6 +77,8 @@ async function DivisionsContent() {
     .order("name");
   if (!isSuperAdmin) {
     divisionsQuery = divisionsQuery.eq("organization_id", organizationId);
+  } else if (selectedOrgId) {
+    divisionsQuery = divisionsQuery.eq("organization_id", selectedOrgId);
   }
   const { data: divisionRows, error: divisionsError } = await divisionsQuery;
 
@@ -81,6 +104,8 @@ async function DivisionsContent() {
   let scopedDepartmentsQuery = supabase.from("departments").select("id, division_id");
   if (!isSuperAdmin) {
     scopedDepartmentsQuery = scopedDepartmentsQuery.eq("organization_id", organizationId);
+  } else if (selectedOrgId) {
+    scopedDepartmentsQuery = scopedDepartmentsQuery.eq("organization_id", selectedOrgId);
   }
   const { data: scopedDepartmentRows, error: scopedDepartmentsError } =
     await scopedDepartmentsQuery;
@@ -137,103 +162,116 @@ async function DivisionsContent() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <DivisionFormDialog
-          mode="create"
-          organizations={organizations}
-          trigger={<Button>부서 추가</Button>}
-        />
-      </div>
-      {divisions.length === 0 ? (
-        <EmptyState
-          title="등록된 부서가 없습니다"
-          description="부서 추가 버튼을 눌러 첫 부서를 만들어보세요. 팀은 부서 없이도 부문에 바로 속할 수 있습니다."
-        />
-      ) : (
-        <>
-          {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 팀 관리와 동일하게
-              md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
-          <DivisionCardList
-            divisions={divisions}
-            organizations={organizations}
-            headCandidatesByDivision={headCandidatesByDivision}
-            countMap={countMap}
-          />
-          <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
-                    부서명
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 부문
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    부서장
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 팀 수
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    상태
-                  </TableHead>
-                  <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
-                    액션
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {divisions.map((division) => {
-                  const departmentCount = countMap.get(division.id) ?? 0;
-                  const isArchived = Boolean(division.archived_at);
-
-                  return (
-                    <TableRow key={division.id}>
-                      <TableCell className="py-3 pl-4 font-medium">{division.name}</TableCell>
-                      <TableCell className="py-3 text-muted-foreground">
-                        {division.organization_name}
-                      </TableCell>
-                      <TableCell className="py-3 text-muted-foreground">
-                        {formatHeadName(
-                          division.head_profile_id
-                            ? { name: division.head_name, email: division.head_email }
-                            : null,
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3 tabular-nums text-muted-foreground">
-                        {departmentCount}개
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <Badge variant={isArchived ? "secondary" : "success"}>
-                          {isArchived ? "비활성" : "활성"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 pr-4">
-                        <DivisionRowActions
-                          division={division}
-                          organizations={organizations}
-                          headCandidates={headCandidatesByDivision.get(division.id) ?? []}
-                          departmentCount={departmentCount}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+    <NavigationProgressProvider>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {isSuperAdmin && (
+              <AdminDivisionFilters organizations={organizations} currentOrgId={selectedOrgId} />
+            )}
           </div>
-        </>
-      )}
-    </div>
+          <DivisionFormDialog
+            mode="create"
+            organizations={organizations}
+            trigger={<Button>부서 추가</Button>}
+          />
+        </div>
+        <DimOnPending className="flex flex-col gap-4">
+          {divisions.length === 0 ? (
+            <EmptyState
+              title="등록된 부서가 없습니다"
+              description="부서 추가 버튼을 눌러 첫 부서를 만들어보세요. 팀은 부서 없이도 부문에 바로 속할 수 있습니다."
+            />
+          ) : (
+            <>
+              {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 팀 관리와 동일하게
+                  md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
+              <DivisionCardList
+                divisions={divisions}
+                organizations={organizations}
+                headCandidatesByDivision={headCandidatesByDivision}
+                countMap={countMap}
+              />
+              <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
+                        부서명
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        소속 부문
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        부서장
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        소속 팀 수
+                      </TableHead>
+                      <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                        상태
+                      </TableHead>
+                      <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
+                        액션
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {divisions.map((division) => {
+                      const departmentCount = countMap.get(division.id) ?? 0;
+                      const isArchived = Boolean(division.archived_at);
+
+                      return (
+                        <TableRow key={division.id}>
+                          <TableCell className="py-3 pl-4 font-medium">{division.name}</TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {division.organization_name}
+                          </TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            {formatHeadName(
+                              division.head_profile_id
+                                ? { name: division.head_name, email: division.head_email }
+                                : null,
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 tabular-nums text-muted-foreground">
+                            {departmentCount}개
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge variant={isArchived ? "secondary" : "success"}>
+                              {isArchived ? "비활성" : "활성"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 pr-4">
+                            <DivisionRowActions
+                              division={division}
+                              organizations={organizations}
+                              headCandidates={headCandidatesByDivision.get(division.id) ?? []}
+                              departmentCount={departmentCount}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </DimOnPending>
+      </div>
+    </NavigationProgressProvider>
   );
 }
 
-export default function AdminDivisionsPage() {
+type AdminDivisionsPageProps = {
+  searchParams: Promise<AdminDivisionsSearchParams>;
+};
+
+export default function AdminDivisionsPage({ searchParams }: AdminDivisionsPageProps) {
   return (
     <Suspense fallback={<AdminDivisionsSkeleton />}>
-      <DivisionsContent />
+      <DivisionsContent searchParams={searchParams} />
     </Suspense>
   );
 }
