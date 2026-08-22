@@ -46,7 +46,12 @@ export function HeadProfileCombobox({
       onValueChange={(next) => onChange(next?.value ?? NONE_SELECT_VALUE)}
     >
       <ComboboxInput placeholder={placeholder} />
-      <ComboboxContent>
+      {/* 관리자 콘솔 다이얼로그 안에서는 이 필드가 폼의 마지막 줄 근처라 아래쪽 공간이
+          부족하면 목록이 위로 뒤집혀 열려 다이얼로그 제목까지 덮어버리는 문제가 실측됨
+          (side를 고정하지 않으면 base-ui가 공간이 더 넓은 쪽으로 자동 flip). collisionAvoidance
+          side="none"으로 항상 입력창 아래에서 열리게 고정 — 내부 목록은 이미 스크롤 가능하므로
+          공간이 좁아도 잘려 보이지 않는다. */}
+      <ComboboxContent collisionAvoidance={{ side: "none" }}>
         <ComboboxEmpty>검색 결과가 없습니다.</ComboboxEmpty>
         <ComboboxList>
           {(option: HeadOption) => (
