@@ -17,6 +17,7 @@ import {
   CalendarRange,
   FileDown,
   FileText,
+  Gauge,
   History,
   LayoutDashboard,
   ListChecks,
@@ -24,6 +25,7 @@ import {
   Paperclip,
   Save,
   ShieldCheck,
+  ThumbsUp,
   UserCheck,
 } from "lucide-react";
 
@@ -44,8 +46,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // 히어로 아래 "주요 기능" 섹션에 3열 그리드로 렌더링되는 기능 소개 카드 데이터.
 // 모듈 최상단의 정적 상수라 렌더마다 재생성되지 않으며, 각 실제 기능의 위치는 CLAUDE.md의
-// 해당 절(리치 텍스트 에디터·조직 계층·업무 타입/중요도·PDF/Excel·대시보드·관리자 콘솔·
-// 실시간 알림·댓글/멘션·첨부파일, v2: F040~F047 각 기능 절)을 참고.
+// 해당 절(리치 텍스트 에디터·조직 계층(부문/부서/팀)·장(長) 지정·업무 타입/중요도·진척률·
+// PDF/Excel·대시보드·관리자 콘솔·실시간 알림·댓글/멘션·추천/비추천(F031)·첨부파일,
+// v2: F040~F047 각 기능 절)을 참고.
 // 순서 = 화면 노출 순서, title은 카드 key로도 쓰인다.
 const features = [
   {
@@ -56,15 +59,21 @@ const features = [
   },
   {
     icon: Building2,
-    title: "부문·팀 계층 관리",
+    title: "부문·부서·팀 계층 관리",
     description:
-      "부문 아래 팀을 두는 계층 구조로, 소속 팀은 물론 관리자는 팀 필터로 전체 부문의 현황을 한눈에 파악합니다.",
+      "부문 아래 선택적으로 부서를 두고 그 아래 팀을 두는 계층 구조로 조직을 관리하고, 부문장·부서장·팀장을 지정해 소속 필터로 전체 현황을 한눈에 파악합니다.",
   },
   {
     icon: ListChecks,
     title: "업무 타입·중요도 분류",
     description:
       "업무 타입(다중 선택)과 1~5단계 중요도로 업무를 분류해 우선순위와 성격을 명확하게 관리하세요.",
+  },
+  {
+    icon: Gauge,
+    title: "진척률 관리",
+    description:
+      "0~100% 진척률을 슬라이더로 기록하면 목표종료일 기준 목표진척률과 자동 비교되어, 지연 여부를 대시보드에서 바로 확인할 수 있습니다.",
   },
   {
     icon: FileDown,
@@ -82,7 +91,7 @@ const features = [
     icon: ShieldCheck,
     title: "관리자 콘솔",
     description:
-      "부문·팀·사용자·업무 타입을 한 콘솔에서 관리하고, 슈퍼관리자는 전체 부문을 아우르는 권한으로 운영합니다.",
+      "부문·부서·팀·사용자·업무 타입을 한 콘솔에서 관리하고, 슈퍼관리자는 전체 부문을 아우르는 권한으로 운영합니다.",
   },
   {
     icon: Bell,
@@ -95,6 +104,12 @@ const features = [
     title: "댓글·멘션 협업",
     description:
       "타 팀 업무에도 댓글과 대댓글을 남기고 @멘션으로 담당자를 호출해 함께 논의하세요.",
+  },
+  {
+    icon: ThumbsUp,
+    title: "추천·비추천",
+    description:
+      "부서와 무관하게 어떤 업무일지에도 추천·비추천을 남기고, 대시보드에서 팀 전체의 반응 현황을 확인하세요.",
   },
   {
     icon: Paperclip,
