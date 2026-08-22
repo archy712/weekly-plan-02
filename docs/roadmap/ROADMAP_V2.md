@@ -581,16 +581,30 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
   - **범위 밖 유지**: 탭 선택 상태를 URL 쿼리 파라미터로 영속화하는 것(새로고침 시 탭이 기본값으로 돌아가는 것은 허용 가능한 손실로 판단, 필터 변경 중에는 이미 유지됨을 확인했으므로 우선순위 낮음)
   - **수락 기준**: 탭 전환 시 각 차트가 정상 렌더링되고, 사용자가 프로토타입을 확인한 뒤 채택/반려를 결정한다(반려 시 이 Task는 "적용 안 함"으로 종료 가능).
 
-- **Task 058: 빈 상태·다운로드 메뉴 아이콘 보강 (F055)**
-  - [ ] `components/empty-state.tsx`에 `icon?: LucideIcon` prop 추가 — 검색 결과 0건은 `SearchX`, 진짜 빈 목록은 `FileText`처럼 문맥별 아이콘 사용(현재는 항상 `FileText` 고정). 기존 `ui/empty.tsx`(설치돼 있으나 미사용) 프리미티브로 교체할지도 함께 검토
-  - [ ] `components/weekly-log-list-view.tsx`의 PDF/Excel 다운로드 `DropdownMenuItem`에 각각 `FileText`(PDF)/`FileSpreadsheet`(Excel) 아이콘 추가
-  - **관련 파일**: `components/empty-state.tsx`, `components/ui/empty.tsx`, `components/weekly-log-list-view.tsx`
-  - **수락 기준**: 검색 결과 없음/빈 목록/다운로드 메뉴 각각에서 문맥에 맞는 아이콘이 표시된다.
+- **Task 058: 빈 상태·다운로드 메뉴 아이콘 보강 (F055)** ✅
+  - [x] `components/empty-state.tsx`에 `icon?: LucideIcon` prop 추가(기본값 `FileText`, 기존 호출부는 변경 없이 그대로 `FileText`를 씀). `components/weekly-log-list-view.tsx`의 검색/필터 0건 분기(`activeFilters.length > 0`)에만 `SearchX`를 전달해 "검색 결과 없음"과 "진짜 빈 목록"을 구분
+    - **계획과 다르게 처리한 부분**: `ui/empty.tsx`로의 교체는 **미채택**으로 결론지었다 — `ui/empty.tsx`(`p-6 md:p-12`, `max-w-sm`, `text-lg` 타이틀)는 대시보드 차트 카드처럼 작은 컨테이너 안에서 쓰이는 기존 `EmptyState`(`py-16` 컴팩트 레이아웃)보다 훨씬 무거워, 17곳의 기존 호출부(대시보드 차트 7종, 관리자 콘솔 3종, 목록·칸반·타임라인·댓글·알림 등) 크기를 함께 조정해야 하는 범위 밖 변경이 되기 때문이다. 같은 이유로 `SearchX` 적용도 로드맵의 "관련 파일"에 명시된 `weekly-log-list-view.tsx` 한 곳으로 좁혔다 — `user-admin-table.tsx`/`weekly-log-timeline-view.tsx` 등 다른 검색·필터형 빈 상태도 후보였지만, 이번 Task 범위(관련 파일 목록)에 없어 손대지 않았다.
+  - [x] `components/weekly-log-list-view.tsx`의 PDF/Excel 다운로드 `DropdownMenuItem`에 각각 `FileText`(PDF)/`FileSpreadsheet`(Excel) 아이콘 추가 — `ui/dropdown-menu.tsx`의 `DropdownMenuItem`이 이미 `gap-2`+`[&>svg]:size-4`를 갖고 있어 별도 클래스 없이 아이콘이 정렬됨
+  - **관련 파일**: `components/empty-state.tsx`, `components/ui/empty.tsx`(변경 없음, 검토 후 미채택), `components/weekly-log-list-view.tsx`
+  - **수락 기준**: 검색 결과 없음/빈 목록/다운로드 메뉴 각각에서 문맥에 맞는 아이콘이 표시된다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task058-vr3n1@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] 다운로드 드롭다운 오픈 → "PDF 다운로드"/"Excel 다운로드" 앞에 각각 `FileText`/`FileSpreadsheet` 아이콘 노출 스크린샷 확인
+    - [x] 목록에 없는 검색어(`존재하지않는검색어zzz999`) 입력 후 검색 → "조건에 맞는 업무 0건", `EmptyState`에 `SearchX` 아이콘 + "검색 결과가 없습니다" 노출 스크린샷 확인
+    - [x] 콘솔 에러 0건
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 이전 Task들과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
 
-- **Task 059: 상세 페이지 `Breadcrumb` 추가 (F056)**
-  - [ ] `components/weekly-log-detail-view.tsx` 상단에 `ui/breadcrumb.tsx`(이미 설치, 미사용)로 "주간업무 / {부서명} / {제목}" 경로 표시
-  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/ui/breadcrumb.tsx`
-  - **수락 기준**: 상세 페이지 진입 시 소속 부서·목록으로의 경로가 한눈에 보이고, 각 구간 클릭 시 해당 목록/필터로 이동한다.
+- **Task 059: 상세 페이지 `Breadcrumb` 추가 (F056)** ✅
+  - [x] `components/weekly-log-detail-view.tsx` 상단에 `ui/breadcrumb.tsx`(이미 설치, 미사용)로 "주간업무 / {부서명} / {제목}" 경로 표시 — "주간업무"는 `/protected/weekly-logs`(전체 목록), "{부서명}"은 `/protected/weekly-logs?department={department_id}`(해당 팀으로 필터링된 목록), "{제목}"은 `BreadcrumbPage`(클릭 불가, 현재 페이지)
+    - **계획과 다르게 처리한 부분**: 기존에 있던 "← 목록으로" 텍스트 링크(`ArrowLeft` 아이콘 + `/protected/weekly-logs`)를 이 Breadcrumb로 완전히 대체했다 — 두 내비게이션이 사실상 같은 목적지(첫 세그먼트 "주간업무"가 동일한 무필터 목록으로 이동)를 가리켜 나란히 두면 중복이었고, Breadcrumb 쪽이 부서 세그먼트까지 포함해 정보량이 더 많다. 읽기 전용 화면과 편집 화면(`isEditing`) 양쪽에서 기존 `backLink`가 있던 자리에 그대로 넣었다.
+  - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/ui/breadcrumb.tsx`(변경 없음, 기존 컴포넌트 재사용)
+  - **수락 기준**: 상세 페이지 진입 시 소속 부서·목록으로의 경로가 한눈에 보이고, 각 구간 클릭 시 해당 목록/필터로 이동한다. **충족 확인.**
+  - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task059-hb4k7@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
+    - [x] 상세 페이지 진입 → "주간업무 › Commerce시스템팀 › {제목}" 순으로 노출, 375px 폭에서도 줄바꿈만 될 뿐 카드 밖으로 밀리지 않음을 스크린샷으로 확인
+    - [x] "Commerce시스템팀" 세그먼트 클릭 → `/protected/weekly-logs?department={id}`로 이동해 해당 팀으로 필터링된 목록이 뜨는 것을 확인
+    - [x] "수정" 버튼으로 편집 폼 진입 → 동일한 Breadcrumb가 편집 화면 상단에도 그대로 유지됨을 스크린샷으로 확인
+    - [x] 다크 → 라이트 모드 전환 후 재확인 — 구분자·링크·현재 페이지 텍스트 색상이 테마 토큰(`text-muted-foreground`/`hover:text-foreground`) 기반이라 반전 정상
+    - [x] 콘솔 에러 0건
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 이전 Task들과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
 
 - **Task 060: 사용자 역할 `Badge` variant 분화 (F057)**
   - [ ] `components/user-role-select.tsx`/`components/user-admin-table.tsx`에서 역할(일반/관리자/슈퍼관리자)을 표시할 때 `Badge` variant를 역할별로 다르게(예: 슈퍼관리자=`destructive`, 관리자=`secondary`, 일반=`outline`) 적용해 테이블에서 훑어보기 쉽게 함
