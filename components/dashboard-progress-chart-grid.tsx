@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Pie, PieChart } from "recharts";
+import { Cell, Label, Pie, PieChart } from "recharts";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,7 +37,53 @@ const chartConfig: ChartConfig = {
 
 const BUCKETS: WeeklyLogProgressBucket[] = ["good", "delayed", "unregistered"];
 
-function ProgressMiniPie({ row }: { row: ProgressGroupStats }) {
+// 부서(division) 그리드는 "진행상태 분포"(DashboardStatusChart) 카드와 동일한 크기(dashboard-status-chart.tsx
+// 참고 — aspect-square max-h-72, innerRadius 60/outerRadius 90, 중앙에 전체 건수 라벨)로
+// 맞추고, 팀(department) 그리드는 개수가 많아 기존의 작은 크기를 유지한다.
+type ProgressPieSize = "sm" | "lg";
+
+const SIZE_CONFIG: Record<
+  ProgressPieSize,
+  {
+    chartClassName: string;
+    innerRadius: number;
+    outerRadius: number;
+    strokeWidth: number;
+    labelClassName: string;
+    minPercentToLabel: number;
+    legendClassName: string;
+    legendDotClassName: string;
+    titleClassName: string;
+    showCenterTotal: boolean;
+  }
+> = {
+  sm: {
+    chartClassName: "aspect-square w-full max-h-36",
+    innerRadius: 26,
+    outerRadius: 44,
+    strokeWidth: 1,
+    labelClassName: "fill-white text-[10px] font-semibold",
+    minPercentToLabel: 0.08,
+    legendClassName: "flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground",
+    legendDotClassName: "h-1.5 w-1.5 shrink-0 rounded-[2px]",
+    titleClassName: "truncate text-sm font-medium",
+    showCenterTotal: false,
+  },
+  lg: {
+    chartClassName: "aspect-square w-full max-h-72",
+    innerRadius: 60,
+    outerRadius: 90,
+    strokeWidth: 2,
+    labelClassName: "fill-white text-xs font-semibold",
+    minPercentToLabel: 0.05,
+    legendClassName: "flex flex-wrap items-center justify-center gap-4 pt-1 text-xs",
+    legendDotClassName: "h-2 w-2 shrink-0 rounded-[2px]",
+    titleClassName: "truncate text-base font-medium",
+    showCenterTotal: true,
+  },
+};
+
+function ProgressMiniPie({ row, size }: { row: ProgressGroupStats; size: ProgressPieSize }) {
   const total = row.total_count;
   const counts: Record<WeeklyLogProgressBucket, number> = {
     good: row.good_count,
@@ -45,18 +91,19 @@ function ProgressMiniPie({ row }: { row: ProgressGroupStats }) {
     unregistered: row.unregistered_count,
   };
   const data = BUCKETS.map((bucket) => ({ bucket, value: counts[bucket] }));
+  const config = SIZE_CONFIG[size];
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="truncate text-sm font-medium" title={row.name}>
+        <CardTitle className={config.titleClassName} title={row.name}>
           {row.name}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-2 pb-4">
         <ChartContainer
           config={chartConfig}
-          className="aspect-square w-full max-h-36"
+          className={config.chartClassName}
           role="img"
           aria-label={`${row.name} 진척률 파이 그래프. 전체 ${total}건 중 양호 ${row.good_count}건, 지연 ${row.delayed_count}건, 미등록 ${row.unregistered_count}건`}
         >
@@ -94,12 +141,12 @@ function ProgressMiniPie({ row }: { row: ProgressGroupStats }) {
               data={data}
               dataKey="value"
               nameKey="bucket"
-              innerRadius={26}
-              outerRadius={44}
+              innerRadius={config.innerRadius}
+              outerRadius={config.outerRadius}
               paddingAngle={2}
-              strokeWidth={1}
+              strokeWidth={config.strokeWidth}
               label={({ midAngle, innerRadius: inner, outerRadius: outer, percent, cx, cy }) => {
-                if (!percent || percent < 0.08 || midAngle == null) return null;
+                if (!percent || percent < config.minPercentToLabel || midAngle == null) return null;
                 const RADIAN = Math.PI / 180;
                 const radius = inner + (outer - inner) / 2;
                 const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -110,7 +157,7 @@ function ProgressMiniPie({ row }: { row: ProgressGroupStats }) {
                     y={y}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="fill-white text-[10px] font-semibold"
+                    className={config.labelClassName}
                   >
                     {Math.round(percent * 100)}%
                   </text>
@@ -121,16 +168,48 @@ function ProgressMiniPie({ row }: { row: ProgressGroupStats }) {
               {data.map((d) => (
                 <Cell key={d.bucket} fill={PROGRESS_CHART_COLORS[d.bucket]} />
               ))}
+              {config.showCenterTotal && (
+                <Label
+                  content={({ viewBox }) => {
+                    if (!viewBox || !("cx" in viewBox) || viewBox.cx == null) {
+                      return null;
+                    }
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-foreground text-2xl font-semibold"
+                        >
+                          {total.toLocaleString()}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy ?? 0) + 20}
+                          className="fill-muted-foreground text-xs"
+                        >
+                          전체 건수
+                        </tspan>
+                      </text>
+                    );
+                  }}
+                />
+              )}
             </Pie>
           </PieChart>
         </ChartContainer>
-        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+        <div className={config.legendClassName}>
           {data.map((d) => {
             const percent = total > 0 ? Math.round((d.value / total) * 100) : 0;
             return (
               <div key={d.bucket} className="flex items-center gap-1">
                 <div
-                  className="h-1.5 w-1.5 shrink-0 rounded-[2px]"
+                  className={config.legendDotClassName}
                   style={{ backgroundColor: PROGRESS_CHART_COLORS[d.bucket] }}
                 />
                 <span>
@@ -145,16 +224,27 @@ function ProgressMiniPie({ row }: { row: ProgressGroupStats }) {
   );
 }
 
+// 부서(division) 그리드는 한 줄에 2개, 팀(department) 그리드는 한 줄에 4개로 고정 요청받아
+// 다른 화면 크기까지 함께 좁아지는 반응형 breakpoint 없이 정적 클래스로 열 개수를 고정한다.
+const GRID_COLUMNS_CLASS: Record<2 | 4, string> = {
+  2: "grid grid-cols-2 gap-4",
+  4: "grid grid-cols-4 gap-4",
+};
+
 export function DashboardProgressChartGrid({
   title,
   description,
   rows,
   emptyDescription,
+  columns,
+  size = "sm",
 }: {
   title: string;
   description: string;
   rows: ProgressGroupStats[];
   emptyDescription: string;
+  columns: 2 | 4;
+  size?: ProgressPieSize;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -169,9 +259,9 @@ export function DashboardProgressChartGrid({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className={GRID_COLUMNS_CLASS[columns]}>
           {rows.map((row) => (
-            <ProgressMiniPie key={row.id} row={row} />
+            <ProgressMiniPie key={row.id} row={row} size={size} />
           ))}
         </div>
       )}
