@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Coins, Pencil, Users } from "lucide-react";
+import { Building2, Coins, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { HtmlContent } from "@/components/html-content";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -286,20 +294,34 @@ export function WeeklyLogDetailView({
   // 업무는 더 이상 진척률을 조정할 대상이 아니므로 제외한다.
   const progressNotEntered = !isCompleted && progress === 0;
 
-  const backLink = (
-    <Link
-      href="/protected/weekly-logs"
-      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline w-fit"
-    >
-      <ArrowLeft className="size-4" />
-      목록으로
-    </Link>
+  const breadcrumbNav = (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link href="/protected/weekly-logs">주간업무</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link href={`/protected/weekly-logs?department=${log.department_id}`}>
+              {log.department_name}
+            </Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="max-w-[240px] truncate">{log.title}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 
   if (isEditing) {
     return (
       <div className="flex flex-col gap-6">
-        {backLink}
+        {breadcrumbNav}
         <WeeklyLogForm
           workTypeOptions={workTypeOptions}
           defaultValues={{
@@ -331,7 +353,7 @@ export function WeeklyLogDetailView({
 
   return (
     <div className="flex flex-col gap-6">
-      {backLink}
+      {breadcrumbNav}
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold">{log.title}</h1>
         <div className="flex shrink-0 items-center gap-1.5">
