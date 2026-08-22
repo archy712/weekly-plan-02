@@ -24,6 +24,18 @@ function buildFileName(departmentLabel: string): string {
   return `진행업무_${safeLabel}_${formatDate(new Date()).replace(/-/g, "")}.xlsx`;
 }
 
+// OWASP CSV/Excel Injection 방어 — 사용자가 제목·협력업체명·본문 등에 "=", "+", "-", "@"로
+// 시작하는 값을 입력하면 이 파일을 여는 사람의 스프레드시트 프로그램이 악성 수식으로 해석할
+// 잠재 위험이 있다. exceljs가 만드는 네이티브 XLSX는 셀 타입이 명시적으로 문자열(shared/
+// inline string)로 기록되어 CSV보다 위험도는 낮지만, 방어적으로 위험한 선행 문자 앞에
+// 작은따옴표를 붙여 어떤 뷰어에서도 리터럴 텍스트로만 해석되게 한다.
+const FORMULA_INJECTION_PREFIXES = ["=", "+", "-", "@", "\t", "\r"];
+function escapeExcelCellValue(value: string): string {
+  return FORMULA_INJECTION_PREFIXES.some((prefix) => value.startsWith(prefix))
+    ? `'${value}`
+    : value;
+}
+
 // weekly_logs.content는 sanitize된 HTML 문자열이라, 스프레드시트 셀에는 태그 없는
 // 순수 텍스트만 넣는다(DOMParser는 브라우저 전용 — 이 함수는 클라이언트에서만 호출됨).
 function htmlToPlainText(html: string): string {
@@ -71,8 +83,8 @@ export async function downloadWeeklyLogListExcel({
 
   for (const item of items) {
     worksheet.addRow({
-      title: item.title,
-      department: item.department_name,
+      title: escapeExcelCellValue(item.title),
+      department: escapeExcelCellValue(item.department_name),
       start_date: formatDate(item.start_date),
       target_end_date: formatDate(item.target_end_date),
       status: getStatusLabel(item.status),
@@ -80,8 +92,8 @@ export async function downloadWeeklyLogListExcel({
       importance: formatImportanceLabel(item.importance as WeeklyLogImportance),
       estimated_mm: item.estimated_mm != null ? `${item.estimated_mm} M/M` : "-",
       estimated_cost: item.estimated_cost != null ? formatCurrency(item.estimated_cost) : "-",
-      partner_company: item.partner_company ?? "-",
-      content: htmlToPlainText(item.content),
+      partner_company: item.partner_company ? escapeExcelCellValue(item.partner_company) : "-",
+      content: escapeExcelCellValue(htmlToPlainText(item.content)),
     });
   }
 

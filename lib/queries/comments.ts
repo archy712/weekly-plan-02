@@ -59,18 +59,24 @@ export async function getWeeklyLogComments(
 
   return rows.map((row) => {
     const author = identityMap.get(row.author_id);
-    const mentions: WeeklyLogCommentMention[] = (mentionsByComment.get(row.id) ?? []).map(
-      (userId) => {
-        const identity = identityMap.get(userId);
-        return { id: userId, email: identity?.email ?? null, name: identity?.name ?? null };
-      },
-    );
+    // 소프트 삭제된 댓글은 UI가 "삭제된 댓글입니다" placeholder로만 렌더링하지만(위
+    // weekly-log-comment-section.tsx), content/멘션을 그대로 응답에 담아 보내면 다른
+    // 로그인 사용자가 개발자 도구 Network 탭 등으로 삭제된 원문을 열람할 수 있다.
+    // deleted_at 컬럼 자체는 감사 목적으로 그대로 두고(물리 삭제 아님), 조회 계층에서만
+    // 마스킹한다.
+    const isDeleted = row.deleted_at !== null;
+    const mentions: WeeklyLogCommentMention[] = isDeleted
+      ? []
+      : (mentionsByComment.get(row.id) ?? []).map((userId) => {
+          const identity = identityMap.get(userId);
+          return { id: userId, email: identity?.email ?? null, name: identity?.name ?? null };
+        });
 
     return {
       id: row.id,
       weekly_log_id: row.weekly_log_id,
       author_id: row.author_id,
-      content: row.content,
+      content: isDeleted ? "" : row.content,
       parent_comment_id: row.parent_comment_id,
       created_at: row.created_at,
       updated_at: row.updated_at,

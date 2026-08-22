@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
+import { getScopedDepartments } from "@/lib/queries/user-admin";
 import { AdminUserDetailSkeleton } from "@/components/admin-user-detail-skeleton";
 import { UserAdminDetail } from "@/components/user-admin-detail";
 import type {
@@ -28,8 +30,11 @@ async function UserDetailContent({
   }
 
   const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  const currentUserId = claimsData?.claims?.sub ?? "";
+  // 부서 게이트·관리자 확인은 app/protected/admin/layout.tsx의 requireAdmin()이 이미
+  // 처리하지만, 이 페이지는 대상 사용자가 관리자 소속 조직에 속하는지 검증해야 해서
+  // organizationId·본인 id를 얻기 위해 다시 호출한다(users/page.tsx와 동일 패턴).
+  const { id: currentUserId, organizationId, role: callerRole } = await requireAdmin();
+  const isSuperAdmin = callerRole === "superadmin";
 
   const { data: target, error: targetError } = await supabase
     .from("profiles")
@@ -45,6 +50,20 @@ async function UserDetailContent({
   // profiles_select_own_or_admin 정책 덕분에 관리자는 전체를 조회할 수 있으므로,
   // null이면 id 자체가 존재하지 않는 경우다.
   if (!target) {
+    notFound();
+  }
+
+  // 조직 범위 검증 — RLS(is_admin())는 조직과 무관하게 전체 profiles 조회를 허용하므로,
+  // 다른 관리자 콘솔 화면(대시보드/부서/업무타입/사용자 목록)과 동일하게 이 페이지도
+  // 쿼리 레벨에서 스코프를 직접 강제해야 한다. 사용자 목록(fetchUsersPage)이 이미
+  // department_id가 스코프 밖(또는 null)인 사용자를 노출하지 않으므로, 상세 페이지도
+  // 동일한 기준으로 접근을 막아 URL 직접 접근으로 타 조직 사용자 정보가 노출되지 않게 한다.
+  const scopedDepartments: Department[] = await getScopedDepartments(
+    supabase,
+    isSuperAdmin,
+    organizationId,
+  );
+  if (!target.department_id || !scopedDepartments.some((d) => d.id === target.department_id)) {
     notFound();
   }
 
@@ -96,15 +115,11 @@ async function UserDetailContent({
     })),
   };
 
-  // 소속 부서 변경 select — 비활성 부서는 신규 선택지에서 제외하되, 이미 그 부서에
-  // 속한 사용자에게는 현재 값이 계속 보이도록 예외를 둔다(profile-form.tsx와 동일 관례).
-  const { data: departmentRows } = await supabase
-    .from("departments")
-    .select(
-      "id, name, created_at, archived_at, organization_id, division_id, head_profile_id, is_direct_report",
-    )
-    .order("name");
-  const departments: Department[] = (departmentRows ?? []).filter(
+  // 소속 부서 변경 select — 위에서 이미 조직 범위로 좁혀 조회한 scopedDepartments를 그대로
+  // 재사용한다(다른 조직의 부서가 select에 노출되던 문제 해결). 비활성 부서는 신규
+  // 선택지에서 제외하되, 이미 그 부서에 속한 사용자에게는 현재 값이 계속 보이도록
+  // 예외를 둔다(profile-form.tsx와 동일 관례).
+  const departments: Department[] = scopedDepartments.filter(
     (department) => !department.archived_at || department.id === user.department_id,
   );
 

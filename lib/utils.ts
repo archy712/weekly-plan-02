@@ -124,6 +124,18 @@ export function computeTargetProgress(
   return Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
 }
 
+// 리다이렉트 대상 경로를 신뢰하기 전에 오픈 리다이렉트를 막는다. "/"로 시작하지 않는
+// 값(절대 URL, `@evil.com` 같은 userinfo 트릭 포함)이나 "//", "/\"로 시작하는 값
+// (브라우저가 프로토콜 상대 URL로 해석해 외부 host로 이동시킬 수 있음)은 전부 거부하고
+// fallback으로 대체한다 (구글 OAuth 콜백·이메일 인증 콜백의 next 쿼리 파라미터에 사용).
+export function getSafeRedirectPath(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return fallback;
+  }
+  return value;
+}
+
 // This check can be removed, it is just for tutorial purposes
 export const hasEnvVars =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
