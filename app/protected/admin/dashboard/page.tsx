@@ -9,6 +9,8 @@ import {
   getLogsByStatus,
   getLogsByWorkType,
   getMonthlyTrend,
+  getProgressByDepartment,
+  getProgressByDivision,
   getReactionsSummary,
   getWorkloadSummary,
 } from "@/lib/queries/stats";
@@ -23,9 +25,14 @@ import { DashboardImportanceChart } from "@/components/dashboard-importance-char
 import { DashboardReactionChart } from "@/components/dashboard-reaction-chart";
 import { DashboardTrendChart } from "@/components/dashboard-trend-chart";
 import {
+  DashboardProgressChartGrid,
+  type ProgressGroupStats,
+} from "@/components/dashboard-progress-chart-grid";
+import {
   DashboardWorkloadChart,
   type DepartmentWorkload,
 } from "@/components/dashboard-workload-chart";
+import { formatDate } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
 import type { Department, DepartmentFilter, Division } from "@/lib/types";
 
@@ -135,15 +142,55 @@ async function DashboardContent({
       ? divisionParam
       : undefined;
 
-  const [departmentStats, statusStats, workTypeStats, importanceStats, monthlyTrend, reactionStats] =
-    await Promise.all([
-      getLogsByDepartment(range, selectedOrgId, selectedDivisionId),
-      getLogsByStatus(range, departmentId, selectedOrgId, selectedDivisionId),
-      getLogsByWorkType(range, departmentId, selectedOrgId, selectedDivisionId),
-      getLogsByImportance(range, departmentId, selectedOrgId, selectedDivisionId),
-      getMonthlyTrend(TREND_MONTHS, departmentId, selectedOrgId, selectedDivisionId),
-      getReactionsSummary(range, departmentId, selectedOrgId, selectedDivisionId),
-    ]);
+  const todayIso = formatDate(new Date());
+
+  // 부문/부서/팀 진척률 파이 차트(ad hoc) — 특정 부문이 선택된 경우에만 의미가 있다
+  // ("전체 부문 합산"에서는 부서(division) 이름이 조직을 넘나들며 겹칠 수 있어 표시하지
+  // 않는다). 부서(division)까지 선택된 경우 "부서별" 그리드는 어차피 division 1건짜리라
+  // 굳이 보여줄 필요가 없어 생략하고 "팀별"만 그 부서 범위로 좁혀 보여준다.
+  const showProgressCharts = selectedOrgId !== undefined;
+  const showDivisionProgressChart = showProgressCharts && !selectedDivisionId && divisions.length > 0;
+
+  const [
+    departmentStats,
+    statusStats,
+    workTypeStats,
+    importanceStats,
+    monthlyTrend,
+    reactionStats,
+    divisionProgressStats,
+    departmentProgressStats,
+  ] = await Promise.all([
+    getLogsByDepartment(range, selectedOrgId, selectedDivisionId),
+    getLogsByStatus(range, departmentId, selectedOrgId, selectedDivisionId),
+    getLogsByWorkType(range, departmentId, selectedOrgId, selectedDivisionId),
+    getLogsByImportance(range, departmentId, selectedOrgId, selectedDivisionId),
+    getMonthlyTrend(TREND_MONTHS, departmentId, selectedOrgId, selectedDivisionId),
+    getReactionsSummary(range, departmentId, selectedOrgId, selectedDivisionId),
+    showDivisionProgressChart
+      ? getProgressByDivision(todayIso, range, departmentId, selectedOrgId)
+      : Promise.resolve([]),
+    showProgressCharts
+      ? getProgressByDepartment(todayIso, range, selectedOrgId, selectedDivisionId)
+      : Promise.resolve([]),
+  ]);
+
+  const divisionProgressRows: ProgressGroupStats[] = divisionProgressStats.map((row) => ({
+    id: row.division_id,
+    name: row.division_name,
+    good_count: row.good_count,
+    delayed_count: row.delayed_count,
+    unregistered_count: row.unregistered_count,
+    total_count: row.total_count,
+  }));
+  const departmentProgressRows: ProgressGroupStats[] = departmentProgressStats.map((row) => ({
+    id: row.department_id,
+    name: row.department_name,
+    good_count: row.good_count,
+    delayed_count: row.delayed_count,
+    unregistered_count: row.unregistered_count,
+    total_count: row.total_count,
+  }));
 
   // stats_workload_summary는 부서별 그룹화 없이 단일 행 요약만 반환하므로(Task 030),
   // "부서별" 비교 차트를 만들려면 부서마다 개별 호출해야 한다. departmentStats에 이미
@@ -187,6 +234,24 @@ async function DashboardContent({
             <DashboardReactionChart data={reactionStats} />
             <DashboardWorkloadChart data={workloadRows} />
           </div>
+          {showProgressCharts && (
+            <div className="flex flex-col gap-6">
+              {showDivisionProgressChart && (
+                <DashboardProgressChartGrid
+                  title="부서별 진척률"
+                  description="선택한 부문·기간 기준 부서(division)별 양호/지연/미등록 비율입니다."
+                  rows={divisionProgressRows}
+                  emptyDescription="선택한 부문·기간에 등록된 주간업무일지가 없습니다."
+                />
+              )}
+              <DashboardProgressChartGrid
+                title="팀별 진척률"
+                description="선택한 부문·기간 기준 팀별 양호/지연/미등록 비율입니다."
+                rows={departmentProgressRows}
+                emptyDescription="선택한 조건에 등록된 주간업무일지가 없습니다."
+              />
+            </div>
+          )}
         </DimOnPending>
       </div>
     </NavigationProgressProvider>

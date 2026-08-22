@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   DepartmentLogStats,
+  DepartmentProgressStats,
+  DivisionProgressStats,
   ImportanceLogStats,
   MonthlyLogTrend,
   MyWorkSummary,
@@ -198,6 +200,62 @@ export async function getWorkloadSummary(
 
   if (error) {
     console.error("[lib/queries/stats] stats_workload_summary 조회 실패:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+// 부문 선택 시 부서(division)별 진척률 파이 차트(ad hoc). todayIso는 stats_my_work_summary와
+// 동일하게 호출부(Node의 new Date() 기준 KST, formatDate(new Date()))가 넘겨야 한다 —
+// "지연" 판정 3중 일치 원칙(F040)과 같은 이유로 RPC 내부는 current_date를 참조하지 않는다.
+// departmentId를 생략하면 조직/부서(division) 범위 전체 대상.
+export async function getProgressByDivision(
+  todayIso: string,
+  range: StatsDateRange = {},
+  departmentId?: string,
+  organizationId?: string,
+  divisionId?: string,
+): Promise<DivisionProgressStats[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stats_progress_by_division", {
+    today_param: todayIso,
+    from_date: range.from,
+    to_date: range.to,
+    dept_id: departmentId,
+    org_id: organizationId,
+    div_id: divisionId,
+  });
+
+  if (error) {
+    console.error("[lib/queries/stats] stats_progress_by_division 조회 실패:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+// 부문(또는 부서) 선택 시 팀(department)별 진척률 파이 차트(ad hoc). stats_logs_by_department와
+// 동일한 이유로 departmentId 파라미터를 두지 않는다(그룹화 축 자체를 다시 좁히는 것은 의미가
+// 없음 — 대시보드의 팀 선택이 이 차트에 영향을 주지 않는 것도 "부서별 건수" 차트와 동일한
+// 기존 동작). divisionId를 넘기면 그 부서(division) 소속 팀만 대상으로 좁아진다.
+export async function getProgressByDepartment(
+  todayIso: string,
+  range: StatsDateRange = {},
+  organizationId?: string,
+  divisionId?: string,
+): Promise<DepartmentProgressStats[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("stats_progress_by_department", {
+    today_param: todayIso,
+    from_date: range.from,
+    to_date: range.to,
+    org_id: organizationId,
+    div_id: divisionId,
+  });
+
+  if (error) {
+    console.error("[lib/queries/stats] stats_progress_by_department 조회 실패:", error);
     return [];
   }
 

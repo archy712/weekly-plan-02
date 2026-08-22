@@ -1995,6 +1995,41 @@ export type Database = {
           overdue_count: number
         }[]
       }
+      stats_progress_by_department: {
+        Args: {
+          div_id?: string
+          from_date?: string
+          org_id?: string
+          to_date?: string
+          today_param: string
+        }
+        Returns: {
+          delayed_count: number
+          department_id: string
+          department_name: string
+          good_count: number
+          total_count: number
+          unregistered_count: number
+        }[]
+      }
+      stats_progress_by_division: {
+        Args: {
+          dept_id?: string
+          div_id?: string
+          from_date?: string
+          org_id?: string
+          to_date?: string
+          today_param: string
+        }
+        Returns: {
+          delayed_count: number
+          division_id: string
+          division_name: string
+          good_count: number
+          total_count: number
+          unregistered_count: number
+        }[]
+      }
       stats_reactions_summary: {
         Args: {
           dept_id?: string

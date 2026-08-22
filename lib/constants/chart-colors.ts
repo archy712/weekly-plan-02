@@ -1,4 +1,4 @@
-import type { WeeklyLogStatus } from "@/lib/types";
+import type { WeeklyLogProgressBucket, WeeklyLogStatus } from "@/lib/types";
 
 // Task 031: 대시보드 차트 전용 색상 상수.
 //
@@ -53,6 +53,15 @@ export const REACTION_CHART_COLORS = {
   up: "hsl(var(--success))",
   down: "hsl(var(--destructive))",
 } as const;
+
+// 대시보드 부문/부서/팀 진척률 파이 차트(ad hoc) 색상. 양호/지연은 추천/비추천 차트와 동일한
+// 의미 매핑(긍정=--success, 부정=--destructive)을 재사용하고, 미등록은 진행상태 도넛의
+// completed와 동일하게 "눈에 보이는 회색"인 --muted-foreground를 쓴다.
+export const PROGRESS_CHART_COLORS: Record<WeeklyLogProgressBucket, string> = {
+  good: "hsl(var(--success))",
+  delayed: "hsl(var(--destructive))",
+  unregistered: "hsl(var(--muted-foreground))",
+};
 
 // 업무 중요도 분포(레이더) 차트 색상. 5개 축이 전부 같은 지표(건수)의 단일 계열이라
 // 축마다 다른 색을 줄 필요가 없어 --chart-4 하나만 사용(부서별 M/M·금액 차트가 이미

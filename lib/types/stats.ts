@@ -66,6 +66,16 @@ export type StatsDateRange = {
   to?: string;
 };
 
+// 부문/부서/팀 진척률 파이 차트(ad hoc) — stats_progress_by_division/
+// stats_progress_by_department(today_param, from_date, to_date, ...). good/delayed/
+// unregistered 3버킷 분류 기준은 lib/utils.ts computeTargetProgress() 및 두 RPC 정의 주석
+// 참고(progress=0은 unregistered로 간주).
+export type DivisionProgressStats =
+  StatsFunctions["stats_progress_by_division"]["Returns"][number];
+
+export type DepartmentProgressStats =
+  StatsFunctions["stats_progress_by_department"]["Returns"][number];
+
 // Task 040(F040): "내 업무" 개인 요약 위젯 — stats_my_work_summary(author_id_param, today_param).
 // 다른 stats_*와 달리 부서/조직 축이 아니라 작성자(author_id) 단일 축이고, 항상 성공 시
 // 정확히 1행을 반환한다(getWorkloadSummary와 동일한 배열-단일행 관례). overdue_count/

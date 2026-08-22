@@ -3,6 +3,7 @@ import type { WeeklyLogImportance } from "@/lib/constants/importance";
 import type {
   NotificationListItem,
   WeeklyLogChangeHistoryField,
+  WeeklyLogProgressBucket,
   WeeklyLogStatus,
 } from "@/lib/types";
 
@@ -24,6 +25,16 @@ const STATUS_LABELS: Record<WeeklyLogStatus, string> = {
 
 export function getStatusLabel(status: WeeklyLogStatus): string {
   return STATUS_LABELS[status];
+}
+
+const PROGRESS_BUCKET_LABELS: Record<WeeklyLogProgressBucket, string> = {
+  good: "양호",
+  delayed: "지연",
+  unregistered: "미등록",
+};
+
+export function getProgressBucketLabel(bucket: WeeklyLogProgressBucket): string {
+  return PROGRESS_BUCKET_LABELS[bucket];
 }
 
 export function formatCurrency(value: number): string {

@@ -28,6 +28,11 @@ export type Profile = Omit<Tables<"profiles">, "role"> & {
 
 export type WeeklyLogStatus = "planned" | "in_progress" | "completed";
 
+// 대시보드 부문/부서/팀 진척률 파이 차트(ad hoc)의 3버킷 분류. good=목표진척률 이상,
+// delayed=목표진척률 미만, unregistered=progress가 0(아직 입력하지 않은 것으로 간주,
+// lib/utils.ts computeTargetProgress()·stats_progress_by_division/department RPC 참고).
+export type WeeklyLogProgressBucket = "good" | "delayed" | "unregistered";
+
 // F031 추천/비추천. 1인 1표 토글이라 내 반응은 up/down 둘 중 하나이거나 없음(null).
 export type WeeklyLogReactionKind = "up" | "down";
 
