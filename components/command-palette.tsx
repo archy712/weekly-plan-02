@@ -37,7 +37,7 @@ const VIEW_ITEMS: PaletteItem[] = [
 ];
 
 const WRITE_ITEMS: PaletteItem[] = [
-  { href: "/protected/weekly-logs/new", label: "새 주간업무일지 작성", icon: FilePlus2 },
+  { href: "/protected/weekly-logs/new", label: "새 진행업무 작성", icon: FilePlus2 },
 ];
 
 // 관리자 콘솔 6개 탭 전부를 등록한다 — 로드맵 Task 054는 "대시보드/부서/업무타입/사용자

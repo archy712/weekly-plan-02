@@ -171,7 +171,7 @@ export async function deleteWorkTypeAction(
   if ((logCount ?? 0) > 0) {
     return {
       success: false,
-      error: `업무일지 ${logCount}건에서 사용 중인 업무 타입은 삭제할 수 없습니다. 비활성화를 이용해주세요.`,
+      error: `진행업무 ${logCount}건에서 사용 중인 업무 타입은 삭제할 수 없습니다. 비활성화를 이용해주세요.`,
     };
   }
 

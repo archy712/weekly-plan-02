@@ -50,7 +50,7 @@ export function DashboardReactionChart({ data }: { data: ReactionSummaryStats[] 
       <CardHeader>
         <CardTitle>추천/비추천</CardTitle>
         <CardDescription>
-          선택한 팀·기간 업무일지에 달린 추천/비추천 합계입니다.
+          선택한 팀·기간 진행업무에 달린 추천/비추천 합계입니다.
         </CardDescription>
       </CardHeader>
       <CardContent>

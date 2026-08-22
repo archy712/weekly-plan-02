@@ -111,7 +111,7 @@ async function WorkTypesContent() {
                     소속 부문
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    업무일지 수
+                    진행업무 수
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     상태

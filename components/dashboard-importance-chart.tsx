@@ -90,14 +90,14 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
       <CardHeader>
         <CardTitle>업무 중요도 분포</CardTitle>
         <CardDescription>
-          업무 중요도(매우 낮음~매우 높음 5단계)별 주간업무일지 건수입니다.
+          업무 중요도(매우 낮음~매우 높음 5단계)별 진행업무 건수입니다.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         {isEmpty ? (
           <EmptyState
-            title="집계할 업무일지가 없습니다"
-            description="선택한 팀·기간에 등록된 주간업무일지가 없습니다."
+            title="집계할 진행업무가 없습니다"
+            description="선택한 팀·기간에 등록된 진행업무가 없습니다."
           />
         ) : (
           <>
@@ -110,7 +110,7 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
               className="aspect-auto w-full flex-1"
               style={{ minHeight: chartHeight }}
               role="img"
-              aria-label="업무 중요도별 주간업무일지 건수 가로 막대 그래프"
+              aria-label="업무 중요도별 진행업무 건수 가로 막대 그래프"
             >
               <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32 }}>
                 <CartesianGrid horizontal={false} />
@@ -163,7 +163,7 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
               </BarChart>
             </ChartContainer>
             <table className="sr-only">
-              <caption>업무 중요도별 업무일지 건수 및 비율</caption>
+              <caption>업무 중요도별 진행업무 건수 및 비율</caption>
               <thead>
                 <tr>
                   <th scope="col">업무 중요도</th>

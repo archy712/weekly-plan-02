@@ -299,7 +299,7 @@ export function WeeklyLogDetailView({
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href="/protected/weekly-logs">주간업무</Link>
+            <Link href="/protected/weekly-logs">진행업무</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
@@ -610,7 +610,7 @@ export function WeeklyLogDetailView({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>주간업무일지를 삭제하시겠습니까?</AlertDialogTitle>
+                <AlertDialogTitle>진행업무를 삭제하시겠습니까?</AlertDialogTitle>
                 <AlertDialogDescription>
                   삭제한 항목은 복구할 수 없습니다.
                 </AlertDialogDescription>

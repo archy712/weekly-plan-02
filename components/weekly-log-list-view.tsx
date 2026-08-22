@@ -440,7 +440,7 @@ export function WeeklyLogListView({
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="제목 또는 내용으로 검색"
-              aria-label="주간업무일지 검색"
+              aria-label="진행업무 검색"
               className="w-full sm:w-56"
             />
             <Button type="submit" variant="outline" size="icon" aria-label="검색">
@@ -529,12 +529,12 @@ export function WeeklyLogListView({
           <EmptyState
             icon={activeFilters.length > 0 ? SearchX : undefined}
             title={
-              activeFilters.length > 0 ? "검색 결과가 없습니다" : "등록된 주간업무일지가 없습니다"
+              activeFilters.length > 0 ? "검색 결과가 없습니다" : "등록된 진행업무가 없습니다"
             }
             description={
               activeFilters.length > 0
                 ? "위 필터를 조정하거나 개별 배지를 해제해보세요."
-                : "신규 작성 버튼을 눌러 첫 업무일지를 작성해보세요."
+                : "신규 작성 버튼을 눌러 첫 진행업무를 작성해보세요."
             }
           />
         ) : (

@@ -343,7 +343,7 @@ export function WeeklyLogKanbanView({
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="제목 또는 내용으로 검색"
-              aria-label="주간업무일지 검색"
+              aria-label="진행업무 검색"
               className="w-full sm:w-56"
             />
             <Button type="submit" variant="outline" size="icon" aria-label="검색">

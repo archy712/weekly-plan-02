@@ -42,7 +42,7 @@ export function NotificationPreferencesField({
             <div className="space-y-0.5">
               <FormLabel className="text-base">댓글 알림</FormLabel>
               <FormDescription>
-                내 업무일지에 댓글이 달리면 알림을 받습니다. 대댓글 알림도 이 설정을
+                내 진행업무에 댓글이 달리면 알림을 받습니다. 대댓글 알림도 이 설정을
                 따릅니다.
               </FormDescription>
             </div>
@@ -77,7 +77,7 @@ export function NotificationPreferencesField({
             <div className="space-y-0.5">
               <FormLabel className="text-base">작성 리마인더</FormLabel>
               <FormDescription>
-                이번 주 업무일지를 아직 작성하지 않았을 때 알림을 받습니다.
+                이번 주 진행업무를 아직 작성하지 않았을 때 알림을 받습니다.
               </FormDescription>
             </div>
             <FormControl>

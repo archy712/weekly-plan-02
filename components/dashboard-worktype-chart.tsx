@@ -49,15 +49,15 @@ export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
       <CardHeader>
         <CardTitle>업무 타입별 건수</CardTitle>
         <CardDescription>
-          업무 타입(네트워크·클라우드·보안 등)별 주간업무일지 건수입니다. 하나의
-          업무일지가 여러 타입에 속할 수 있어 비율 합계가 100%를 넘을 수 있습니다.
+          업무 타입(네트워크·클라우드·보안 등)별 진행업무 건수입니다. 하나의
+          진행업무가 여러 타입에 속할 수 있어 비율 합계가 100%를 넘을 수 있습니다.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isEmpty ? (
           <EmptyState
-            title="집계할 업무일지가 없습니다"
-            description="선택한 팀·기간에 등록된 주간업무일지가 없습니다."
+            title="집계할 진행업무가 없습니다"
+            description="선택한 팀·기간에 등록된 진행업무가 없습니다."
           />
         ) : (
           <>
@@ -66,7 +66,7 @@ export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
               className="aspect-auto w-full"
               style={{ height: chartHeight }}
               role="img"
-              aria-label="업무 타입별 주간업무일지 건수 가로 막대 그래프"
+              aria-label="업무 타입별 진행업무 건수 가로 막대 그래프"
             >
               <BarChart data={sorted} layout="vertical" margin={{ left: 8, right: 32 }}>
                 <CartesianGrid horizontal={false} />
@@ -129,7 +129,7 @@ export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
               </BarChart>
             </ChartContainer>
             <table className="sr-only">
-              <caption>업무 타입별 업무일지 건수 및 비율</caption>
+              <caption>업무 타입별 진행업무 건수 및 비율</caption>
               <thead>
                 <tr>
                   <th scope="col">업무 타입</th>

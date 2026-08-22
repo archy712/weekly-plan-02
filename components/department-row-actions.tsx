@@ -131,7 +131,7 @@ export function DepartmentRowActions({
           <AlertDialogHeader>
             <AlertDialogTitle>{department.name} 팀을 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              이 작업은 되돌릴 수 없습니다. 팀원과 업무일지가 없는 경우에만 삭제할 수
+              이 작업은 되돌릴 수 없습니다. 팀원과 진행업무가 없는 경우에만 삭제할 수
               있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>

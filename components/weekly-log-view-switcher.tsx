@@ -47,7 +47,7 @@ export function WeeklyLogViewSwitcher({
   return (
     <div
       role="tablist"
-      aria-label="주간업무일지 보기 전환"
+      aria-label="진행업무 보기 전환"
       className="inline-flex w-fit items-center gap-1 rounded-md border bg-muted/30 p-1"
     >
       {VIEWS.map(({ key, href, label, Icon }) => (

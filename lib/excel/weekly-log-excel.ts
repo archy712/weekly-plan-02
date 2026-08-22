@@ -21,7 +21,7 @@ const COLUMNS: { header: string; key: string; width: number }[] = [
 
 function buildFileName(departmentLabel: string): string {
   const safeLabel = departmentLabel.replace(/[\\/:*?"<>|]/g, "_");
-  return `주간업무일지_${safeLabel}_${formatDate(new Date()).replace(/-/g, "")}.xlsx`;
+  return `진행업무_${safeLabel}_${formatDate(new Date()).replace(/-/g, "")}.xlsx`;
 }
 
 // weekly_logs.content는 sanitize된 HTML 문자열이라, 스프레드시트 셀에는 태그 없는
@@ -45,7 +45,7 @@ export async function downloadWeeklyLogListExcel({
   const ExcelJS = await import("exceljs");
 
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("주간업무일지");
+  const worksheet = workbook.addWorksheet("진행업무");
   worksheet.columns = COLUMNS.map((col) => ({ key: col.key, width: col.width }));
 
   const printedAt = new Date().toLocaleString("ko-KR", {
@@ -56,7 +56,7 @@ export async function downloadWeeklyLogListExcel({
     minute: "2-digit",
   });
 
-  const titleRow = worksheet.addRow([`주간업무일지 - ${departmentLabel}`]);
+  const titleRow = worksheet.addRow([`진행업무 - ${departmentLabel}`]);
   worksheet.mergeCells(titleRow.number, 1, titleRow.number, COLUMNS.length);
   titleRow.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
   titleRow.getCell(1).font = { bold: true, size: 14 };

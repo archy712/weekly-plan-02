@@ -55,7 +55,7 @@ export function DepartmentCard({
             )}
           </span>
           <span>소속 인원 {memberCount}명</span>
-          <span>업무일지 {logCount}건</span>
+          <span>진행업무 {logCount}건</span>
         </div>
         <DepartmentRowActions
           department={department}

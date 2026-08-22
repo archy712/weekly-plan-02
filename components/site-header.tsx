@@ -40,7 +40,7 @@ export function SiteHeader() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Home className="size-5" />
             </span>
-            주간업무
+            진행업무
           </Link>
         )}
         <div className="flex items-center gap-3">

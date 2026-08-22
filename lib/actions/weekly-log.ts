@@ -100,7 +100,7 @@ export async function createWeeklyLogAction(
     .single();
 
   if (error || !inserted) {
-    return { success: false, error: "주간업무일지 저장 중 오류가 발생했습니다." };
+    return { success: false, error: "진행업무 저장 중 오류가 발생했습니다." };
   }
 
   revalidatePath("/protected/weekly-logs");
@@ -134,7 +134,7 @@ export async function updateWeeklyLogAction(
     .maybeSingle();
 
   if (error) {
-    return { success: false, error: "주간업무일지 수정 중 오류가 발생했습니다." };
+    return { success: false, error: "진행업무 수정 중 오류가 발생했습니다." };
   }
   // RLS가 타 부서 행을 걸러내므로 존재하지 않거나 권한이 없으면 0건이 반환된다.
   if (!updated) {

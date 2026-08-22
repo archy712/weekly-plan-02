@@ -106,7 +106,7 @@ export function WorkTypeFormDialog(props: WorkTypeFormDialogProps) {
           <DialogDescription>
             {mode === "create"
               ? "새 업무 타입명을 입력해주세요."
-              : "업무 타입명을 수정합니다. 이 타입을 사용 중인 업무일지에 즉시 반영됩니다."}
+              : "업무 타입명을 수정합니다. 이 타입을 사용 중인 진행업무에 즉시 반영됩니다."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

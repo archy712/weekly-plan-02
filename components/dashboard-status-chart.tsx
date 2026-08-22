@@ -42,8 +42,8 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
       <CardContent>
         {isEmpty ? (
           <EmptyState
-            title="집계할 업무일지가 없습니다"
-            description="선택한 팀·기간에 등록된 주간업무일지가 없습니다."
+            title="집계할 진행업무가 없습니다"
+            description="선택한 팀·기간에 등록된 진행업무가 없습니다."
           />
         ) : (
           <>
@@ -167,7 +167,7 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
               })}
             </div>
             <table className="sr-only">
-              <caption>진행상태별 업무일지 건수</caption>
+              <caption>진행상태별 진행업무 건수</caption>
               <thead>
                 <tr>
                   <th scope="col">진행상태</th>

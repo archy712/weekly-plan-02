@@ -147,7 +147,7 @@ export function UserAdminDetail({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">작성한 주간업무일지 요약</CardTitle>
+          <CardTitle className="text-lg">작성한 진행업무 요약</CardTitle>
           <CardDescription>
             강등·팀 이전 여부를 판단할 근거로 총 건수와 최근 작성 이력을 보여줍니다.
           </CardDescription>
@@ -166,7 +166,7 @@ export function UserAdminDetail({
             ))}
           </div>
           {logSummary.recent.length === 0 ? (
-            <p className="text-sm text-muted-foreground">작성한 업무일지가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">작성한 진행업무가 없습니다.</p>
           ) : (
             <ul className="flex flex-col divide-y rounded-md border">
               {logSummary.recent.map((log) => (
@@ -250,7 +250,7 @@ export function UserAdminDetail({
               </AlertDialog>
             </div>
             <p className="text-xs text-muted-foreground">
-              팀을 변경하면 이 사용자가 작성한 기존 업무일지의 쓰기 권한을 잃습니다
+              팀을 변경하면 이 사용자가 작성한 기존 진행업무의 쓰기 권한을 잃습니다
               (조회는 계속 가능합니다).
             </p>
           </div>

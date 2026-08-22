@@ -43,7 +43,7 @@ function loadKoreanFontBase64(): Promise<string> {
 
 function buildFileName(departmentLabel: string): string {
   const safeLabel = departmentLabel.replace(/[\\/:*?"<>|]/g, "_");
-  return `주간업무일지_${safeLabel}_${formatDate(new Date()).replace(/-/g, "")}.pdf`;
+  return `진행업무_${safeLabel}_${formatDate(new Date()).replace(/-/g, "")}.pdf`;
 }
 
 export async function downloadWeeklyLogListPdf({
@@ -78,7 +78,7 @@ export async function downloadWeeklyLogListPdf({
   });
 
   doc.setFontSize(14);
-  doc.text(`주간업무일지 - ${departmentLabel}`, 14, 18);
+  doc.text(`진행업무 - ${departmentLabel}`, 14, 18);
   doc.setFontSize(10);
   doc.text(`출력일시: ${printedAt}`, 14, 25);
   if (dateRangeLabel) {

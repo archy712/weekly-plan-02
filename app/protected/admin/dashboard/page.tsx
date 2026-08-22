@@ -243,14 +243,14 @@ async function DashboardContent({
                       title="부서별 진척률"
                       description="선택한 부문·기간 기준 부서(division)별 양호/지연/미등록 비율입니다."
                       rows={divisionProgressRows}
-                      emptyDescription="선택한 부문·기간에 등록된 주간업무일지가 없습니다."
+                      emptyDescription="선택한 부문·기간에 등록된 진행업무가 없습니다."
                     />
                   )}
                   <DashboardProgressChart
                     title="팀별 진척률"
                     description="선택한 부문·기간 기준 팀별 양호/지연/미등록 비율입니다."
                     rows={departmentProgressRows}
-                    emptyDescription="선택한 조건에 등록된 주간업무일지가 없습니다."
+                    emptyDescription="선택한 조건에 등록된 진행업무가 없습니다."
                   />
                 </div>
               )}

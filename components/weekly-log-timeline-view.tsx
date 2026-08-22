@@ -235,7 +235,7 @@ export function WeeklyLogTimelineView({
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="제목 또는 내용으로 검색"
-              aria-label="주간업무일지 검색"
+              aria-label="진행업무 검색"
               className="w-56"
             />
             <Button type="submit" variant="outline" size="icon" aria-label="검색">
@@ -535,7 +535,7 @@ export function WeeklyLogTimelineView({
         {items.length > 0 && (
           <div className="sr-only">
             <table>
-              <caption>기간 내 주간업무일지 목록(막대 그래프의 대체 텍스트)</caption>
+              <caption>기간 내 진행업무 목록(막대 그래프의 대체 텍스트)</caption>
               <thead>
                 <tr>
                   <th scope="col">제목</th>

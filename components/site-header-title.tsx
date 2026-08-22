@@ -25,7 +25,7 @@ async function getCurrentUserOrganizationName(): Promise<string | null> {
 
 export async function SiteHeaderTitle() {
   const organizationName = await getCurrentUserOrganizationName();
-  const title = organizationName ? `${organizationName} 주간업무` : "주간업무";
+  const title = organizationName ? `${organizationName} 진행업무` : "진행업무";
 
   return (
     <Link href="/" className="flex items-center gap-2 text-lg font-bold">

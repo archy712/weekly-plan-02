@@ -67,8 +67,8 @@ export const TECH_STACK: TechCategory[] = [
     id: "data-export",
     title: "데이터 & 문서 처리",
     items: [
-      { name: "ExcelJS", description: "주간업무일지 Excel(.xlsx) 다운로드" },
-      { name: "jsPDF + jspdf-autotable", description: "주간업무일지 PDF 다운로드" },
+      { name: "ExcelJS", description: "진행업무 Excel(.xlsx) 다운로드" },
+      { name: "jsPDF + jspdf-autotable", description: "진행업무 PDF 다운로드" },
       {
         name: "isomorphic-dompurify",
         description: "리치 텍스트 콘텐츠 sanitize(저장·렌더링 양쪽)",

@@ -85,8 +85,8 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
       <CardContent className="flex flex-1 flex-col">
         {isEmpty ? (
           <EmptyState
-            title="집계할 업무일지가 없습니다"
-            description="선택한 기간에 등록된 주간업무일지가 없습니다."
+            title="집계할 진행업무가 없습니다"
+            description="선택한 기간에 등록된 진행업무가 없습니다."
           />
         ) : (
           <>
@@ -172,7 +172,7 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
             </ChartContainer>
             {/* 스크린리더용 표 대체 콘텐츠(MVP Task 015의 aria-label 누락 전례 반영) */}
             <table className="sr-only">
-              <caption>팀별 진행상태별 업무일지 건수 및 팀 내 비율</caption>
+              <caption>팀별 진행상태별 진행업무 건수 및 팀 내 비율</caption>
               <thead>
                 <tr>
                   <th scope="col">팀</th>

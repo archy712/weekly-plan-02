@@ -20,7 +20,7 @@ export async function HeroCta() {
     return (
       <Button asChild size="lg">
         <Link href="/protected">
-          {organizationName ? `${organizationName} 주간업무 보러가기` : "주간업무일지 보러가기"}
+          {organizationName ? `${organizationName} 진행업무 보러가기` : "진행업무 보러가기"}
         </Link>
       </Button>
     );
@@ -37,7 +37,7 @@ export async function HeroCta() {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        주간업무일지 서비스는 로그인 후 이용하실 수 있습니다.
+        진행업무 서비스는 로그인 후 이용하실 수 있습니다.
       </p>
     </div>
   );

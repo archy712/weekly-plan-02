@@ -47,7 +47,7 @@ export function formatDepartmentDeleteBlockedMessage(
   memberCount: number,
   logCount: number,
 ): string {
-  return `${memberCount}명의 팀원과 ${logCount}건의 업무일지가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
+  return `${memberCount}명의 팀원과 ${logCount}건의 진행업무가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
 }
 
 // 사용자의 소속 부서 변경 확인 다이얼로그에서 쓰는 경고 문구. weekly_logs RLS의 쓰기 조건이
@@ -55,9 +55,9 @@ export function formatDepartmentDeleteBlockedMessage(
 // 업무일지에 대한 쓰기 권한을 잃는다는 점을 명시한다.
 export function formatDepartmentChangeWarning(logCount: number): string {
   if (logCount === 0) {
-    return "팀을 변경하면 앞으로 이 사용자는 이전 팀의 업무일지를 수정할 수 없습니다.";
+    return "팀을 변경하면 앞으로 이 사용자는 이전 팀의 진행업무를 수정할 수 없습니다.";
   }
-  return `이 사용자가 작성한 업무일지 ${logCount}건에 대한 쓰기 권한을 잃게 됩니다. 계속하시겠습니까?`;
+  return `이 사용자가 작성한 진행업무 ${logCount}건에 대한 쓰기 권한을 잃게 됩니다. 계속하시겠습니까?`;
 }
 
 // 댓글 작성 시각 표시용. 7일 이상 지나면 상대 시간 대신 절대 날짜(formatDate)로 전환한다.
@@ -78,7 +78,7 @@ export function formatRelativeTime(value: string): string {
 // null이 되기 어렵지만, 방어적으로 폴백 문구를 둔다.
 export function formatNotificationMessage(notification: NotificationListItem): string {
   const actor = notification.actor_name ?? notification.actor_email ?? "알 수 없는 사용자";
-  const logTitle = notification.weekly_log_title ?? "삭제된 업무일지";
+  const logTitle = notification.weekly_log_title ?? "삭제된 진행업무";
   switch (notification.type) {
     case "mention":
       return `${actor}님이 "${logTitle}"에서 회원님을 멘션했습니다.`;
@@ -88,7 +88,7 @@ export function formatNotificationMessage(notification: NotificationListItem): s
     // actor/logTitle을 쓰지 않는다 — 아래 default(comment)로 흘려보내면 "알 수 없는
     // 사용자님이 삭제된 업무일지에 댓글을 남겼습니다"라는 오해의 소지가 있는 문구가 나간다.
     case "reminder":
-      return "이번 주 주간업무일지를 아직 작성하지 않았습니다.";
+      return "이번 주 진행업무를 아직 작성하지 않았습니다.";
     case "comment":
     default:
       return `${actor}님이 "${logTitle}"에 댓글을 남겼습니다.`;

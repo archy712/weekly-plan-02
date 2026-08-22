@@ -53,9 +53,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const features = [
   {
     icon: FileText,
-    title: "리치 텍스트 업무일지",
+    title: "리치 텍스트 진행업무",
     description:
-      "서식 편집기로 주간 업무 내용을 작성하고, 시작일·목표종료일·진행 상태까지 한 화면에서 체계적으로 기록하세요.",
+      "서식 편집기로 진행업무 내용을 작성하고, 시작일·목표종료일·진행 상태까지 한 화면에서 체계적으로 기록하세요.",
   },
   {
     icon: Building2,
@@ -109,13 +109,13 @@ const features = [
     icon: ThumbsUp,
     title: "추천·비추천",
     description:
-      "부서와 무관하게 어떤 업무일지에도 추천·비추천을 남기고, 대시보드에서 팀 전체의 반응 현황을 확인하세요.",
+      "부서와 무관하게 어떤 진행업무에도 추천·비추천을 남기고, 대시보드에서 팀 전체의 반응 현황을 확인하세요.",
   },
   {
     icon: Paperclip,
     title: "첨부파일 & 빠른 검색",
     description:
-      "업무일지에 파일을 첨부하고, 제목·내용·기간 검색과 컬럼 정렬로 원하는 기록을 빠르게 찾아내며 검색어는 하이라이트로 바로 확인할 수 있습니다.",
+      "진행업무에 파일을 첨부하고, 제목·내용·기간 검색과 컬럼 정렬로 원하는 기록을 빠르게 찾아내며 검색어는 하이라이트로 바로 확인할 수 있습니다.",
   },
   {
     icon: UserCheck,
@@ -133,7 +133,7 @@ const features = [
     icon: BellRing,
     title: "정기 리마인더 & 알림 설정",
     description:
-      "이번 주 업무일지를 아직 작성하지 않았다면 알림으로 알려드리고, 댓글·멘션·리마인더 알림은 원하는 대로 켜고 끌 수 있습니다.",
+      "이번 주 진행업무를 아직 작성하지 않았다면 알림으로 알려드리고, 댓글·멘션·리마인더 알림은 원하는 대로 켜고 끌 수 있습니다.",
   },
   {
     icon: History,
@@ -174,16 +174,16 @@ export default function Home() {
           <section className="flex flex-col items-center gap-8 py-6 text-center">
             {/* 대표 헤드라인. <br/>로 두 줄 고정, 폰트 크기는 sm/md에서 단계적으로 확대. */}
             <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
-              팀별 주간업무일지를
+              팀별 진행업무를
               <br />
               한 곳에서 기록하고 추적하세요
             </h1>
             <p className="max-w-xl text-muted-foreground">
-              팀원은 주간 업무를 빠르게 기록하고, 관리자는 전체 팀의 업무
+              팀원은 진행업무를 빠르게 기록하고, 관리자는 전체 팀의 업무
               현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              {/* CTA 버튼: HeroCta가 세션을 조회해 로그인 상태(→"주간업무 보러가기")와
+              {/* CTA 버튼: HeroCta가 세션을 조회해 로그인 상태(→"진행업무 보러가기")와
                   비로그인 상태(→로그인/회원가입 버튼)를 분기. 세션 조회 중에는 fallback으로
                   버튼 크기의 Skeleton 2개를 보여줘 레이아웃 이동(CLS)을 방지한다. */}
               <Suspense
@@ -204,7 +204,7 @@ export default function Home() {
             <div className="flex flex-col items-center gap-3 text-center">
               <h2 className="text-2xl font-bold sm:text-3xl">주요 기능</h2>
               <p className="max-w-xl text-muted-foreground">
-                기록부터 협업, 통계, 관리까지 — 주간업무 운영에 필요한 기능을 한
+                기록부터 협업, 통계, 관리까지 — 진행업무 운영에 필요한 기능을 한
                 곳에 담았습니다.
               </p>
             </div>

@@ -137,7 +137,7 @@ export function DashboardProgressChart({
       </CardHeader>
       <CardContent>
         {chartData.length === 0 ? (
-          <EmptyState title="집계할 업무일지가 없습니다" description={emptyDescription} />
+          <EmptyState title="집계할 진행업무가 없습니다" description={emptyDescription} />
         ) : (
           <>
             {/* 이전(작은 도넛 그리드) 버전은 옆 카드(진행상태 분포)와 같은 그리드 행에

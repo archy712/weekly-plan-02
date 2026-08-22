@@ -53,8 +53,8 @@ export function DashboardTrendChart({ data }: { data: MonthlyLogTrend[] }) {
       <CardContent>
         {isEmpty ? (
           <EmptyState
-            title="집계할 업무일지가 없습니다"
-            description="최근 기간에 등록되거나 완료된 주간업무일지가 없습니다."
+            title="집계할 진행업무가 없습니다"
+            description="최근 기간에 등록되거나 완료된 진행업무가 없습니다."
           />
         ) : (
           <>

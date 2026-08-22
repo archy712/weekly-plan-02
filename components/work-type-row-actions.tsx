@@ -114,7 +114,7 @@ export function WorkTypeRowActions({
           <AlertDialogHeader>
             <AlertDialogTitle>{workType.name} 업무 타입을 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              이 작업은 되돌릴 수 없습니다. 업무일지에서 사용 중이 아닌 경우에만 삭제할 수
+              이 작업은 되돌릴 수 없습니다. 진행업무에서 사용 중이 아닌 경우에만 삭제할 수
               있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>

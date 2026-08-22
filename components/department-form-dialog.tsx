@@ -148,7 +148,7 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
           <DialogDescription>
             {mode === "create"
               ? "새 팀명과 소속 부문을 입력해주세요. 부서는 선택 사항입니다. 팀장은 팀 생성 후 팀원이 배정되면 지정할 수 있습니다."
-              : "팀명·소속 부문·소속 부서·팀장을 수정합니다. 기존 업무일지와 팀원 화면에 즉시 반영됩니다."}
+              : "팀명·소속 부문·소속 부서·팀장을 수정합니다. 기존 진행업무와 팀원 화면에 즉시 반영됩니다."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

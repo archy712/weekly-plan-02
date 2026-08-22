@@ -74,7 +74,7 @@ export async function toggleWeeklyLogReactionAction(
 
   if (writeError) {
     if (writeError.code === "23503") {
-      return { success: false, error: "존재하지 않는 주간업무일지입니다." };
+      return { success: false, error: "존재하지 않는 진행업무입니다." };
     }
     // 23505(unique 위반)는 버튼 disable 가드를 뚫은 동시 클릭에서만 발생할 수 있다 —
     // 이 경우 재집계 결과를 돌려주면 화면이 서버 진실로 맞춰지므로 성공으로 흘려보내지 않고

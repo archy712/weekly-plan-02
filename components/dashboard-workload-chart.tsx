@@ -63,7 +63,7 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
       <CardHeader>
         <CardTitle>팀별 예상 M/M·금액</CardTitle>
         <CardDescription>
-          예상 M/M·예상 금액이 입력된 업무일지만 집계한 값입니다(입력하지 않은 항목은
+          예상 M/M·예상 금액이 입력된 진행업무만 집계한 값입니다(입력하지 않은 항목은
           제외). 팀 필터와 무관하게 전체 팀을 비교합니다.
         </CardDescription>
       </CardHeader>
@@ -71,7 +71,7 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
         {isEmpty ? (
           <EmptyState
             title="집계할 데이터가 없습니다"
-            description="선택한 기간에 예상 M/M·금액이 입력된 업무일지가 없습니다."
+            description="선택한 기간에 예상 M/M·금액이 입력된 진행업무가 없습니다."
           />
         ) : (
           <>

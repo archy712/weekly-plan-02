@@ -17,7 +17,7 @@ export default function Error({
 
   return (
     <ErrorState
-      title="주간업무일지를 불러오지 못했습니다"
+      title="진행업무를 불러오지 못했습니다"
       onRetry={reset}
     />
   );

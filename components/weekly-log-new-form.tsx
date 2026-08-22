@@ -89,13 +89,13 @@ export function WeeklyLogNewForm({
       const { failedCount } = await attachmentsState.uploadAll(created.id, created.departmentId);
       if (failedCount > 0) {
         toast.error(
-          `주간업무일지는 저장되었지만 첨부파일 ${failedCount}개 업로드에 실패했습니다. 다시 시도해주세요.`,
+          `진행업무는 저장되었지만 첨부파일 ${failedCount}개 업로드에 실패했습니다. 다시 시도해주세요.`,
         );
         return;
       }
     }
 
-    toast.success("주간업무일지가 저장되었습니다.");
+    toast.success("진행업무가 저장되었습니다.");
     // 작성 후에는 상세가 아니라 목록으로 돌아간다. createWeeklyLogAction이 이미
     // revalidatePath로 목록을 무효화하지만, 라우터 클라이언트 캐시가 이전 목록을
     // 재사용하지 않도록 refresh를 함께 호출해 새로 만든 업무가 즉시 보이게 한다.
