@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -30,9 +24,14 @@ const chartConfig: ChartConfig = {
   log_count: { label: "건수", color: IMPORTANCE_CHART_COLOR },
 };
 
-// 업무 중요도 분포(레이더). stats_logs_by_importance는 데이터가 0건인 단계도 항상 5개
-// 축으로 반환하도록 설계되어 있어(진행상태·업무 타입 차트와 동일한 원칙), 필터 조건에
-// 따라 축 모양이 흔들리지 않는다. 5단계는 순서가 있는 척도라 항상 1→5 순서로 그린다.
+// 업무 중요도 분포(가로 막대). 레이더 차트에서 교체됨 — 축이 전부 같은 지표(건수)인
+// 단일 순서형 변수(1~5)라 레이더의 "형태" 비교가 무의미하고, 오각형에 순서형 척도를
+// 펼쳐놓으면 극단값(매우 낮음·매우 높음)이 오히려 인접해 보이는 착시가 있었다. 막대는
+// 각 단계의 건수를 길이로 직접 비교할 수 있어 더 정직하다(업무 타입 차트와 시각 언어 통일).
+// stats_logs_by_importance는 데이터가 0건인 단계도 항상 5개 행으로 반환하도록 설계되어
+// 있어(진행상태·업무 타입 차트와 동일한 원칙), 필터 조건에 따라 막대 개수가 흔들리지
+// 않는다. 1~5는 순서가 있는 척도라 업무 타입 차트처럼 건수 내림차순으로 재정렬하지 않고
+// 항상 낮음→높음 순으로 그린다.
 export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] }) {
   const total = data.reduce((sum, row) => sum + row.log_count, 0);
   const isEmpty = total === 0;
@@ -41,7 +40,7 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
     ...row,
     level: formatImportanceLabel(row.importance),
   }));
-  const maxCount = Math.max(1, ...sorted.map((row) => row.log_count));
+  const chartHeight = Math.max(200, chartData.length * 40);
 
   return (
     <Card>
@@ -61,15 +60,21 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
           <>
             <ChartContainer
               config={chartConfig}
-              className="mx-auto aspect-square max-h-96"
+              className="aspect-auto w-full"
+              style={{ height: chartHeight }}
               role="img"
-              aria-label="업무 중요도별 주간업무일지 건수 레이더 그래프"
+              aria-label="업무 중요도별 주간업무일지 건수 가로 막대 그래프"
             >
-              <RadarChart
-                data={chartData}
-                outerRadius="65%"
-                margin={{ top: 24, right: 32, bottom: 24, left: 32 }}
-              >
+              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32 }}>
+                <CartesianGrid horizontal={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="level"
+                  width={110}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
@@ -97,21 +102,20 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
                     />
                   }
                 />
-                <PolarGrid />
-                <PolarAngleAxis dataKey="level" tick={{ fontSize: 12 }} />
-                <PolarRadiusAxis
-                  angle={90}
-                  allowDecimals={false}
-                  domain={[0, maxCount]}
-                  tick={{ fontSize: 10 }}
-                />
-                <Radar
-                  dataKey="log_count"
-                  stroke={IMPORTANCE_CHART_COLOR}
-                  fill={IMPORTANCE_CHART_COLOR}
-                  fillOpacity={0.4}
-                />
-              </RadarChart>
+                <Bar dataKey="log_count" fill={IMPORTANCE_CHART_COLOR} radius={[0, 4, 4, 0]}>
+                  <LabelList
+                    dataKey="log_count"
+                    position="insideRight"
+                    className="fill-white text-xs font-medium"
+                    formatter={(value) => {
+                      const numericValue = Number(value);
+                      if (numericValue <= 0) return "";
+                      const percent = total > 0 ? Math.round((numericValue / total) * 100) : 0;
+                      return `${numericValue.toLocaleString()}건, ${percent}%`;
+                    }}
+                  />
+                </Bar>
+              </BarChart>
             </ChartContainer>
             <table className="sr-only">
               <caption>업무 중요도별 업무일지 건수 및 비율</caption>
