@@ -31,10 +31,10 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DepartmentSelectOptions } from "@/components/department-select-options";
 import { StatusBadge } from "@/components/status-badge";
 import { UserRoleSelect } from "@/components/user-role-select";
 import { getAvatarPreset } from "@/lib/constants/avatars";
@@ -224,13 +224,7 @@ export function UserAdminDetail({
                   <SelectValue placeholder="팀을 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments.map((department) => (
-                    <SelectItem key={department.id} value={department.id}>
-                      {department.archived_at
-                        ? `${department.name} (비활성)`
-                        : department.name}
-                    </SelectItem>
-                  ))}
+                  <DepartmentSelectOptions departments={departments} />
                 </SelectContent>
               </Select>
               <AlertDialog>

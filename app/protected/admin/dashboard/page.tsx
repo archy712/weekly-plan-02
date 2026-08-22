@@ -106,7 +106,7 @@ async function DashboardContent({
   // 모두 보여주고, 특정 조직 선택 시 그 조직의 부서만 보여준다.
   let departmentQuery = supabase
     .from("departments")
-    .select("id, name, created_at, archived_at, organization_id, division_id, head_profile_id")
+    .select("id, name, created_at, archived_at, organization_id, division_id, head_profile_id, is_direct_report")
     .order("name");
   if (selectedOrgId) {
     departmentQuery = departmentQuery.eq("organization_id", selectedOrgId);

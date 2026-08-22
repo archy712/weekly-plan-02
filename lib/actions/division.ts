@@ -32,6 +32,53 @@ async function requireLoggedIn(
   return { userId: data.claims.sub };
 }
 
+// assignDivisionDirectHeadAction 전용 — lib/actions/organization.ts의
+// requireOrgScopedAdmin/isDepartmentInScope와 동일한 이유·동일한 로직을 그대로 반복한다
+// (profiles RLS가 organization_id를 모르는 문제, CLAUDE.md "사용자 관리는 RLS가 아니라
+// 서버 액션 레벨에서" 절 참고). 이 파일의 requireLoggedIn처럼 액션 파일마다 자체 인증
+// 헬퍼를 두는 기존 관례를 따른 것.
+async function requireOrgScopedAdmin(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+): Promise<{ isSuperAdmin: boolean } | { error: string }> {
+  const { data, error } = await supabase.auth.getClaims();
+  if (error || !data?.claims) {
+    return { error: "로그인이 필요합니다." };
+  }
+
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("role, departments:departments!profiles_department_id_fkey(organization_id)")
+    .eq("id", data.claims.sub)
+    .maybeSingle();
+
+  if (callerProfile?.role !== "admin" && callerProfile?.role !== "superadmin") {
+    return { error: "권한이 없습니다." };
+  }
+
+  const isSuperAdmin = callerProfile.role === "superadmin";
+  if (!isSuperAdmin && callerProfile.departments?.organization_id !== organizationId) {
+    return { error: "권한이 없습니다." };
+  }
+
+  return { isSuperAdmin };
+}
+
+async function isDepartmentInScope(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  departmentId: string | null,
+  organizationId: string,
+  isSuperAdmin: boolean,
+): Promise<boolean> {
+  if (!departmentId) return false;
+  let query = supabase.from("departments").select("id").eq("id", departmentId);
+  if (!isSuperAdmin) {
+    query = query.eq("organization_id", organizationId);
+  }
+  const { data } = await query.maybeSingle();
+  return Boolean(data);
+}
+
 // 부서명 중복(23505, 부문 내에서만 유일하면 되므로 (organization_id, name) 복합 unique)은
 // raw 에러를 그대로 노출하지 않고 한국어 메시지로 변환한다. organization_id FK 위반은
 // 선택한 부문이 그 사이 삭제된 경합 상황이고, departments.division_id FK 위반은 이 부서에
@@ -212,5 +259,106 @@ export async function deleteDivisionAction(id: string): Promise<DivisionActionRe
   }
 
   revalidatePath(DIVISIONS_PATH);
+  return { success: true };
+}
+
+// 특정 팀에 속하지 않고 부서 전체를 총괄하는 부서장을 "직속" 더미 팀으로 옮기고 곧바로
+// head_profile_id까지 지정하는 원클릭 액션 — lib/actions/organization.ts의
+// assignOrganizationDirectHeadAction과 동일한 배경·순서(직속 팀 확보 → 소속 이동 → 장
+// 지정)를 부서(division) 단위로 반복한다. 대상은 이미 이 조직의 어떤 팀에 소속되어
+// 있어야 한다(사용자 관리 화면과 동일한 전제).
+export async function assignDivisionDirectHeadAction(
+  divisionId: string,
+  organizationId: string,
+  profileId: string,
+): Promise<DivisionActionResult> {
+  const supabase = await createClient();
+  const auth = await requireOrgScopedAdmin(supabase, organizationId);
+  if ("error" in auth) return { success: false, error: auth.error };
+
+  const { data: division } = await supabase
+    .from("divisions")
+    .select("id, name, organization_id")
+    .eq("id", divisionId)
+    .maybeSingle();
+  if (!division || division.organization_id !== organizationId) {
+    return { success: false, error: "존재하지 않는 부서입니다." };
+  }
+
+  const { data: targetProfile } = await supabase
+    .from("profiles")
+    .select("department_id")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (!targetProfile) {
+    return { success: false, error: "존재하지 않는 사용자입니다." };
+  }
+  if (!targetProfile.department_id) {
+    return { success: false, error: "먼저 팀을 선택한 사용자만 지정할 수 있습니다." };
+  }
+  if (
+    !(await isDepartmentInScope(supabase, targetProfile.department_id, organizationId, auth.isSuperAdmin))
+  ) {
+    return { success: false, error: "권한이 없습니다." };
+  }
+
+  // 직속 팀을 찾거나(이미 만들어져 있으면 재사용) 없으면 새로 만든다. is_direct_report
+  // 플래그로 찾는다 — 이름("{부서명} 직속")으로 찾으면 관리자가 팀 관리 화면에서 이름을
+  // 바꿨을 때 중복 생성될 수 있다.
+  const { data: existingDirect } = await supabase
+    .from("departments")
+    .select("id")
+    .eq("division_id", divisionId)
+    .eq("is_direct_report", true)
+    .maybeSingle();
+
+  let directDepartmentId = existingDirect?.id ?? null;
+  if (!directDepartmentId) {
+    const { data: created, error: createError } = await supabase
+      .from("departments")
+      .insert({
+        name: `${division.name} 직속`,
+        organization_id: organizationId,
+        division_id: divisionId,
+        is_direct_report: true,
+      })
+      .select("id")
+      .single();
+    if (createError || !created) {
+      return {
+        success: false,
+        error:
+          createError?.code === UNIQUE_VIOLATION
+            ? "이미 같은 이름의 팀이 존재합니다. 관리자에게 문의해주세요."
+            : "직속 팀 생성 중 오류가 발생했습니다.",
+      };
+    }
+    directDepartmentId = created.id;
+  }
+
+  const { error: moveError } = await supabase
+    .from("profiles")
+    .update({ department_id: directDepartmentId })
+    .eq("id", profileId);
+  if (moveError) {
+    return { success: false, error: "소속 팀 변경 중 오류가 발생했습니다." };
+  }
+
+  // validate_division_head() 트리거가 위에서 옮긴 department_id를 그대로 확인하므로
+  // 소속 이동 다음에 head_profile_id를 지정해야 한다(순서 중요).
+  const { error: headError } = await supabase
+    .from("divisions")
+    .update({ head_profile_id: profileId })
+    .eq("id", divisionId);
+  if (headError) {
+    return {
+      success: false,
+      error: await toActionError(supabase, headError, divisionId, "부서장 지정 중 오류가 발생했습니다."),
+    };
+  }
+
+  revalidatePath(DIVISIONS_PATH);
+  revalidatePath(DEPARTMENTS_PATH);
+  revalidatePath("/protected/admin/users");
   return { success: true };
 }

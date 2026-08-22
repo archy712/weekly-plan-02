@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { AssignDirectHeadDialog } from "@/components/assign-direct-head-dialog";
 import { OrganizationFormDialog } from "@/components/organization-form-dialog";
 import { archiveOrganizationAction, restoreOrganizationAction } from "@/lib/actions/organization";
 import type { HeadCandidate } from "@/lib/types";
@@ -45,7 +46,7 @@ export function OrganizationRowActions({
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       <OrganizationFormDialog
         organization={{
           id: organization.id,
@@ -62,6 +63,14 @@ export function OrganizationRowActions({
       <Button variant="outline" size="sm" onClick={handleToggleArchive} disabled={isArchiving}>
         {isArchiving ? "처리 중..." : isArchived ? "활성화" : "비활성화"}
       </Button>
+      <AssignDirectHeadDialog
+        scope={{ kind: "organization", id: organization.id, name: organization.name }}
+        trigger={
+          <Button variant="outline" size="sm">
+            부문장으로 지정
+          </Button>
+        }
+      />
     </div>
   );
 }

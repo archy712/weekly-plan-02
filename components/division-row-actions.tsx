@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { AssignDirectHeadDialog } from "@/components/assign-direct-head-dialog";
 import { DivisionFormDialog } from "@/components/division-form-dialog";
 import {
   archiveDivisionAction,
@@ -84,7 +85,7 @@ export function DivisionRowActions({
   };
 
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div className="flex flex-wrap items-center justify-end gap-1">
       <DivisionFormDialog
         mode="edit"
         division={{
@@ -104,6 +105,19 @@ export function DivisionRowActions({
       <Button variant="ghost" size="sm" onClick={handleToggleArchive} disabled={isArchiving}>
         {isArchiving ? "처리 중..." : isArchived ? "활성화" : "비활성화"}
       </Button>
+      <AssignDirectHeadDialog
+        scope={{
+          kind: "division",
+          id: division.id,
+          name: division.name,
+          organizationId: division.organization_id,
+        }}
+        trigger={
+          <Button variant="ghost" size="sm">
+            부서장으로 지정
+          </Button>
+        }
+      />
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button

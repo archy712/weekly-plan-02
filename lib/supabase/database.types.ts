@@ -465,6 +465,7 @@ export type Database = {
           division_id: string | null
           head_profile_id: string | null
           id: string
+          is_direct_report: boolean
           name: string
           organization_id: string
         }
@@ -474,6 +475,7 @@ export type Database = {
           division_id?: string | null
           head_profile_id?: string | null
           id?: string
+          is_direct_report?: boolean
           name: string
           organization_id: string
         }
@@ -483,6 +485,7 @@ export type Database = {
           division_id?: string | null
           head_profile_id?: string | null
           id?: string
+          is_direct_report?: boolean
           name?: string
           organization_id?: string
         }

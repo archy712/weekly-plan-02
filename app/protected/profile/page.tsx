@@ -24,7 +24,10 @@ async function ProfileContent() {
         )
         .eq("id", userId)
         .maybeSingle(),
-      supabase.from("departments").select("id, name, archived_at").order("name"),
+      supabase
+        .from("departments")
+        .select("id, name, archived_at, division_id, is_direct_report")
+        .order("name"),
     ]);
 
   if (profileError) {

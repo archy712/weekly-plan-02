@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { AvatarPickerDialog } from "@/components/avatar-picker-dialog";
+import { DepartmentSelectOptions } from "@/components/department-select-options";
 import { NotificationPreferencesField } from "@/components/notification-preferences-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,6 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -53,7 +53,10 @@ type Profile = Pick<
   | "notify_on_mention"
   | "notify_on_reminder"
 >;
-type Department = Pick<Tables<"departments">, "id" | "name" | "archived_at">;
+type Department = Pick<
+  Tables<"departments">,
+  "id" | "name" | "archived_at" | "division_id" | "is_direct_report"
+>;
 
 export function ProfileForm({
   profile,
@@ -171,13 +174,7 @@ export function ProfileForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {departments.map((department) => (
-                          <SelectItem key={department.id} value={department.id}>
-                            {department.archived_at
-                              ? `${department.name} (비활성)`
-                              : department.name}
-                          </SelectItem>
-                        ))}
+                        <DepartmentSelectOptions departments={departments} />
                       </SelectContent>
                     </Select>
                     <FormMessage />
