@@ -28,10 +28,9 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingBar } from "@/components/loading-bar";
-import { UserRoleSelect } from "@/components/user-role-select";
+import { ROLE_BADGE_VARIANT, ROLE_LABELS, UserRoleSelect } from "@/components/user-role-select";
 import { UserAdminCardList } from "@/components/user-admin-card";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
-import { ROLE_LABELS } from "@/components/user-role-select";
 import { loadMoreUsersAction } from "@/lib/actions/user-admin-list";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
@@ -350,7 +349,9 @@ export function UserAdminTable({
                                       {item.email}
                                     </p>
                                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                      <Badge variant="outline">{ROLE_LABELS[item.role]}</Badge>
+                                      <Badge variant={ROLE_BADGE_VARIANT[item.role]}>
+                                        {ROLE_LABELS[item.role]}
+                                      </Badge>
                                       <span className="text-xs text-muted-foreground">
                                         {item.department_name ?? "미배정"}
                                       </span>

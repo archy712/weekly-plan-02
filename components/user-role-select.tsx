@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { badgeVariants } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,15 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   user: "일반 사용자",
   admin: "관리자",
   superadmin: "슈퍼관리자",
+};
+
+// 테이블·상세 화면 어디서나 역할을 한눈에 구분할 수 있도록(F057) 배지 색상을 등급별로
+// 고정한다 — 슈퍼관리자만 destructive로 강조하고 관리자/일반은 톤을 낮춰, 가장 주의가
+// 필요한 등급이 시각적으로 먼저 눈에 띄게 한다.
+export const ROLE_BADGE_VARIANT: Record<UserRole, "outline" | "secondary" | "destructive"> = {
+  user: "outline",
+  admin: "secondary",
+  superadmin: "destructive",
 };
 
 // 슈퍼관리자로의 승격은 DB 트리거(prevent_unauthorized_role_change)가 "이미 admin인
@@ -87,7 +97,15 @@ export function UserRoleSelect({
         aria-label="역할"
         title={disabled ? disabledReason : undefined}
       >
-        <SelectValue />
+        {/* SelectValue의 children을 현재 value 상태로 직접 렌더링해, 드롭다운을 열지
+            않고도 트리거 자체에서 역할별 배지 색상이 즉시 보이게 한다(F057). Badge는
+            div라 span 기반인 SelectValue 안에 중첩하면 유효하지 않은 HTML이 되므로,
+            동일한 badgeVariants 클래스를 span에 직접 적용한다. */}
+        <SelectValue>
+          <span className={badgeVariants({ variant: ROLE_BADGE_VARIANT[value] })}>
+            {ROLE_LABELS[value]}
+          </span>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {getRoleOptions(role).map((option) => (
