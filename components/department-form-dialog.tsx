@@ -106,8 +106,8 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
           <DialogTitle>{mode === "create" ? "팀 추가" : "팀명 수정"}</DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "새 팀명과 소속 조직을 입력해주세요."
-              : "팀명·소속 조직을 수정합니다. 기존 업무일지와 팀원 화면에 즉시 반영됩니다."}
+              ? "새 팀명과 소속 부문을 입력해주세요."
+              : "팀명·소속 부문을 수정합니다. 기존 업무일지와 팀원 화면에 즉시 반영됩니다."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -130,11 +130,11 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
               name="organization_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>소속 조직</FormLabel>
+                  <FormLabel>소속 부문</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="조직 선택" />
+                        <SelectValue placeholder="부문 선택" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

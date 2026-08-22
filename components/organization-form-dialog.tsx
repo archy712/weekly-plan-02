@@ -64,7 +64,7 @@ export function OrganizationFormDialog({
       return;
     }
 
-    toast.success(isEditMode ? "조직명이 수정되었습니다." : "조직이 생성되었습니다.");
+    toast.success(isEditMode ? "부문명이 수정되었습니다." : "부문이 생성되었습니다.");
     setOpen(false);
     router.refresh();
   };
@@ -76,11 +76,11 @@ export function OrganizationFormDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "조직명 수정" : "새 조직 생성"}</DialogTitle>
+          <DialogTitle>{isEditMode ? "부문명 수정" : "새 부문 생성"}</DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? "조직명을 수정합니다. 헤더 타이틀과 소속 팀 화면에 즉시 반영됩니다."
-              : "새 조직을 생성합니다. 팀 배정 등 후속 설정은 direct DB 접속으로 진행해주세요."}
+              ? "부문명을 수정합니다. 헤더 타이틀과 소속 팀 화면에 즉시 반영됩니다."
+              : "새 부문을 생성합니다. 팀 배정 등 후속 설정은 direct DB 접속으로 진행해주세요."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -90,7 +90,7 @@ export function OrganizationFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>조직명</FormLabel>
+                  <FormLabel>부문명</FormLabel>
                   <FormControl>
                     <Input placeholder="예: IT부문" maxLength={50} {...field} />
                   </FormControl>

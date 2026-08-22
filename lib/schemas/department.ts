@@ -7,7 +7,7 @@ export const departmentSchema = z.object({
     .min(1, "팀명을 입력해주세요")
     .max(50, "팀명은 최대 50자까지 입력 가능합니다"),
   // 부서는 반드시 조직 하위에 속해야 한다(DB organization_id NOT NULL과 동일한 제약).
-  organization_id: z.string().uuid("소속 조직을 선택해주세요"),
+  organization_id: z.string().uuid("소속 부문을 선택해주세요"),
 });
 
 export type DepartmentFormData = z.infer<typeof departmentSchema>;

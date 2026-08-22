@@ -27,7 +27,7 @@ export function OrganizationRowActions({
         toast.error(result.error);
         return;
       }
-      toast.success(isArchived ? "조직이 활성화되었습니다." : "조직이 비활성화되었습니다.");
+      toast.success(isArchived ? "부문이 활성화되었습니다." : "부문이 비활성화되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");

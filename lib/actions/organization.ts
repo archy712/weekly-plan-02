@@ -31,7 +31,7 @@ async function requireLoggedIn(
 // 여전히 정책 자체가 없어(소프트 삭제만 지원) 액션도 제공하지 않는다.
 function toActionError(error: { code?: string; message: string }, fallback: string): string {
   if (error.code === UNIQUE_VIOLATION) {
-    return "이미 존재하는 조직명입니다.";
+    return "이미 존재하는 부문명입니다.";
   }
   if (error.code === RLS_VIOLATION) {
     return "권한이 없습니다.";
@@ -61,7 +61,7 @@ export async function createOrganizationAction(
   if (error) {
     return {
       success: false,
-      error: toActionError(error, "조직 생성 중 오류가 발생했습니다."),
+      error: toActionError(error, "부문 생성 중 오류가 발생했습니다."),
     };
   }
 
@@ -95,11 +95,11 @@ export async function updateOrganizationAction(
   if (error) {
     return {
       success: false,
-      error: toActionError(error, "조직명 수정 중 오류가 발생했습니다."),
+      error: toActionError(error, "부문명 수정 중 오류가 발생했습니다."),
     };
   }
   if (!updated) {
-    return { success: false, error: "수정 권한이 없거나 존재하지 않는 조직입니다." };
+    return { success: false, error: "수정 권한이 없거나 존재하지 않는 부문입니다." };
   }
 
   revalidatePath(ORGANIZATIONS_PATH);
@@ -120,10 +120,10 @@ export async function archiveOrganizationAction(id: string): Promise<Organizatio
     .maybeSingle();
 
   if (error) {
-    return { success: false, error: "조직 비활성화 중 오류가 발생했습니다." };
+    return { success: false, error: "부문 비활성화 중 오류가 발생했습니다." };
   }
   if (!updated) {
-    return { success: false, error: "권한이 없거나 존재하지 않는 조직입니다." };
+    return { success: false, error: "권한이 없거나 존재하지 않는 부문입니다." };
   }
 
   revalidatePath(ORGANIZATIONS_PATH);
@@ -143,10 +143,10 @@ export async function restoreOrganizationAction(id: string): Promise<Organizatio
     .maybeSingle();
 
   if (error) {
-    return { success: false, error: "조직 활성화 중 오류가 발생했습니다." };
+    return { success: false, error: "부문 활성화 중 오류가 발생했습니다." };
   }
   if (!updated) {
-    return { success: false, error: "권한이 없거나 존재하지 않는 조직입니다." };
+    return { success: false, error: "권한이 없거나 존재하지 않는 부문입니다." };
   }
 
   revalidatePath(ORGANIZATIONS_PATH);

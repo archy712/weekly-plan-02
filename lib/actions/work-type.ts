@@ -34,7 +34,7 @@ function toActionError(error: { code?: string; message: string }, fallback: stri
     return "이미 존재하는 업무 타입입니다.";
   }
   if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("organization_id")) {
-    return "선택한 조직이 존재하지 않습니다. 다시 선택해주세요.";
+    return "선택한 부문이 존재하지 않습니다. 다시 선택해주세요.";
   }
   if (error.code === RLS_VIOLATION) {
     return "권한이 없습니다.";

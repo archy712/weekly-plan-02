@@ -74,11 +74,11 @@ export function DashboardFilters({
           value={currentOrgId ?? DASHBOARD_ALL_ORGANIZATIONS}
           onValueChange={(value) => navigate({ org: value })}
         >
-          <SelectTrigger className="w-48" aria-label="조직 필터">
-            <SelectValue placeholder="조직 선택" />
+          <SelectTrigger className="w-48" aria-label="부문 필터">
+            <SelectValue placeholder="부문 선택" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={DASHBOARD_ALL_ORGANIZATIONS}>전체 조직 합산</SelectItem>
+            <SelectItem value={DASHBOARD_ALL_ORGANIZATIONS}>전체 부문 합산</SelectItem>
             {organizations!.map((org) => (
               <SelectItem key={org.id} value={org.id}>
                 {org.archived_at ? `${org.name} (비활성)` : org.name}

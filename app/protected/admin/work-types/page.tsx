@@ -108,7 +108,7 @@ async function WorkTypesContent() {
                     업무 타입명
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 조직
+                    소속 부문
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     업무일지 수

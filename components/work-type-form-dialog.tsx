@@ -129,11 +129,11 @@ export function WorkTypeFormDialog(props: WorkTypeFormDialogProps) {
               name="organization_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>소속 조직</FormLabel>
+                  <FormLabel>소속 부문</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="조직 선택" />
+                        <SelectValue placeholder="부문 선택" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

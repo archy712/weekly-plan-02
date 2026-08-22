@@ -80,9 +80,9 @@ async function SuperAdminOrganizationList() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          슈퍼관리자는 시스템의 모든 조직을 생성·수정·닫기(비활성화)할 수 있습니다.
+          슈퍼관리자는 시스템의 모든 부문을 생성·수정·닫기(비활성화)할 수 있습니다.
         </p>
-        <OrganizationFormDialog trigger={<Button size="sm">새 조직 생성</Button>} />
+        <OrganizationFormDialog trigger={<Button size="sm">새 부문 생성</Button>} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(organizations ?? []).map((organization) => {

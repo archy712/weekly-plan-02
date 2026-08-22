@@ -42,7 +42,7 @@ async function toActionError(
   // organization_id FK 위반(선택한 조직이 그 사이 삭제된 경합)은 departmentId가 있어도
   // "부서원/업무일지가 있어 삭제 불가" 메시지와는 무관하므로 먼저 구분해서 처리한다.
   if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("organization_id")) {
-    return "선택한 조직이 존재하지 않습니다. 다시 선택해주세요.";
+    return "선택한 부문이 존재하지 않습니다. 다시 선택해주세요.";
   }
   if (error.code === FOREIGN_KEY_VIOLATION && departmentId) {
     const [{ count: memberCount }, { count: logCount }] = await Promise.all([

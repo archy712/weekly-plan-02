@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/protected/admin/dashboard", label: "대시보드" },
-  { href: "/protected/admin/organizations", label: "조직 관리" },
+  { href: "/protected/admin/organizations", label: "부문 관리" },
   { href: "/protected/admin/departments", label: "팀 관리" },
   { href: "/protected/admin/work-types", label: "업무타입 관리" },
   { href: "/protected/admin/users", label: "사용자 관리" },
