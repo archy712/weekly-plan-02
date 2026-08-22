@@ -36,12 +36,13 @@ import {
   createDepartmentAction,
   updateDepartmentAction,
 } from "@/lib/actions/department";
+import { NONE_SELECT_VALUE } from "@/lib/constants/select";
 import {
   departmentSchema,
   NO_DIVISION_VALUE,
   type DepartmentFormData,
 } from "@/lib/schemas/department";
-import type { Division, Organization } from "@/lib/types";
+import type { Division, HeadCandidate, Organization } from "@/lib/types";
 
 type DepartmentFormDialogProps = {
   organizations: Organization[];
@@ -54,7 +55,15 @@ type DepartmentFormDialogProps = {
   | {
       mode: "edit";
       trigger: React.ReactNode;
-      department: { id: string; name: string; organization_id: string; division_id: string | null };
+      department: {
+        id: string;
+        name: string;
+        organization_id: string;
+        division_id: string | null;
+        head_profile_id: string | null;
+      };
+      // 팀장 후보 — 새로 만드는 팀은 아직 팀원이 없어 create 모드에는 이 필드 자체가 없다.
+      headCandidates: HeadCandidate[];
     }
 );
 
@@ -72,6 +81,8 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
     mode === "edit" ? props.department.organization_id : (organizations[0]?.id ?? "");
   const defaultDivisionId =
     mode === "edit" ? (props.department.division_id ?? NO_DIVISION_VALUE) : NO_DIVISION_VALUE;
+  const defaultHeadProfileId =
+    mode === "edit" ? (props.department.head_profile_id ?? NONE_SELECT_VALUE) : NONE_SELECT_VALUE;
 
   const form = useForm<DepartmentFormData>({
     resolver: zodResolver(departmentSchema),
@@ -79,6 +90,7 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
       name: defaultName,
       organization_id: defaultOrganizationId,
       division_id: defaultDivisionId,
+      head_profile_id: defaultHeadProfileId,
     },
   });
 
@@ -96,6 +108,7 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
         name: defaultName,
         organization_id: defaultOrganizationId,
         division_id: defaultDivisionId,
+        head_profile_id: defaultHeadProfileId,
       });
     }
   };
@@ -133,8 +146,8 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
           <DialogTitle>{mode === "create" ? "팀 추가" : "팀명 수정"}</DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "새 팀명과 소속 부문을 입력해주세요. 부서는 선택 사항입니다."
-              : "팀명·소속 부문·소속 부서를 수정합니다. 기존 업무일지와 팀원 화면에 즉시 반영됩니다."}
+              ? "새 팀명과 소속 부문을 입력해주세요. 부서는 선택 사항입니다. 팀장은 팀 생성 후 팀원이 배정되면 지정할 수 있습니다."
+              : "팀명·소속 부문·소속 부서·팀장을 수정합니다. 기존 업무일지와 팀원 화면에 즉시 반영됩니다."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -203,6 +216,33 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
                 </FormItem>
               )}
             />
+            {mode === "edit" && (
+              <FormField
+                control={form.control}
+                name="head_profile_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>팀장</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="팀장 선택" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE_SELECT_VALUE}>지정 안 함</SelectItem>
+                        {props.headCandidates.map((candidate) => (
+                          <SelectItem key={candidate.id} value={candidate.id}>
+                            {candidate.name ?? candidate.email ?? "이름 미등록"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "저장 중..." : "저장"}

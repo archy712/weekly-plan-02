@@ -22,15 +22,23 @@ import {
   deleteDivisionAction,
   restoreDivisionAction,
 } from "@/lib/actions/division";
-import type { Organization } from "@/lib/types";
+import type { HeadCandidate, Organization } from "@/lib/types";
 
 export function DivisionRowActions({
   division,
   organizations,
+  headCandidates,
   departmentCount,
 }: {
-  division: { id: string; name: string; archived_at: string | null; organization_id: string };
+  division: {
+    id: string;
+    name: string;
+    archived_at: string | null;
+    organization_id: string;
+    head_profile_id: string | null;
+  };
   organizations: Organization[];
+  headCandidates: HeadCandidate[];
   departmentCount: number;
 }) {
   const router = useRouter();
@@ -83,7 +91,9 @@ export function DivisionRowActions({
           id: division.id,
           name: division.name,
           organization_id: division.organization_id,
+          head_profile_id: division.head_profile_id,
         }}
+        headCandidates={headCandidates}
         organizations={organizations}
         trigger={
           <Button variant="ghost" size="sm">

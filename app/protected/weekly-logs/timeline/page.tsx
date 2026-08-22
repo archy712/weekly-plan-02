@@ -70,7 +70,7 @@ async function WeeklyLogTimelineContent({
     ),
     supabase
       .from("departments")
-      .select("id, name, created_at, archived_at, organization_id, division_id")
+      .select("id, name, created_at, archived_at, organization_id, division_id, head_profile_id")
       .order("name")
       .then((res) => res.data ?? []),
   ]);

@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { formatDepartmentDeleteBlockedMessage } from "@/lib/format";
-import {
-  departmentSchema,
-  NO_DIVISION_VALUE,
-  type DepartmentFormData,
-} from "@/lib/schemas/department";
+import { NONE_SELECT_VALUE } from "@/lib/constants/select";
+import { departmentSchema, type DepartmentFormData } from "@/lib/schemas/department";
+
+function toNullableId(value: string): string | null {
+  return value === NONE_SELECT_VALUE ? null : value;
+}
 
 export type DepartmentActionResult =
   | { success: true }
@@ -51,6 +52,9 @@ async function toActionError(
   if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("division_id")) {
     return "선택한 부서가 존재하지 않습니다. 다시 선택해주세요.";
   }
+  if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("head_profile_id")) {
+    return "선택한 팀장이 존재하지 않습니다. 다시 선택해주세요.";
+  }
   if (error.code === FOREIGN_KEY_VIOLATION && departmentId) {
     const [{ count: memberCount }, { count: logCount }] = await Promise.all([
       supabase
@@ -88,7 +92,8 @@ export async function createDepartmentAction(
   const { error } = await supabase.from("departments").insert({
     name: parsed.data.name,
     organization_id: parsed.data.organization_id,
-    division_id: parsed.data.division_id === NO_DIVISION_VALUE ? null : parsed.data.division_id,
+    division_id: toNullableId(parsed.data.division_id),
+    head_profile_id: toNullableId(parsed.data.head_profile_id),
   });
 
   if (error) {
@@ -123,7 +128,8 @@ export async function updateDepartmentAction(
     .update({
       name: parsed.data.name,
       organization_id: parsed.data.organization_id,
-      division_id: parsed.data.division_id === NO_DIVISION_VALUE ? null : parsed.data.division_id,
+      division_id: toNullableId(parsed.data.division_id),
+      head_profile_id: toNullableId(parsed.data.head_profile_id),
     })
     .eq("id", id)
     .select("id")

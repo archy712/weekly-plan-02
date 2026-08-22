@@ -1,7 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DepartmentRowActions } from "@/components/department-row-actions";
-import type { Division, Organization } from "@/lib/types";
+import { formatHeadName } from "@/lib/format";
+import type { Division, HeadCandidate, Organization } from "@/lib/types";
 
 type DepartmentCardData = {
   id: string;
@@ -11,18 +12,23 @@ type DepartmentCardData = {
   organization_name: string;
   division_id: string | null;
   division_name: string | null;
+  head_profile_id: string | null;
+  head_name: string | null;
+  head_email: string | null;
 };
 
 export function DepartmentCard({
   department,
   organizations,
   divisions,
+  headCandidates,
   memberCount,
   logCount,
 }: {
   department: DepartmentCardData;
   organizations: Organization[];
   divisions: Division[];
+  headCandidates: HeadCandidate[];
   memberCount: number;
   logCount: number;
 }) {
@@ -40,6 +46,14 @@ export function DepartmentCard({
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span>{department.organization_name}</span>
           {department.division_name && <span>{department.division_name}</span>}
+          <span>
+            팀장{" "}
+            {formatHeadName(
+              department.head_profile_id
+                ? { name: department.head_name, email: department.head_email }
+                : null,
+            )}
+          </span>
           <span>소속 인원 {memberCount}명</span>
           <span>업무일지 {logCount}건</span>
         </div>
@@ -47,6 +61,7 @@ export function DepartmentCard({
           department={department}
           organizations={organizations}
           divisions={divisions}
+          headCandidates={headCandidates}
           memberCount={memberCount}
           logCount={logCount}
         />
@@ -59,11 +74,13 @@ export function DepartmentCardList({
   departments,
   organizations,
   divisions,
+  headCandidatesByDepartment,
   countMap,
 }: {
   departments: DepartmentCardData[];
   organizations: Organization[];
   divisions: Division[];
+  headCandidatesByDepartment: Map<string, HeadCandidate[]>;
   countMap: Map<string, { memberCount: number; logCount: number }>;
 }) {
   return (
@@ -79,6 +96,7 @@ export function DepartmentCardList({
             department={department}
             organizations={organizations}
             divisions={divisions}
+            headCandidates={headCandidatesByDepartment.get(department.id) ?? []}
             memberCount={memberCount}
             logCount={logCount}
           />

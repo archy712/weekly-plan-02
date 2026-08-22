@@ -7,11 +7,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { OrganizationFormDialog } from "@/components/organization-form-dialog";
 import { archiveOrganizationAction, restoreOrganizationAction } from "@/lib/actions/organization";
+import type { HeadCandidate } from "@/lib/types";
 
 export function OrganizationRowActions({
   organization,
+  headCandidates,
 }: {
-  organization: { id: string; name: string; archived_at: string | null };
+  organization: {
+    id: string;
+    name: string;
+    archived_at: string | null;
+    head_profile_id: string | null;
+  };
+  headCandidates: HeadCandidate[];
 }) {
   const router = useRouter();
   const [isArchiving, setIsArchiving] = useState(false);
@@ -39,7 +47,12 @@ export function OrganizationRowActions({
   return (
     <div className="flex items-center gap-1">
       <OrganizationFormDialog
-        organization={{ id: organization.id, name: organization.name }}
+        organization={{
+          id: organization.id,
+          name: organization.name,
+          head_profile_id: organization.head_profile_id,
+        }}
+        headCandidates={headCandidates}
         trigger={
           <Button variant="outline" size="sm">
             수정

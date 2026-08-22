@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { NONE_SELECT_VALUE } from "@/lib/constants/select";
 import { organizationSchema, type OrganizationFormData } from "@/lib/schemas/organization";
 
 export type OrganizationActionResult =
@@ -13,7 +14,12 @@ const ORGANIZATIONS_PATH = "/protected/admin/organizations";
 
 // Postgres 오류 코드 (supabase-js는 PostgrestError.code에 문자열로 담아 전달한다).
 const UNIQUE_VIOLATION = "23505";
+const FOREIGN_KEY_VIOLATION = "23503";
 const RLS_VIOLATION = "42501";
+
+function toNullableId(value: string): string | null {
+  return value === NONE_SELECT_VALUE ? null : value;
+}
 
 async function requireLoggedIn(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -32,6 +38,9 @@ async function requireLoggedIn(
 function toActionError(error: { code?: string; message: string }, fallback: string): string {
   if (error.code === UNIQUE_VIOLATION) {
     return "이미 존재하는 부문명입니다.";
+  }
+  if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("head_profile_id")) {
+    return "선택한 부문장이 존재하지 않습니다. 다시 선택해주세요.";
   }
   if (error.code === RLS_VIOLATION) {
     return "권한이 없습니다.";
@@ -56,7 +65,10 @@ export async function createOrganizationAction(
   const auth = await requireLoggedIn(supabase);
   if ("error" in auth) return { success: false, error: auth.error };
 
-  const { error } = await supabase.from("organizations").insert({ name: parsed.data.name });
+  const { error } = await supabase.from("organizations").insert({
+    name: parsed.data.name,
+    head_profile_id: toNullableId(parsed.data.head_profile_id),
+  });
 
   if (error) {
     return {
@@ -87,7 +99,10 @@ export async function updateOrganizationAction(
 
   const { data: updated, error } = await supabase
     .from("organizations")
-    .update({ name: parsed.data.name })
+    .update({
+      name: parsed.data.name,
+      head_profile_id: toNullableId(parsed.data.head_profile_id),
+    })
     .eq("id", id)
     .select("id")
     .maybeSingle();

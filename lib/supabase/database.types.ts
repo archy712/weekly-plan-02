@@ -463,6 +463,7 @@ export type Database = {
           archived_at: string | null
           created_at: string
           division_id: string | null
+          head_profile_id: string | null
           id: string
           name: string
           organization_id: string
@@ -471,6 +472,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           division_id?: string | null
+          head_profile_id?: string | null
           id?: string
           name: string
           organization_id: string
@@ -479,6 +481,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           division_id?: string | null
+          head_profile_id?: string | null
           id?: string
           name?: string
           organization_id?: string
@@ -489,6 +492,13 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "departments_head_profile_id_fkey"
+            columns: ["head_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -504,6 +514,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
+          head_profile_id: string | null
           id: string
           name: string
           organization_id: string
@@ -511,6 +522,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           created_at?: string
+          head_profile_id?: string | null
           id?: string
           name: string
           organization_id: string
@@ -518,11 +530,19 @@ export type Database = {
         Update: {
           archived_at?: string | null
           created_at?: string
+          head_profile_id?: string | null
           id?: string
           name?: string
           organization_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "divisions_head_profile_id_fkey"
+            columns: ["head_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "divisions_organization_id_fkey"
             columns: ["organization_id"]
@@ -1130,22 +1150,33 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
+          head_profile_id: string | null
           id: string
           name: string
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
+          head_profile_id?: string | null
           id?: string
           name: string
         }
         Update: {
           archived_at?: string | null
           created_at?: string
+          head_profile_id?: string | null
           id?: string
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organizations_head_profile_id_fkey"
+            columns: ["head_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {

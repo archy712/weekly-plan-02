@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-// 부서(division) 미배정을 표현하는 sentinel 값. Radix Select는 빈 문자열을 값으로 허용하지
-// 않아("" 은 선택 해제 표시로 예약됨) division_id가 optional column(nullable)이어도 폼
-// 값으로는 이 문자열을 쓰고, 서버 액션에서 null로 변환한다.
-export const NO_DIVISION_VALUE = "none";
+import { NONE_SELECT_VALUE } from "@/lib/constants/select";
+
+// 부서(division) 미배정을 표현하는 sentinel 값(lib/constants/select.ts 참고).
+export const NO_DIVISION_VALUE = NONE_SELECT_VALUE;
 
 export const departmentSchema = z.object({
   name: z
@@ -16,6 +16,9 @@ export const departmentSchema = z.object({
   // 부서(division)는 부문과 팀 사이의 선택적 계층이라 없어도 된다(DB division_id nullable과
   // 동일한 제약) — NO_DIVISION_VALUE 또는 실제 부서 uuid만 허용한다.
   division_id: z.union([z.literal(NO_DIVISION_VALUE), z.string().uuid()]),
+  // 팀장은 선택 사항이고, DB 트리거(validate_department_head)가 이 팀 소속 팀원인지 최종
+  // 검증한다 — NONE_SELECT_VALUE 또는 실제 프로필 uuid만 허용한다.
+  head_profile_id: z.union([z.literal(NONE_SELECT_VALUE), z.string().uuid()]),
 });
 
 export type DepartmentFormData = z.infer<typeof departmentSchema>;

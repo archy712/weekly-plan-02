@@ -32,7 +32,7 @@ async function WorkTypesContent() {
   // 가져온다 — 테이블의 "소속 조직" 컬럼이 이미 각 행을 구분해 보여준다.
   let organizationsQuery = supabase
     .from("organizations")
-    .select("id, name, created_at, archived_at");
+    .select("id, name, created_at, archived_at, head_profile_id");
   if (!isSuperAdmin) {
     organizationsQuery = organizationsQuery.eq("id", organizationId);
   }

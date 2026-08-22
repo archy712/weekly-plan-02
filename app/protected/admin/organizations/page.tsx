@@ -8,29 +8,46 @@ import { OrganizationRowActions } from "@/components/organization-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatHeadName } from "@/lib/format";
+import type { HeadCandidate } from "@/lib/types";
 
 // 일반 관리자는 자기 소속 조직 1건만 관리할 수 있다(생성 경로 없음, RLS의
 // organizations_update_admin이 id = current_organization_id()로 제한) — 단일 카드로 보여준다.
 async function AdminOrganizationCard({ organizationId }: { organizationId: string }) {
   const supabase = await createClient();
 
-  const [{ data: organization, error: organizationError }, { count: departmentCount }] =
-    await Promise.all([
-      supabase
-        .from("organizations")
-        .select("id, name, archived_at")
-        .eq("id", organizationId)
-        .single(),
-      supabase
-        .from("departments")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", organizationId),
-    ]);
+  const [
+    { data: organization, error: organizationError },
+    { data: departmentRows, error: departmentsError },
+  ] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select(
+        "id, name, archived_at, head_profile_id, head_profile:profiles!organizations_head_profile_id_fkey(id, name, email)",
+      )
+      .eq("id", organizationId)
+      .single(),
+    supabase.from("departments").select("id").eq("organization_id", organizationId),
+  ]);
 
   if (organizationError) {
     throw organizationError;
   }
+  if (departmentsError) {
+    throw departmentsError;
+  }
 
+  const departmentIds = (departmentRows ?? []).map((department) => department.id);
+  const { data: memberRows, error: membersError } =
+    departmentIds.length === 0
+      ? { data: [] as { id: string; name: string | null; email: string | null }[], error: null }
+      : await supabase.from("profiles").select("id, name, email").in("department_id", departmentIds);
+
+  if (membersError) {
+    throw membersError;
+  }
+
+  const headCandidates: HeadCandidate[] = memberRows ?? [];
   const isArchived = Boolean(organization.archived_at);
 
   return (
@@ -42,8 +59,18 @@ async function AdminOrganizationCard({ organizationId }: { organizationId: strin
         </Badge>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="text-sm text-muted-foreground">소속 팀 {departmentCount ?? 0}개</div>
-        <OrganizationRowActions organization={organization} />
+        <div className="text-sm text-muted-foreground">
+          <div>
+            부문장{" "}
+            {formatHeadName(
+              organization.head_profile_id
+                ? { name: organization.head_profile?.name ?? null, email: organization.head_profile?.email ?? null }
+                : null,
+            )}
+          </div>
+          <div>소속 팀 {departmentIds.length}개</div>
+        </div>
+        <OrganizationRowActions organization={organization} headCandidates={headCandidates} />
       </CardContent>
     </Card>
   );
@@ -60,8 +87,13 @@ async function SuperAdminOrganizationList() {
     { data: organizations, error: organizationsError },
     { data: departmentRows, error: departmentsError },
   ] = await Promise.all([
-    supabase.from("organizations").select("id, name, archived_at").order("name"),
-    supabase.from("departments").select("organization_id"),
+    supabase
+      .from("organizations")
+      .select(
+        "id, name, archived_at, head_profile_id, head_profile:profiles!organizations_head_profile_id_fkey(id, name, email)",
+      )
+      .order("name"),
+    supabase.from("departments").select("id, organization_id"),
   ]);
 
   if (organizationsError) {
@@ -72,8 +104,37 @@ async function SuperAdminOrganizationList() {
   }
 
   const departmentCounts = new Map<string, number>();
+  const departmentIdToOrganizationId = new Map<string, string>();
   for (const row of departmentRows ?? []) {
     departmentCounts.set(row.organization_id, (departmentCounts.get(row.organization_id) ?? 0) + 1);
+    departmentIdToOrganizationId.set(row.id, row.organization_id);
+  }
+
+  const allDepartmentIds = (departmentRows ?? []).map((row) => row.id);
+  const { data: memberRows, error: membersError } =
+    allDepartmentIds.length === 0
+      ? {
+          data: [] as { id: string; name: string | null; email: string | null; department_id: string | null }[],
+          error: null,
+        }
+      : await supabase
+          .from("profiles")
+          .select("id, name, email, department_id")
+          .in("department_id", allDepartmentIds);
+
+  if (membersError) {
+    throw membersError;
+  }
+
+  const headCandidatesByOrganization = new Map<string, HeadCandidate[]>();
+  for (const member of memberRows ?? []) {
+    const organizationId = member.department_id
+      ? departmentIdToOrganizationId.get(member.department_id)
+      : undefined;
+    if (!organizationId) continue;
+    const candidates = headCandidatesByOrganization.get(organizationId) ?? [];
+    candidates.push({ id: member.id, name: member.name, email: member.email });
+    headCandidatesByOrganization.set(organizationId, candidates);
   }
 
   return (
@@ -97,9 +158,23 @@ async function SuperAdminOrganizationList() {
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <div className="text-sm text-muted-foreground">
-                  소속 팀 {departmentCounts.get(organization.id) ?? 0}개
+                  <div>
+                    부문장{" "}
+                    {formatHeadName(
+                      organization.head_profile_id
+                        ? {
+                            name: organization.head_profile?.name ?? null,
+                            email: organization.head_profile?.email ?? null,
+                          }
+                        : null,
+                    )}
+                  </div>
+                  <div>소속 팀 {departmentCounts.get(organization.id) ?? 0}개</div>
                 </div>
-                <OrganizationRowActions organization={organization} />
+                <OrganizationRowActions
+                  organization={organization}
+                  headCandidates={headCandidatesByOrganization.get(organization.id) ?? []}
+                />
               </CardContent>
             </Card>
           );

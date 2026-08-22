@@ -115,6 +115,13 @@ export function formatChangeHistoryValue(
   return value;
 }
 
+// 부문장/부서장/팀장 표시용. 지정된 사람이 없으면 "-", 있는데 이름이 비어 있으면(가입 시
+// 이름은 선택 입력) 이메일로 폴백한다(author_name ?? author_email 패턴과 동일).
+export function formatHeadName(head: { name: string | null; email: string | null } | null): string {
+  if (!head) return "-";
+  return head.name ?? head.email ?? "이름 미등록";
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   const units = ["KB", "MB", "GB"];

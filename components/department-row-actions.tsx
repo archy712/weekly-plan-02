@@ -22,12 +22,13 @@ import {
   deleteDepartmentAction,
   restoreDepartmentAction,
 } from "@/lib/actions/department";
-import type { Division, Organization } from "@/lib/types";
+import type { Division, HeadCandidate, Organization } from "@/lib/types";
 
 export function DepartmentRowActions({
   department,
   organizations,
   divisions,
+  headCandidates,
   memberCount,
   logCount,
 }: {
@@ -37,9 +38,11 @@ export function DepartmentRowActions({
     archived_at: string | null;
     organization_id: string;
     division_id: string | null;
+    head_profile_id: string | null;
   };
   organizations: Organization[];
   divisions: Division[];
+  headCandidates: HeadCandidate[];
   memberCount: number;
   logCount: number;
 }) {
@@ -94,7 +97,9 @@ export function DepartmentRowActions({
           name: department.name,
           organization_id: department.organization_id,
           division_id: department.division_id,
+          head_profile_id: department.head_profile_id,
         }}
+        headCandidates={headCandidates}
         organizations={organizations}
         divisions={divisions}
         trigger={

@@ -17,6 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatHeadName } from "@/lib/format";
+import type { HeadCandidate } from "@/lib/types";
 
 async function DepartmentsContent() {
   const supabase = await createClient();
@@ -32,7 +34,7 @@ async function DepartmentsContent() {
   // 가져온다 — 테이블의 "소속 조직" 컬럼이 이미 각 행을 구분해 보여준다.
   let organizationsQuery = supabase
     .from("organizations")
-    .select("id, name, created_at, archived_at");
+    .select("id, name, created_at, archived_at, head_profile_id");
   if (!isSuperAdmin) {
     organizationsQuery = organizationsQuery.eq("id", organizationId);
   }
@@ -49,7 +51,9 @@ async function DepartmentsContent() {
   // 팀 추가/수정 다이얼로그의 "소속 부서" 선택지 — 부문과 동일하게 관리자 소속 부문
   // 범위로 좁히고(슈퍼관리자는 전 부문), 다이얼로그가 현재 선택된 부문에 맞는 부서만
   // 걸러서 보여준다(부서는 선택 사항이라 department-form-dialog.tsx가 빈 목록도 허용).
-  let divisionsQuery = supabase.from("divisions").select("id, organization_id, name, archived_at, created_at");
+  let divisionsQuery = supabase
+    .from("divisions")
+    .select("id, organization_id, name, archived_at, created_at, head_profile_id");
   if (!isSuperAdmin) {
     divisionsQuery = divisionsQuery.eq("organization_id", organizationId);
   }
@@ -64,7 +68,7 @@ async function DepartmentsContent() {
   let departmentsQuery = supabase
     .from("departments")
     .select(
-      "id, name, created_at, archived_at, organization_id, division_id, organizations:organizations(name), divisions:divisions(name)",
+      "id, name, created_at, archived_at, organization_id, division_id, head_profile_id, organizations:organizations(name), divisions:divisions(name), head_profile:profiles!departments_head_profile_id_fkey(id, name, email)",
     )
     .order("name");
   if (!isSuperAdmin) {
@@ -85,31 +89,57 @@ async function DepartmentsContent() {
     organization_name: department.organizations?.name ?? "",
     division_id: department.division_id,
     division_name: department.divisions?.name ?? null,
+    head_profile_id: department.head_profile_id,
+    head_name: department.head_profile?.name ?? null,
+    head_email: department.head_profile?.email ?? null,
   }));
 
-  // 부서원 수/업무일지 수는 삭제 가능 여부를 사용자가 미리 알 수 있게 하기 위한 것이라
-  // 부서별로 count 집계 쿼리를 병렬로 실행한다(부서 수가 적은 사내 도구 특성상 N*2건의
-  // count-only 쿼리로도 충분히 빠르다).
-  const counts = await Promise.all(
-    departments.map(async (department) => {
-      const [{ count: memberCount }, { count: logCount }] = await Promise.all([
-        supabase
+  // 팀장 선택지(=이 팀의 팀원)는 팀별로 갈라야 해서, 스코프 내 전 팀원을 한 번에 조회한 뒤
+  // department_id로 그룹핑한다(부서별 N개 쿼리 대신 1개 쿼리 + 클라이언트 그룹핑).
+  const departmentIds = departments.map((department) => department.id);
+  const { data: memberRows, error: membersError } =
+    departmentIds.length === 0
+      ? { data: [] as { id: string; name: string | null; email: string | null; department_id: string | null }[], error: null }
+      : await supabase
           .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("department_id", department.id),
-        supabase
-          .from("weekly_logs")
-          .select("id", { count: "exact", head: true })
-          .eq("department_id", department.id),
-      ]);
-      return {
-        id: department.id,
-        memberCount: memberCount ?? 0,
-        logCount: logCount ?? 0,
-      };
+          .select("id, name, email, department_id")
+          .in("department_id", departmentIds);
+
+  if (membersError) {
+    throw membersError;
+  }
+
+  const headCandidatesByDepartment = new Map<string, HeadCandidate[]>();
+  const memberCountByDepartment = new Map<string, number>();
+  for (const member of memberRows ?? []) {
+    if (!member.department_id) continue;
+    const candidates = headCandidatesByDepartment.get(member.department_id) ?? [];
+    candidates.push({ id: member.id, name: member.name, email: member.email });
+    headCandidatesByDepartment.set(member.department_id, candidates);
+    memberCountByDepartment.set(
+      member.department_id,
+      (memberCountByDepartment.get(member.department_id) ?? 0) + 1,
+    );
+  }
+
+  // 업무일지 수는 삭제 가능 여부를 사용자가 미리 알 수 있게 하기 위한 것이라 부서별로
+  // count 집계 쿼리를 병렬로 실행한다(부서 수가 적은 사내 도구 특성상 N건의 count-only
+  // 쿼리로도 충분히 빠르다).
+  const logCounts = await Promise.all(
+    departments.map(async (department) => {
+      const { count: logCount } = await supabase
+        .from("weekly_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("department_id", department.id);
+      return { id: department.id, logCount: logCount ?? 0 };
     }),
   );
-  const countMap = new Map(counts.map((entry) => [entry.id, entry]));
+  const countMap = new Map(
+    logCounts.map((entry) => [
+      entry.id,
+      { memberCount: memberCountByDepartment.get(entry.id) ?? 0, logCount: entry.logCount },
+    ]),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -134,6 +164,7 @@ async function DepartmentsContent() {
             departments={departments}
             organizations={organizations}
             divisions={divisions}
+            headCandidatesByDepartment={headCandidatesByDepartment}
             countMap={countMap}
           />
           <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
@@ -148,6 +179,9 @@ async function DepartmentsContent() {
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 부서
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    팀장
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 인원 수
@@ -182,6 +216,13 @@ async function DepartmentsContent() {
                       <TableCell className="py-3 text-muted-foreground">
                         {department.division_name ?? "-"}
                       </TableCell>
+                      <TableCell className="py-3 text-muted-foreground">
+                        {formatHeadName(
+                          department.head_profile_id
+                            ? { name: department.head_name, email: department.head_email }
+                            : null,
+                        )}
+                      </TableCell>
                       <TableCell className="py-3 tabular-nums text-muted-foreground">
                         {memberCount}명
                       </TableCell>
@@ -198,6 +239,7 @@ async function DepartmentsContent() {
                           department={department}
                           organizations={organizations}
                           divisions={divisions}
+                          headCandidates={headCandidatesByDepartment.get(department.id) ?? []}
                           memberCount={memberCount}
                           logCount={logCount}
                         />

@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { NONE_SELECT_VALUE } from "@/lib/constants/select";
 import { divisionSchema, type DivisionFormData } from "@/lib/schemas/division";
+
+function toNullableId(value: string): string | null {
+  return value === NONE_SELECT_VALUE ? null : value;
+}
 
 export type DivisionActionResult =
   | { success: true }
@@ -43,6 +48,9 @@ async function toActionError(
   if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("organization_id")) {
     return "선택한 부문이 존재하지 않습니다. 다시 선택해주세요.";
   }
+  if (error.code === FOREIGN_KEY_VIOLATION && error.message.includes("head_profile_id")) {
+    return "선택한 부서장이 존재하지 않습니다. 다시 선택해주세요.";
+  }
   if (error.code === FOREIGN_KEY_VIOLATION && divisionId) {
     const { count: departmentCount } = await supabase
       .from("departments")
@@ -74,6 +82,7 @@ export async function createDivisionAction(
   const { error } = await supabase.from("divisions").insert({
     name: parsed.data.name,
     organization_id: parsed.data.organization_id,
+    head_profile_id: toNullableId(parsed.data.head_profile_id),
   });
 
   if (error) {
@@ -105,7 +114,11 @@ export async function updateDivisionAction(
 
   const { data: updated, error } = await supabase
     .from("divisions")
-    .update({ name: parsed.data.name, organization_id: parsed.data.organization_id })
+    .update({
+      name: parsed.data.name,
+      organization_id: parsed.data.organization_id,
+      head_profile_id: toNullableId(parsed.data.head_profile_id),
+    })
     .eq("id", id)
     .select("id")
     .maybeSingle();

@@ -33,8 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDivisionAction, updateDivisionAction } from "@/lib/actions/division";
+import { NONE_SELECT_VALUE } from "@/lib/constants/select";
 import { divisionSchema, type DivisionFormData } from "@/lib/schemas/division";
-import type { Organization } from "@/lib/types";
+import type { HeadCandidate, Organization } from "@/lib/types";
 
 type DivisionFormDialogProps = {
   organizations: Organization[];
@@ -46,7 +47,9 @@ type DivisionFormDialogProps = {
   | {
       mode: "edit";
       trigger: React.ReactNode;
-      division: { id: string; name: string; organization_id: string };
+      division: { id: string; name: string; organization_id: string; head_profile_id: string | null };
+      // 부서장 후보 — 새로 만드는 부서는 아직 소속 팀/팀원이 없어 create 모드에는 없다.
+      headCandidates: HeadCandidate[];
     }
 );
 
@@ -61,10 +64,16 @@ export function DivisionFormDialog(props: DivisionFormDialogProps) {
   // 부문이 1개뿐인 현재 상태에서도 바로 선택된 채로 시작하도록 첫 번째(활성) 부문을 기본값으로.
   const defaultOrganizationId =
     mode === "edit" ? props.division.organization_id : (organizations[0]?.id ?? "");
+  const defaultHeadProfileId =
+    mode === "edit" ? (props.division.head_profile_id ?? NONE_SELECT_VALUE) : NONE_SELECT_VALUE;
 
   const form = useForm<DivisionFormData>({
     resolver: zodResolver(divisionSchema),
-    defaultValues: { name: defaultName, organization_id: defaultOrganizationId },
+    defaultValues: {
+      name: defaultName,
+      organization_id: defaultOrganizationId,
+      head_profile_id: defaultHeadProfileId,
+    },
   });
 
   // 다이얼로그가 열릴 때마다 최신 초기값으로 리셋한다 — 같은 컴포넌트 인스턴스가
@@ -72,7 +81,11 @@ export function DivisionFormDialog(props: DivisionFormDialogProps) {
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) {
-      form.reset({ name: defaultName, organization_id: defaultOrganizationId });
+      form.reset({
+        name: defaultName,
+        organization_id: defaultOrganizationId,
+        head_profile_id: defaultHeadProfileId,
+      });
     }
   };
 
@@ -102,8 +115,8 @@ export function DivisionFormDialog(props: DivisionFormDialogProps) {
           <DialogTitle>{mode === "create" ? "부서 추가" : "부서명 수정"}</DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "새 부서명과 소속 부문을 입력해주세요."
-              : "부서명·소속 부문을 수정합니다. 이 부서에 속한 팀 화면에 즉시 반영됩니다."}
+              ? "새 부서명과 소속 부문을 입력해주세요. 부서장은 부서 생성 후 소속 팀원이 생기면 지정할 수 있습니다."
+              : "부서명·소속 부문·부서장을 수정합니다. 이 부서에 속한 팀 화면에 즉시 반영됩니다."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -147,6 +160,33 @@ export function DivisionFormDialog(props: DivisionFormDialogProps) {
                 </FormItem>
               )}
             />
+            {mode === "edit" && (
+              <FormField
+                control={form.control}
+                name="head_profile_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>부서장</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="부서장 선택" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE_SELECT_VALUE}>지정 안 함</SelectItem>
+                        {props.headCandidates.map((candidate) => (
+                          <SelectItem key={candidate.id} value={candidate.id}>
+                            {candidate.name ?? candidate.email ?? "이름 미등록"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "저장 중..." : "저장"}

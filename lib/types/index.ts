@@ -18,6 +18,10 @@ export type Division = Tables<"divisions">;
 
 export type WorkType = Tables<"work_types">;
 
+// 부문장/부서장/팀장 선택 후보 — 후보는 항상 그 범위(부문/부서/팀) 소속 팀원으로 좁혀서
+// 넘긴다(DB 트리거가 최종 검증하므로 후보 목록은 UX 편의를 위한 사전 필터일 뿐이다).
+export type HeadCandidate = { id: string; name: string | null; email: string | null };
+
 export type Profile = Omit<Tables<"profiles">, "role"> & {
   role: UserRole;
 };
