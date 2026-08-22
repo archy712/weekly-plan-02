@@ -9,7 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, FileSpreadsheet, FileText, Search, SearchX, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -411,8 +411,14 @@ export function WeeklyLogListView({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleDownloadPdf}>PDF 다운로드</DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleDownloadExcel}>Excel 다운로드</DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleDownloadPdf}>
+                <FileText className="size-4" />
+                PDF 다운로드
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleDownloadExcel}>
+                <FileSpreadsheet className="size-4" />
+                Excel 다운로드
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button asChild>
@@ -521,6 +527,7 @@ export function WeeklyLogListView({
       >
         {items.length === 0 ? (
           <EmptyState
+            icon={activeFilters.length > 0 ? SearchX : undefined}
             title={
               activeFilters.length > 0 ? "검색 결과가 없습니다" : "등록된 주간업무일지가 없습니다"
             }
