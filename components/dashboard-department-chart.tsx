@@ -28,6 +28,10 @@ const chartConfig: ChartConfig = {
   completed_count: { label: "완료", color: STATUS_CHART_COLORS.completed },
 };
 
+// 막대 두께를 고정값으로 못박아, 카드가 옆 카드(진행상태 분포)만큼 늘어나도 그 여유
+// 높이가 막대를 굵게 만드는 대신 팀과 팀 사이 간격으로 쓰이도록 한다.
+const BAR_THICKNESS = 28;
+
 // 스택 막대 세그먼트 위에 "해당 부서 합계 대비 이 상태의 비율"을 표시한다. 세그먼트가
 // 너무 좁으면(부서 로그 수가 적을 때) 텍스트가 겹치므로 폭이 24px 미만이면 숨긴다.
 function renderStackedPercentLabel(data: DepartmentLogStats[]) {
@@ -66,18 +70,19 @@ function renderStackedPercentLabel(data: DepartmentLogStats[]) {
 // 보여준다(기간 필터만 반영). 다른 3개 차트와 동작이 다르므로 캡션으로 명시한다.
 export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] }) {
   const isEmpty = data.length === 0 || data.every((row) => row.total_count === 0);
-  // 막대가 너무 많아지지 않도록 높이를 부서 수에 비례해 계산한다.
+  // flex-1이 옆 카드 높이에 맞춰 늘어나기 전, 팀 수가 적어 그리드 행 자체가 짧을 때도
+  // 막대가 눌리지 않도록 하는 최소 높이 하한선(부서 수에 비례).
   const chartHeight = Math.max(200, data.length * 44);
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader>
         <CardTitle>팀별 건수</CardTitle>
         <CardDescription>
           진행상태별로 쌓아 표시합니다. 팀 필터와 무관하게 전체 팀을 비교합니다.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-1 flex-col">
         {isEmpty ? (
           <EmptyState
             title="집계할 업무일지가 없습니다"
@@ -85,10 +90,14 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
           />
         ) : (
           <>
+            {/* 옆 카드(진행상태 분포)가 더 길어 그리드 행이 늘어나도 이 카드 안에 빈
+                공간이 남지 않도록 flex-1로 남는 높이를 그대로 흡수한다. 막대 두께는
+                barSize로 고정해두어, 늘어난 높이가 막대를 굵게 만드는 대신 팀 사이
+                간격으로 쓰이게 한다. */}
             <ChartContainer
               config={chartConfig}
-              className="aspect-auto w-full"
-              style={{ height: chartHeight }}
+              className="aspect-auto w-full flex-1"
+              style={{ minHeight: chartHeight }}
               role="img"
               aria-label="팀별 예정·진행중·완료 건수를 쌓아 올린 가로 막대 그래프"
             >
@@ -137,6 +146,7 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
                   stackId="status"
                   fill="var(--color-planned_count)"
                   radius={[0, 0, 0, 0]}
+                  barSize={BAR_THICKNESS}
                 >
                   <LabelList dataKey="planned_count" content={renderStackedPercentLabel(data)} />
                 </Bar>
@@ -145,6 +155,7 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
                   stackId="status"
                   fill="var(--color-in_progress_count)"
                   radius={[0, 0, 0, 0]}
+                  barSize={BAR_THICKNESS}
                 >
                   <LabelList dataKey="in_progress_count" content={renderStackedPercentLabel(data)} />
                 </Bar>
@@ -153,6 +164,7 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
                   stackId="status"
                   fill="var(--color-completed_count)"
                   radius={[0, 4, 4, 0]}
+                  barSize={BAR_THICKNESS}
                 >
                   <LabelList dataKey="completed_count" content={renderStackedPercentLabel(data)} />
                 </Bar>
