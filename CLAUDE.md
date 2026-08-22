@@ -64,6 +64,17 @@ npm run lint    # ESLint 검사 (eslint-config-next의 core-web-vitals + typescr
 - 부서(`department-form-dialog.tsx`)·업무 타입(`work-type-form-dialog.tsx`) 추가/수정 다이얼로그는 여러 조직 중 하나를 고르는 `Select`를 원래부터 갖고 있었습니다(범용성을 위해 `organizations: Organization[]` prop을 받는 구조). **호출하는 관리자 콘솔 페이지가 넘기는 배열의 크기로 실질적인 선택 범위가 정해집니다** — 일반 관리자에게는 소속 조직 1건짜리 배열만 넘겨 선택지가 하나뿐이게 하고, 슈퍼관리자에게는 F034로 전체 조직 배열을 넘겨 실제로 여러 조직 중 선택할 수 있게 합니다. 컴포넌트 자체는 두 경우 모두 변경 없이 재사용됩니다.
 - 조직 관리 탭(`app/protected/admin/organizations/page.tsx`)은 호출자의 `role`로 분기합니다 — 일반 관리자는 기존과 동일하게 **관리자 소속 조직 1건짜리 카드**(이름 수정·비활성화/활성화만, 생성 UI 없음)를, 슈퍼관리자는 **시스템의 모든 조직을 나열하는 목록 + 새 조직 생성 버튼**을 봅니다. 자세한 내용은 아래 "슈퍼관리자 등급" 절 참고.
 
+### `divisions` 테이블 — organizations와 departments 사이의 선택적 계층 (ad hoc)
+
+**용어 주의**: 화면 표기는 "조직→부문", "부서(department)→팀"으로 이미 통일되어 있는데(위 각 절 참고, DB/코드 식별자는 안 바뀜), 이번에 추가된 새 테이블 `divisions`는 화면에 **"부서"**로 노출됩니다 — 이 문서 나머지 절에서 "부서"라고 쓴 표현은 전부 `departments`(화면 표기 "팀")를 가리키던 옛 표현이니 혼동하지 말 것. 즉 화면 계층은 **부문(organizations) → 부서(divisions, 선택) → 팀(departments)** 3단이고, DB 테이블명은 organizations/divisions/departments입니다.
+
+- `divisions`는 `id`/`organization_id`(NOT NULL FK → organizations, `work_types`와 동일하게 `(organization_id, name)` 복합 unique)/`name`/`archived_at`/`created_at`만 있는 단순 테이블로, `organizations`/`work_types`와 동일한 소프트 삭제·RLS 컨벤션(SELECT 전 인증 사용자 공개, INSERT/UPDATE/DELETE는 `is_superadmin() OR (is_admin() AND organization_id = current_organization_id())`)을 그대로 재사용합니다.
+- **`departments.division_id`는 nullable FK**입니다 — `departments.organization_id`(NOT NULL)는 그대로 유지한 채 division_id만 선택적으로 추가했습니다. 즉 팀은 여전히 조직에 **직접** 속하고, 부서는 그 위에 얹는 선택적 그룹핑 태그일 뿐입니다. 이 설계 덕분에 기존에 `departments.organization_id`를 직접 참조하던 모든 조직 범위 검증 지점(관리자 콘솔 4개 탭의 스코프 쿼리, RLS, `stats_*` RPC, `lib/actions/user-admin.ts`의 `isDepartmentInOrganization()`)을 **전혀 수정하지 않았습니다** — division_id 유무와 무관하게 그대로 동작합니다.
+- division_id가 설정된 경우 그 부서의 organization_id가 팀의 organization_id와 일치해야 하는데, CHECK 제약은 다른 테이블을 참조할 수 없어 `validate_weekly_log_work_type()`과 동일한 패턴으로 `validate_department_division()` `BEFORE INSERT OR UPDATE OF division_id, organization_id` 트리거가 대신 검증합니다(불일치 시 예외).
+- 관리자 콘솔에 **"부서 관리" 탭**(`app/protected/admin/divisions/page.tsx`, `components/admin-tab-nav.tsx`의 부문 관리와 팀 관리 사이)이 추가되어, 부문/업무타입 관리와 동일한 CRUD 패턴(추가/이름수정/비활성화-활성화, 삭제는 참조하는 팀이 0건일 때만 — `lib/actions/division.ts`)을 제공합니다. 조직 범위 제한도 부문/업무타입 관리와 동일합니다(일반 관리자는 자기 소속 부문, 슈퍼관리자는 전 부문).
+- **팀 관리(`components/department-form-dialog.tsx`)에 "소속 부서" Select가 추가**되었습니다 — `NO_DIVISION_VALUE`(`lib/schemas/department.ts`, 문자열 `"none"`) sentinel로 "부서 없음"을 표현합니다(Radix Select가 빈 문자열 값을 선택 해제로 예약해두어 `""`를 쓸 수 없기 때문). 선택지는 `useWatch`로 구독하는 현재 선택된 부문에 속한 부서만 필터링해서 보여주고, 부문을 바꾸면 대시보드 필터의 "조직을 바꾸면 부서 필터 초기화" 패턴과 동일하게 소속 부서 선택을 자동으로 "부서 없음"으로 되돌립니다.
+- 목록/칸반/대시보드/사용자 관리 등 나머지 화면은 이번 변경 범위 밖입니다 — 팀 관리 화면에 "소속 부서" 컬럼만 추가했고, 부서 단위 필터·집계는 아직 없습니다(필요해지면 후속 작업으로 추가).
+
 ### 슈퍼관리자 등급 (ad hoc)
 
 - `profiles.role`은 `user`/`admin`/`superadmin` 3단계입니다. **슈퍼관리자는 admin의 상위 집합으로 설계**되어 있어 `is_admin()` DB 함수가 `role in ('admin', 'superadmin')`을 반환합니다 — 이 함수를 참조하는 기존 RLS(부서/업무 타입 쓰기, `weekly_logs`/댓글 관리, `organizations` UPDATE 등) 전체가 코드 변경 없이 슈퍼관리자에게도 그대로 열립니다. `organizations` 테이블의 **INSERT(조직 생성)**와 **전 조직 범위의 UPDATE(수정·`archived_at` 토글로 닫기)**는 슈퍼관리자 전용이며, 이를 위한 별도 `is_superadmin()` 함수(`is_admin()`과 동일한 `SECURITY DEFINER STABLE` + `anon` EXECUTE 회수 컨벤션)가 있습니다.

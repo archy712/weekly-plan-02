@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DepartmentRowActions } from "@/components/department-row-actions";
-import type { Organization } from "@/lib/types";
+import type { Division, Organization } from "@/lib/types";
 
 type DepartmentCardData = {
   id: string;
@@ -9,16 +9,20 @@ type DepartmentCardData = {
   archived_at: string | null;
   organization_id: string;
   organization_name: string;
+  division_id: string | null;
+  division_name: string | null;
 };
 
 export function DepartmentCard({
   department,
   organizations,
+  divisions,
   memberCount,
   logCount,
 }: {
   department: DepartmentCardData;
   organizations: Organization[];
+  divisions: Division[];
   memberCount: number;
   logCount: number;
 }) {
@@ -35,12 +39,14 @@ export function DepartmentCard({
       <CardContent className="flex flex-col gap-2 p-4 pt-0">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span>{department.organization_name}</span>
+          {department.division_name && <span>{department.division_name}</span>}
           <span>소속 인원 {memberCount}명</span>
           <span>업무일지 {logCount}건</span>
         </div>
         <DepartmentRowActions
           department={department}
           organizations={organizations}
+          divisions={divisions}
           memberCount={memberCount}
           logCount={logCount}
         />
@@ -52,10 +58,12 @@ export function DepartmentCard({
 export function DepartmentCardList({
   departments,
   organizations,
+  divisions,
   countMap,
 }: {
   departments: DepartmentCardData[];
   organizations: Organization[];
+  divisions: Division[];
   countMap: Map<string, { memberCount: number; logCount: number }>;
 }) {
   return (
@@ -70,6 +78,7 @@ export function DepartmentCardList({
             key={department.id}
             department={department}
             organizations={organizations}
+            divisions={divisions}
             memberCount={memberCount}
             logCount={logCount}
           />

@@ -37,7 +37,7 @@ export async function getScopedDepartments(
 ): Promise<Department[]> {
   let query = supabase
     .from("departments")
-    .select("id, name, created_at, archived_at, organization_id")
+    .select("id, name, created_at, archived_at, organization_id, division_id")
     .order("name");
   if (!isSuperAdmin) {
     query = query.eq("organization_id", organizationId);

@@ -46,9 +46,26 @@ async function DepartmentsContent() {
 
   const organizations = organizationRows ?? [];
 
+  // 팀 추가/수정 다이얼로그의 "소속 부서" 선택지 — 부문과 동일하게 관리자 소속 부문
+  // 범위로 좁히고(슈퍼관리자는 전 부문), 다이얼로그가 현재 선택된 부문에 맞는 부서만
+  // 걸러서 보여준다(부서는 선택 사항이라 department-form-dialog.tsx가 빈 목록도 허용).
+  let divisionsQuery = supabase.from("divisions").select("id, organization_id, name, archived_at, created_at");
+  if (!isSuperAdmin) {
+    divisionsQuery = divisionsQuery.eq("organization_id", organizationId);
+  }
+  const { data: divisionRows, error: divisionsError } = await divisionsQuery.order("name");
+
+  if (divisionsError) {
+    throw divisionsError;
+  }
+
+  const divisions = divisionRows ?? [];
+
   let departmentsQuery = supabase
     .from("departments")
-    .select("id, name, created_at, archived_at, organization_id, organizations:organizations(name)")
+    .select(
+      "id, name, created_at, archived_at, organization_id, division_id, organizations:organizations(name), divisions:divisions(name)",
+    )
     .order("name");
   if (!isSuperAdmin) {
     departmentsQuery = departmentsQuery.eq("organization_id", organizationId);
@@ -66,6 +83,8 @@ async function DepartmentsContent() {
     archived_at: department.archived_at,
     organization_id: department.organization_id,
     organization_name: department.organizations?.name ?? "",
+    division_id: department.division_id,
+    division_name: department.divisions?.name ?? null,
   }));
 
   // 부서원 수/업무일지 수는 삭제 가능 여부를 사용자가 미리 알 수 있게 하기 위한 것이라
@@ -98,6 +117,7 @@ async function DepartmentsContent() {
         <DepartmentFormDialog
           mode="create"
           organizations={organizations}
+          divisions={divisions}
           trigger={<Button>팀 추가</Button>}
         />
       </div>
@@ -113,6 +133,7 @@ async function DepartmentsContent() {
           <DepartmentCardList
             departments={departments}
             organizations={organizations}
+            divisions={divisions}
             countMap={countMap}
           />
           <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
@@ -124,6 +145,9 @@ async function DepartmentsContent() {
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 부문
+                  </TableHead>
+                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
+                    소속 부서
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 인원 수
@@ -155,6 +179,9 @@ async function DepartmentsContent() {
                       <TableCell className="py-3 text-muted-foreground">
                         {department.organization_name}
                       </TableCell>
+                      <TableCell className="py-3 text-muted-foreground">
+                        {department.division_name ?? "-"}
+                      </TableCell>
                       <TableCell className="py-3 tabular-nums text-muted-foreground">
                         {memberCount}명
                       </TableCell>
@@ -170,6 +197,7 @@ async function DepartmentsContent() {
                         <DepartmentRowActions
                           department={department}
                           organizations={organizations}
+                          divisions={divisions}
                           memberCount={memberCount}
                           logCount={logCount}
                         />

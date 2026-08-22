@@ -11,6 +11,11 @@ export type Department = Tables<"departments">;
 
 export type Organization = Tables<"organizations">;
 
+// 부문(organizations)과 팀(departments) 사이에 선택적으로 둘 수 있는 계층. 팀은
+// organization_id를 여전히 직접 보유하므로(부서 유무와 무관하게 조직 범위 검증은
+// 그대로 동작), division_id는 departments의 nullable FK로만 존재한다.
+export type Division = Tables<"divisions">;
+
 export type WorkType = Tables<"work_types">;
 
 export type Profile = Omit<Tables<"profiles">, "role"> & {

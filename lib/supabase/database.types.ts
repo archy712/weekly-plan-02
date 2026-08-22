@@ -462,6 +462,48 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
+          division_id: string | null
+          id: string
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          name: string
+          organization_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "departments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      divisions: {
+        Row: {
+          archived_at: string | null
+          created_at: string
           id: string
           name: string
           organization_id: string
@@ -482,7 +524,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "departments_organization_id_fkey"
+            foreignKeyName: "divisions_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2066,4 +2108,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

@@ -16,50 +16,40 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { DepartmentFormDialog } from "@/components/department-form-dialog";
+import { DivisionFormDialog } from "@/components/division-form-dialog";
 import {
-  archiveDepartmentAction,
-  deleteDepartmentAction,
-  restoreDepartmentAction,
-} from "@/lib/actions/department";
-import type { Division, Organization } from "@/lib/types";
+  archiveDivisionAction,
+  deleteDivisionAction,
+  restoreDivisionAction,
+} from "@/lib/actions/division";
+import type { Organization } from "@/lib/types";
 
-export function DepartmentRowActions({
-  department,
+export function DivisionRowActions({
+  division,
   organizations,
-  divisions,
-  memberCount,
-  logCount,
+  departmentCount,
 }: {
-  department: {
-    id: string;
-    name: string;
-    archived_at: string | null;
-    organization_id: string;
-    division_id: string | null;
-  };
+  division: { id: string; name: string; archived_at: string | null; organization_id: string };
   organizations: Organization[];
-  divisions: Division[];
-  memberCount: number;
-  logCount: number;
+  departmentCount: number;
 }) {
   const router = useRouter();
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const isArchived = Boolean(department.archived_at);
-  const hasReferences = memberCount > 0 || logCount > 0;
+  const isArchived = Boolean(division.archived_at);
+  const hasReferences = departmentCount > 0;
 
   const handleToggleArchive = async () => {
     setIsArchiving(true);
     try {
       const result = isArchived
-        ? await restoreDepartmentAction(department.id)
-        : await archiveDepartmentAction(department.id);
+        ? await restoreDivisionAction(division.id)
+        : await archiveDivisionAction(division.id);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      toast.success(isArchived ? "팀이 활성화되었습니다." : "팀이 비활성화되었습니다.");
+      toast.success(isArchived ? "부서가 활성화되었습니다." : "부서가 비활성화되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -71,12 +61,12 @@ export function DepartmentRowActions({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const result = await deleteDepartmentAction(department.id);
+      const result = await deleteDivisionAction(division.id);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
-      toast.success("팀이 삭제되었습니다.");
+      toast.success("부서가 삭제되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -87,28 +77,21 @@ export function DepartmentRowActions({
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <DepartmentFormDialog
+      <DivisionFormDialog
         mode="edit"
-        department={{
-          id: department.id,
-          name: department.name,
-          organization_id: department.organization_id,
-          division_id: department.division_id,
+        division={{
+          id: division.id,
+          name: division.name,
+          organization_id: division.organization_id,
         }}
         organizations={organizations}
-        divisions={divisions}
         trigger={
           <Button variant="ghost" size="sm">
             수정
           </Button>
         }
       />
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleToggleArchive}
-        disabled={isArchiving}
-      >
+      <Button variant="ghost" size="sm" onClick={handleToggleArchive} disabled={isArchiving}>
         {isArchiving ? "처리 중..." : isArchived ? "활성화" : "비활성화"}
       </Button>
       <AlertDialog>
@@ -124,10 +107,9 @@ export function DepartmentRowActions({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{department.name} 팀을 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogTitle>{division.name} 부서를 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              이 작업은 되돌릴 수 없습니다. 팀원과 업무일지가 없는 경우에만 삭제할 수
-              있습니다.
+              이 작업은 되돌릴 수 없습니다. 소속된 팀이 없는 경우에만 삭제할 수 있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
