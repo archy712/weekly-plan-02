@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { updateUserRoleAction } from "@/lib/actions/user-admin";
 import type { UserRole } from "@/lib/types";
 
-const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS: Record<UserRole, string> = {
   user: "일반 사용자",
   admin: "관리자",
   superadmin: "슈퍼관리자",

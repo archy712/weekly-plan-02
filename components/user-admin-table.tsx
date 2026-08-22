@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -30,6 +31,7 @@ import { LoadingBar } from "@/components/loading-bar";
 import { UserRoleSelect } from "@/components/user-role-select";
 import { UserAdminCardList } from "@/components/user-admin-card";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
+import { ROLE_LABELS } from "@/components/user-role-select";
 import { loadMoreUsersAction } from "@/lib/actions/user-admin-list";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
@@ -319,11 +321,44 @@ export function UserAdminTable({
                             href={`/protected/admin/users/${item.id}`}
                             className="flex items-center gap-2 hover:text-primary hover:underline"
                           >
-                            <Avatar size="sm" className={preset.bgClass}>
-                              <AvatarFallback className="bg-transparent text-xs">
-                                {preset.emoji}
-                              </AvatarFallback>
-                            </Avatar>
+                            {/* HoverCardTrigger는 asChild로 Avatar(span)에 포인터/포커스
+                                핸들러만 얹는다 — 클릭 이벤트는 가로채지 않으므로 이 Link의
+                                기존 이동 동작(아바타 클릭 포함)은 그대로 유지된다. 터치
+                                기기에서는 Radix가 pointerType === "touch"를 감지해 호버
+                                오픈 자체를 건너뛰므로(radix-ui/react-hover-card 내부
+                                구현 실측 확인) 별도 분기 없이 클릭 이동만 남는다. */}
+                            <HoverCard openDelay={150} closeDelay={100}>
+                              <HoverCardTrigger asChild>
+                                <Avatar size="sm" className={preset.bgClass}>
+                                  <AvatarFallback className="bg-transparent text-xs">
+                                    {preset.emoji}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </HoverCardTrigger>
+                              <HoverCardContent side="right" align="start" className="w-72">
+                                <div className="flex items-start gap-3">
+                                  <Avatar size="lg" className={preset.bgClass}>
+                                    <AvatarFallback className="bg-transparent text-lg">
+                                      {preset.emoji}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex min-w-0 flex-col gap-1.5">
+                                    <p className="truncate font-medium">
+                                      {item.name ?? item.email}
+                                    </p>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {item.email}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                      <Badge variant="outline">{ROLE_LABELS[item.role]}</Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {item.department_name ?? "미배정"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </HoverCardContent>
+                            </HoverCard>
                             {item.email}
                             {isSelf && (
                               <Badge variant="outline" className="font-normal">
