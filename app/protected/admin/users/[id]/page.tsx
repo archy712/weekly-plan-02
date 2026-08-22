@@ -34,7 +34,7 @@ async function UserDetailContent({
   const { data: target, error: targetError } = await supabase
     .from("profiles")
     .select(
-      "id, email, name, department_id, role, avatar_key, phone_number, bio, created_at, departments:departments(name)",
+      "id, email, name, department_id, role, avatar_key, phone_number, bio, created_at, departments:departments!profiles_department_id_fkey(name)",
     )
     .eq("id", id)
     .maybeSingle();

@@ -33,7 +33,7 @@ async function requireCallerAdmin(
   // 관리자 여부 판단에는 절대 쓰지 않는다(CLAUDE.md 관례).
   const { data: callerProfile } = await supabase
     .from("profiles")
-    .select("role, departments:departments(organization_id)")
+    .select("role, departments:departments!profiles_department_id_fkey(organization_id)")
     .eq("id", callerId)
     .maybeSingle();
 

@@ -12,7 +12,7 @@ export async function HeroCta() {
     // (components/site-header-title.tsx와 동일한 조인 구조).
     const { data: profile } = await supabase
       .from("profiles")
-      .select("departments:departments(organizations:organizations(name))")
+      .select("departments:departments!profiles_department_id_fkey(organizations:organizations(name))")
       .eq("id", data.claims.sub)
       .maybeSingle();
     const organizationName = profile?.departments?.organizations?.name;

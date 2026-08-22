@@ -12,7 +12,7 @@ import type {
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 const USERS_SELECT =
-  "id, email, name, department_id, role, avatar_key, created_at, departments:departments(name)";
+  "id, email, name, department_id, role, avatar_key, created_at, departments:departments!profiles_department_id_fkey(name)";
 
 const VALID_ROLES: UserRole[] = ["user", "admin", "superadmin"];
 

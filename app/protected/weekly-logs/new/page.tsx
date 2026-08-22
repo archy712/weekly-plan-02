@@ -15,7 +15,7 @@ async function NewWeeklyLogContent() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("department_id, departments:departments(organization_id)")
+    .select("department_id, departments:departments!profiles_department_id_fkey(organization_id)")
     .eq("id", data.claims.sub)
     .maybeSingle();
 

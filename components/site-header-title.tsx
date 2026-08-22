@@ -16,7 +16,7 @@ async function getCurrentUserOrganizationName(): Promise<string | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("departments:departments(organizations:organizations(name))")
+    .select("departments:departments!profiles_department_id_fkey(organizations:organizations(name))")
     .eq("id", claims.sub)
     .maybeSingle();
 
