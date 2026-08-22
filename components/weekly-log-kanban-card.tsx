@@ -78,7 +78,7 @@ export function WeeklyLogKanbanCardContent({
           {item.author_name ?? item.author_email ?? "알 수 없는 사용자"}
         </span>
         <span className="text-muted-foreground/60">·</span>
-        <span className="truncate">{item.department_name || "부서 없음"}</span>
+        <span className="truncate">{item.department_name || "팀 없음"}</span>
       </div>
 
       <div
@@ -148,10 +148,10 @@ export function WeeklyLogKanbanCard({
         ) : (
           <span
             className="mt-0.5 shrink-0 p-0.5 text-muted-foreground/30"
-            title="다른 부서 업무는 진행상태를 옮길 수 없습니다"
+            title="다른 팀 업무는 진행상태를 옮길 수 없습니다"
           >
             <Lock className="size-4" aria-hidden />
-            <span className="sr-only">다른 부서 업무는 진행상태를 옮길 수 없습니다</span>
+            <span className="sr-only">다른 팀 업무는 진행상태를 옮길 수 없습니다</span>
           </span>
         )}
         <div className="min-w-0 flex-1">

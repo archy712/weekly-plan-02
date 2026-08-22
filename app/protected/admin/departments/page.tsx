@@ -98,13 +98,13 @@ async function DepartmentsContent() {
         <DepartmentFormDialog
           mode="create"
           organizations={organizations}
-          trigger={<Button>부서 추가</Button>}
+          trigger={<Button>팀 추가</Button>}
         />
       </div>
       {departments.length === 0 ? (
         <EmptyState
-          title="등록된 부서가 없습니다"
-          description="부서 추가 버튼을 눌러 첫 부서를 만들어보세요."
+          title="등록된 팀이 없습니다"
+          description="팀 추가 버튼을 눌러 첫 팀을 만들어보세요."
         />
       ) : (
         <>
@@ -120,7 +120,7 @@ async function DepartmentsContent() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
-                    부서명
+                    팀명
                   </TableHead>
                   <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
                     소속 조직

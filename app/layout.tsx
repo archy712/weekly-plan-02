@@ -10,8 +10,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "부서별 주간업무일지 관리",
-  description: "부서원의 주간 업무를 기록·추적하고, 관리자가 부서 현황을 한 곳에서 파악하는 서비스",
+  title: "팀별 주간업무일지 관리",
+  description: "팀원의 주간 업무를 기록·추적하고, 관리자가 팀 현황을 한 곳에서 파악하는 서비스",
 };
 
 const geistSans = Geist({

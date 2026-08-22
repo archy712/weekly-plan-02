@@ -281,7 +281,7 @@ export function WeeklyLogListView({
     return () => observer.disconnect();
   }, []);
 
-  const scopeLabel = currentDepartmentName ?? "전체 부서";
+  const scopeLabel = currentDepartmentName ?? "전체 팀";
 
   // 화면에 보이는 필터 결과와 PDF가 항상 일치해야 하므로(MVP Task 013 설계 원칙),
   // 현재 적용된 기간 필터를 그대로 PDF 헤더 문구로 전달한다.
@@ -364,7 +364,7 @@ export function WeeklyLogListView({
   if (currentDepartmentId !== ALL_DEPARTMENTS_FILTER) {
     activeFilters.push({
       key: "department",
-      label: `부서: ${scopeLabel}`,
+      label: `팀: ${scopeLabel}`,
       onRemove: () => navigate({ department: ALL_DEPARTMENTS_FILTER }),
     });
   }
@@ -439,11 +439,11 @@ export function WeeklyLogListView({
             </Button>
           </form>
           <Select value={currentDepartmentId} onValueChange={handleDepartmentChange}>
-            <SelectTrigger className="w-48" aria-label="부서 필터">
-              <SelectValue placeholder="부서 선택" />
+            <SelectTrigger className="w-48" aria-label="팀 필터">
+              <SelectValue placeholder="팀 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
+              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 팀</SelectItem>
               {departments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.archived_at ? `${dept.name} (비활성)` : dept.name}

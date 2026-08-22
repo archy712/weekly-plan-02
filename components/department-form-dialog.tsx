@@ -91,7 +91,7 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
       return;
     }
 
-    toast.success(mode === "create" ? "부서가 추가되었습니다." : "부서명이 수정되었습니다.");
+    toast.success(mode === "create" ? "팀이 추가되었습니다." : "팀명이 수정되었습니다.");
     setOpen(false);
     router.refresh();
   };
@@ -103,11 +103,11 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "부서 추가" : "부서명 수정"}</DialogTitle>
+          <DialogTitle>{mode === "create" ? "팀 추가" : "팀명 수정"}</DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "새 부서명과 소속 조직을 입력해주세요."
-              : "부서명·소속 조직을 수정합니다. 기존 업무일지와 부서원 화면에 즉시 반영됩니다."}
+              ? "새 팀명과 소속 조직을 입력해주세요."
+              : "팀명·소속 조직을 수정합니다. 기존 업무일지와 팀원 화면에 즉시 반영됩니다."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -117,7 +117,7 @@ export function DepartmentFormDialog(props: DepartmentFormDialogProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>부서명</FormLabel>
+                  <FormLabel>팀명</FormLabel>
                   <FormControl>
                     <Input placeholder="예: 개발팀" maxLength={50} {...field} />
                   </FormControl>

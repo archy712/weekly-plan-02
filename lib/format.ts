@@ -36,7 +36,7 @@ export function formatDepartmentDeleteBlockedMessage(
   memberCount: number,
   logCount: number,
 ): string {
-  return `${memberCount}명의 부서원과 ${logCount}건의 업무일지가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
+  return `${memberCount}명의 팀원과 ${logCount}건의 업무일지가 있어 삭제할 수 없습니다. 비활성화하면 신규 선택 목록에서만 숨겨집니다.`;
 }
 
 // 사용자의 소속 부서 변경 확인 다이얼로그에서 쓰는 경고 문구. weekly_logs RLS의 쓰기 조건이
@@ -44,7 +44,7 @@ export function formatDepartmentDeleteBlockedMessage(
 // 업무일지에 대한 쓰기 권한을 잃는다는 점을 명시한다.
 export function formatDepartmentChangeWarning(logCount: number): string {
   if (logCount === 0) {
-    return "부서를 변경하면 앞으로 이 사용자는 이전 부서의 업무일지를 수정할 수 없습니다.";
+    return "팀을 변경하면 앞으로 이 사용자는 이전 팀의 업무일지를 수정할 수 없습니다.";
   }
   return `이 사용자가 작성한 업무일지 ${logCount}건에 대한 쓰기 권한을 잃게 됩니다. 계속하시겠습니까?`;
 }

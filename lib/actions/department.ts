@@ -37,7 +37,7 @@ async function toActionError(
   fallback: string,
 ): Promise<string> {
   if (error.code === UNIQUE_VIOLATION) {
-    return "이미 존재하는 부서명입니다.";
+    return "이미 존재하는 팀명입니다.";
   }
   // organization_id FK 위반(선택한 조직이 그 사이 삭제된 경합)은 departmentId가 있어도
   // "부서원/업무일지가 있어 삭제 불가" 메시지와는 무관하므로 먼저 구분해서 처리한다.
@@ -86,7 +86,7 @@ export async function createDepartmentAction(
   if (error) {
     return {
       success: false,
-      error: await toActionError(supabase, error, null, "부서 추가 중 오류가 발생했습니다."),
+      error: await toActionError(supabase, error, null, "팀 추가 중 오류가 발생했습니다."),
     };
   }
 
@@ -120,13 +120,13 @@ export async function updateDepartmentAction(
   if (error) {
     return {
       success: false,
-      error: await toActionError(supabase, error, id, "부서 수정 중 오류가 발생했습니다."),
+      error: await toActionError(supabase, error, id, "팀 수정 중 오류가 발생했습니다."),
     };
   }
   // RLS(is_admin())가 관리자가 아닌 호출자의 행을 걸러내므로 존재하지 않거나 권한이
   // 없으면 0건이 반환된다(관리자 UI는 이미 레이아웃 가드로 막혀 있으므로 방어적 처리).
   if (!updated) {
-    return { success: false, error: "수정 권한이 없거나 존재하지 않는 부서입니다." };
+    return { success: false, error: "수정 권한이 없거나 존재하지 않는 팀입니다." };
   }
 
   revalidatePath(DEPARTMENTS_PATH);
@@ -146,10 +146,10 @@ export async function archiveDepartmentAction(id: string): Promise<DepartmentAct
     .maybeSingle();
 
   if (error) {
-    return { success: false, error: "부서 비활성화 중 오류가 발생했습니다." };
+    return { success: false, error: "팀 비활성화 중 오류가 발생했습니다." };
   }
   if (!updated) {
-    return { success: false, error: "권한이 없거나 존재하지 않는 부서입니다." };
+    return { success: false, error: "권한이 없거나 존재하지 않는 팀입니다." };
   }
 
   revalidatePath(DEPARTMENTS_PATH);
@@ -169,10 +169,10 @@ export async function restoreDepartmentAction(id: string): Promise<DepartmentAct
     .maybeSingle();
 
   if (error) {
-    return { success: false, error: "부서 활성화 중 오류가 발생했습니다." };
+    return { success: false, error: "팀 활성화 중 오류가 발생했습니다." };
   }
   if (!updated) {
-    return { success: false, error: "권한이 없거나 존재하지 않는 부서입니다." };
+    return { success: false, error: "권한이 없거나 존재하지 않는 팀입니다." };
   }
 
   revalidatePath(DEPARTMENTS_PATH);
@@ -198,11 +198,11 @@ export async function deleteDepartmentAction(id: string): Promise<DepartmentActi
   if (error) {
     return {
       success: false,
-      error: await toActionError(supabase, error, id, "부서 삭제 중 오류가 발생했습니다."),
+      error: await toActionError(supabase, error, id, "팀 삭제 중 오류가 발생했습니다."),
     };
   }
   if (!deleted) {
-    return { success: false, error: "권한이 없거나 존재하지 않는 부서입니다." };
+    return { success: false, error: "권한이 없거나 존재하지 않는 팀입니다." };
   }
 
   revalidatePath(DEPARTMENTS_PATH);

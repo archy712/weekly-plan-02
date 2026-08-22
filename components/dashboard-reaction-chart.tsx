@@ -50,14 +50,14 @@ export function DashboardReactionChart({ data }: { data: ReactionSummaryStats[] 
       <CardHeader>
         <CardTitle>추천/비추천</CardTitle>
         <CardDescription>
-          선택한 부서·기간 업무일지에 달린 추천/비추천 합계입니다.
+          선택한 팀·기간 업무일지에 달린 추천/비추천 합계입니다.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isEmpty ? (
           <EmptyState
             title="집계할 반응이 없습니다"
-            description="선택한 부서·기간에 등록된 추천/비추천이 없습니다."
+            description="선택한 팀·기간에 등록된 추천/비추천이 없습니다."
           />
         ) : (
           <>

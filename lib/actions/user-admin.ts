@@ -167,7 +167,7 @@ export async function updateUserDepartmentAction(
   departmentId: string,
 ): Promise<UserAdminActionResult> {
   if (!departmentId) {
-    return { success: false, error: "부서를 선택해주세요." };
+    return { success: false, error: "팀을 선택해주세요." };
   }
 
   const supabase = await createClient();
@@ -202,7 +202,7 @@ export async function updateUserDepartmentAction(
   if (error) {
     return {
       success: false,
-      error: toActionError(error, "소속 부서 변경 중 오류가 발생했습니다."),
+      error: toActionError(error, "소속 팀 변경 중 오류가 발생했습니다."),
     };
   }
   if (!updated) {

@@ -37,13 +37,13 @@ export function DashboardStatusChart({ data }: { data: StatusLogStats[] }) {
     <Card>
       <CardHeader>
         <CardTitle>진행상태 분포</CardTitle>
-        <CardDescription>선택한 부서·기간의 예정/진행중/완료 비율입니다.</CardDescription>
+        <CardDescription>선택한 팀·기간의 예정/진행중/완료 비율입니다.</CardDescription>
       </CardHeader>
       <CardContent>
         {isEmpty ? (
           <EmptyState
             title="집계할 업무일지가 없습니다"
-            description="선택한 부서·기간에 등록된 주간업무일지가 없습니다."
+            description="선택한 팀·기간에 등록된 주간업무일지가 없습니다."
           />
         ) : (
           <>

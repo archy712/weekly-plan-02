@@ -81,7 +81,7 @@ export function UserAdminDetail({
         toast.error(result.error);
         return;
       }
-      toast.success("소속 부서가 변경되었습니다.");
+      toast.success("소속 팀이 변경되었습니다.");
       setAppliedDepartmentId(pendingDepartmentId);
       router.refresh();
     } catch {
@@ -129,7 +129,7 @@ export function UserAdminDetail({
             <p className="font-medium">{user.name ?? "-"}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">소속 부서</p>
+            <p className="text-sm text-muted-foreground">소속 팀</p>
             <p className="font-medium">{user.department_name ?? "미배정"}</p>
           </div>
           <div>
@@ -149,7 +149,7 @@ export function UserAdminDetail({
         <CardHeader>
           <CardTitle className="text-lg">작성한 주간업무일지 요약</CardTitle>
           <CardDescription>
-            강등·부서 이전 여부를 판단할 근거로 총 건수와 최근 작성 이력을 보여줍니다.
+            강등·팀 이전 여부를 판단할 근거로 총 건수와 최근 작성 이력을 보여줍니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -192,7 +192,7 @@ export function UserAdminDetail({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">역할 및 소속 부서 변경</CardTitle>
+          <CardTitle className="text-lg">역할 및 소속 팀 변경</CardTitle>
           <CardDescription>
             변경 사항은 저장 즉시 반영되며, 대상 사용자가 재로그인할 필요는 없습니다.
           </CardDescription>
@@ -213,7 +213,7 @@ export function UserAdminDetail({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="department-select">소속 부서</Label>
+            <Label htmlFor="department-select">소속 팀</Label>
             <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={pendingDepartmentId}
@@ -221,7 +221,7 @@ export function UserAdminDetail({
                 disabled={isChangingDepartment}
               >
                 <SelectTrigger id="department-select" className="w-56">
-                  <SelectValue placeholder="부서를 선택하세요" />
+                  <SelectValue placeholder="팀을 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((department) => (
@@ -241,7 +241,7 @@ export function UserAdminDetail({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>소속 부서를 변경하시겠습니까?</AlertDialogTitle>
+                    <AlertDialogTitle>소속 팀을 변경하시겠습니까?</AlertDialogTitle>
                     <AlertDialogDescription>
                       {formatDepartmentChangeWarning(logSummary.totalCount)}
                     </AlertDialogDescription>
@@ -256,7 +256,7 @@ export function UserAdminDetail({
               </AlertDialog>
             </div>
             <p className="text-xs text-muted-foreground">
-              부서를 변경하면 이 사용자가 작성한 기존 업무일지의 쓰기 권한을 잃습니다
+              팀을 변경하면 이 사용자가 작성한 기존 업무일지의 쓰기 권한을 잃습니다
               (조회는 계속 가능합니다).
             </p>
           </div>

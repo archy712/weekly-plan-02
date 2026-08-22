@@ -72,9 +72,9 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>부서별 건수</CardTitle>
+        <CardTitle>팀별 건수</CardTitle>
         <CardDescription>
-          진행상태별로 쌓아 표시합니다. 부서 필터와 무관하게 전체 부서를 비교합니다.
+          진행상태별로 쌓아 표시합니다. 팀 필터와 무관하게 전체 팀을 비교합니다.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -90,7 +90,7 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
               className="aspect-auto w-full"
               style={{ height: chartHeight }}
               role="img"
-              aria-label="부서별 예정·진행중·완료 건수를 쌓아 올린 가로 막대 그래프"
+              aria-label="팀별 예정·진행중·완료 건수를 쌓아 올린 가로 막대 그래프"
             >
               <BarChart data={data} layout="vertical" margin={{ left: 8 }}>
                 <CartesianGrid horizontal={false} />
@@ -160,10 +160,10 @@ export function DashboardDepartmentChart({ data }: { data: DepartmentLogStats[] 
             </ChartContainer>
             {/* 스크린리더용 표 대체 콘텐츠(MVP Task 015의 aria-label 누락 전례 반영) */}
             <table className="sr-only">
-              <caption>부서별 진행상태별 업무일지 건수 및 부서 내 비율</caption>
+              <caption>팀별 진행상태별 업무일지 건수 및 팀 내 비율</caption>
               <thead>
                 <tr>
-                  <th scope="col">부서</th>
+                  <th scope="col">팀</th>
                   <th scope="col">예정</th>
                   <th scope="col">진행중</th>
                   <th scope="col">완료</th>

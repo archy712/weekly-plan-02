@@ -105,7 +105,7 @@ export function ProfileForm({
 
       const departmentName =
         departments.find((department) => department.id === values.department_id)
-          ?.name ?? "선택한 부서";
+          ?.name ?? "선택한 팀";
       toast.success(
         isFirstTimeSetup
           ? `${departmentName}으로 설정되었습니다.`
@@ -138,7 +138,7 @@ export function ProfileForm({
             >
               {!profile.department_id && (
                 <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  부서를 선택해야 서비스 이용이 가능합니다.
+                  팀을 선택해야 서비스 이용이 가능합니다.
                 </p>
               )}
               <div className="grid gap-2">
@@ -163,11 +163,11 @@ export function ProfileForm({
                 name="department_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>부서</FormLabel>
+                    <FormLabel>팀</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="부서를 선택하세요" />
+                          <SelectValue placeholder="팀을 선택하세요" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

@@ -265,14 +265,14 @@ export function WeeklyLogKanbanView({
     void moveItem(item, over.id as WeeklyLogStatus);
   };
 
-  const scopeLabel = currentDepartmentName ?? "전체 부서";
+  const scopeLabel = currentDepartmentName ?? "전체 팀";
 
   type ActiveFilterBadge = { key: string; label: string; onRemove: () => void };
   const activeFilters: ActiveFilterBadge[] = [];
   if (currentDepartmentId !== ALL_DEPARTMENTS_FILTER) {
     activeFilters.push({
       key: "department",
-      label: `부서: ${scopeLabel}`,
+      label: `팀: ${scopeLabel}`,
       onRemove: () => navigate({ department: ALL_DEPARTMENTS_FILTER }),
     });
   }
@@ -335,11 +335,11 @@ export function WeeklyLogKanbanView({
             value={currentDepartmentId}
             onValueChange={(value) => navigate({ department: value })}
           >
-            <SelectTrigger className="w-48" aria-label="부서 필터">
-              <SelectValue placeholder="부서 선택" />
+            <SelectTrigger className="w-48" aria-label="팀 필터">
+              <SelectValue placeholder="팀 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
+              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 팀</SelectItem>
               {departments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.archived_at ? `${dept.name} (비활성)` : dept.name}

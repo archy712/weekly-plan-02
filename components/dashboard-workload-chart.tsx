@@ -61,10 +61,10 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
-        <CardTitle>부서별 예상 M/M·금액</CardTitle>
+        <CardTitle>팀별 예상 M/M·금액</CardTitle>
         <CardDescription>
           예상 M/M·예상 금액이 입력된 업무일지만 집계한 값입니다(입력하지 않은 항목은
-          제외). 부서 필터와 무관하게 전체 부서를 비교합니다.
+          제외). 팀 필터와 무관하게 전체 팀을 비교합니다.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -83,7 +83,7 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                   className="aspect-auto w-full"
                   style={{ height: chartHeight }}
                   role="img"
-                  aria-label="부서별 예상 M/M 합계 가로 막대 그래프"
+                  aria-label="팀별 예상 M/M 합계 가로 막대 그래프"
                 >
                   <BarChart data={data} layout="vertical" margin={{ left: 8, right: 32 }}>
                     <CartesianGrid horizontal={false} />
@@ -133,7 +133,7 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
                   className="aspect-auto w-full"
                   style={{ height: chartHeight }}
                   role="img"
-                  aria-label="부서별 예상 금액 합계 가로 막대 그래프"
+                  aria-label="팀별 예상 금액 합계 가로 막대 그래프"
                 >
                   <BarChart data={data} layout="vertical" margin={{ left: 8, right: 56 }}>
                     <CartesianGrid horizontal={false} />
@@ -182,10 +182,10 @@ export function DashboardWorkloadChart({ data }: { data: DepartmentWorkload[] })
               </div>
             </div>
             <table className="sr-only">
-              <caption>부서별 예상 M/M·금액 합계 및 입력 건수</caption>
+              <caption>팀별 예상 M/M·금액 합계 및 입력 건수</caption>
               <thead>
                 <tr>
-                  <th scope="col">부서</th>
+                  <th scope="col">팀</th>
                   <th scope="col">예상 M/M 합계</th>
                   <th scope="col">M/M 입력 건수</th>
                   <th scope="col">예상 금액 합계</th>

@@ -7,7 +7,7 @@ const FIXED_ROW_HEIGHT = 25;
 
 const COLUMNS: { header: string; key: string; width: number }[] = [
   { header: "제목", key: "title", width: 32 },
-  { header: "부서", key: "department", width: 14 },
+  { header: "팀", key: "department", width: 14 },
   { header: "시작일", key: "start_date", width: 12 },
   { header: "목표종료일", key: "target_end_date", width: 14 },
   { header: "진행상태", key: "status", width: 10 },

@@ -56,9 +56,9 @@ const features = [
   },
   {
     icon: Building2,
-    title: "조직·부서 계층 관리",
+    title: "조직·팀 계층 관리",
     description:
-      "조직 아래 부서를 두는 계층 구조로, 소속 부서는 물론 관리자는 부서 필터로 전체 조직의 현황을 한눈에 파악합니다.",
+      "조직 아래 팀을 두는 계층 구조로, 소속 팀은 물론 관리자는 팀 필터로 전체 조직의 현황을 한눈에 파악합니다.",
   },
   {
     icon: ListChecks,
@@ -76,13 +76,13 @@ const features = [
     icon: LayoutDashboard,
     title: "통계 대시보드",
     description:
-      "부서별·기간별·상태별·업무타입별·중요도별 집계를 차트로 시각화해 팀 현황을 데이터로 파악합니다.",
+      "팀별·기간별·상태별·업무타입별·중요도별 집계를 차트로 시각화해 팀 현황을 데이터로 파악합니다.",
   },
   {
     icon: ShieldCheck,
     title: "관리자 콘솔",
     description:
-      "조직·부서·사용자·업무 타입을 한 콘솔에서 관리하고, 슈퍼관리자는 전체 조직을 아우르는 권한으로 운영합니다.",
+      "조직·팀·사용자·업무 타입을 한 콘솔에서 관리하고, 슈퍼관리자는 전체 조직을 아우르는 권한으로 운영합니다.",
   },
   {
     icon: Bell,
@@ -94,7 +94,7 @@ const features = [
     icon: MessagesSquare,
     title: "댓글·멘션 협업",
     description:
-      "타 부서 업무에도 댓글과 대댓글을 남기고 @멘션으로 담당자를 호출해 함께 논의하세요.",
+      "타 팀 업무에도 댓글과 대댓글을 남기고 @멘션으로 담당자를 호출해 함께 논의하세요.",
   },
   {
     icon: Paperclip,
@@ -159,12 +159,12 @@ export default function Home() {
           <section className="flex flex-col items-center gap-8 py-6 text-center">
             {/* 대표 헤드라인. <br/>로 두 줄 고정, 폰트 크기는 sm/md에서 단계적으로 확대. */}
             <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
-              부서별 주간업무일지를
+              팀별 주간업무일지를
               <br />
               한 곳에서 기록하고 추적하세요
             </h1>
             <p className="max-w-xl text-muted-foreground">
-              부서원은 주간 업무를 빠르게 기록하고, 관리자는 전체 부서의 업무
+              팀원은 주간 업무를 빠르게 기록하고, 관리자는 전체 팀의 업무
               현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
             </p>
             <div className="flex flex-wrap justify-center gap-4">

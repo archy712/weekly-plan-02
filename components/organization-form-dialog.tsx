@@ -79,8 +79,8 @@ export function OrganizationFormDialog({
           <DialogTitle>{isEditMode ? "조직명 수정" : "새 조직 생성"}</DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? "조직명을 수정합니다. 헤더 타이틀과 소속 부서 화면에 즉시 반영됩니다."
-              : "새 조직을 생성합니다. 부서 배정 등 후속 설정은 direct DB 접속으로 진행해주세요."}
+              ? "조직명을 수정합니다. 헤더 타이틀과 소속 팀 화면에 즉시 반영됩니다."
+              : "새 조직을 생성합니다. 팀 배정 등 후속 설정은 direct DB 접속으로 진행해주세요."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

@@ -56,7 +56,7 @@ export function DepartmentRowActions({
         toast.error(result.error);
         return;
       }
-      toast.success(isArchived ? "부서가 활성화되었습니다." : "부서가 비활성화되었습니다.");
+      toast.success(isArchived ? "팀이 활성화되었습니다." : "팀이 비활성화되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -73,7 +73,7 @@ export function DepartmentRowActions({
         toast.error(result.error);
         return;
       }
-      toast.success("부서가 삭제되었습니다.");
+      toast.success("팀이 삭제되었습니다.");
       router.refresh();
     } catch {
       toast.error("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
@@ -119,9 +119,9 @@ export function DepartmentRowActions({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{department.name} 부서를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogTitle>{department.name} 팀을 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              이 작업은 되돌릴 수 없습니다. 부서원과 업무일지가 없는 경우에만 삭제할 수
+              이 작업은 되돌릴 수 없습니다. 팀원과 업무일지가 없는 경우에만 삭제할 수
               있습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>

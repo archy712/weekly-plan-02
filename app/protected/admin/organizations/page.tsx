@@ -42,7 +42,7 @@ async function AdminOrganizationCard({ organizationId }: { organizationId: strin
         </Badge>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="text-sm text-muted-foreground">소속 부서 {departmentCount ?? 0}개</div>
+        <div className="text-sm text-muted-foreground">소속 팀 {departmentCount ?? 0}개</div>
         <OrganizationRowActions organization={organization} />
       </CardContent>
     </Card>
@@ -97,7 +97,7 @@ async function SuperAdminOrganizationList() {
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <div className="text-sm text-muted-foreground">
-                  소속 부서 {departmentCounts.get(organization.id) ?? 0}개
+                  소속 팀 {departmentCounts.get(organization.id) ?? 0}개
                 </div>
                 <OrganizationRowActions organization={organization} />
               </CardContent>

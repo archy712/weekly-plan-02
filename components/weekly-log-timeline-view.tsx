@@ -123,14 +123,14 @@ export function WeeklyLogTimelineView({
     author: currentAuthorId ?? null,
   };
 
-  const scopeLabel = currentDepartmentName ?? "전체 부서";
+  const scopeLabel = currentDepartmentName ?? "전체 팀";
 
   type ActiveFilterBadge = { key: string; label: string; onRemove: () => void };
   const activeFilters: ActiveFilterBadge[] = [];
   if (currentDepartmentId !== ALL_DEPARTMENTS_FILTER) {
     activeFilters.push({
       key: "department",
-      label: `부서: ${scopeLabel}`,
+      label: `팀: ${scopeLabel}`,
       onRemove: () => navigate({ department: ALL_DEPARTMENTS_FILTER }),
     });
   }
@@ -246,11 +246,11 @@ export function WeeklyLogTimelineView({
             value={currentDepartmentId}
             onValueChange={(value) => navigate({ department: value })}
           >
-            <SelectTrigger className="w-48" aria-label="부서 필터">
-              <SelectValue placeholder="부서 선택" />
+            <SelectTrigger className="w-48" aria-label="팀 필터">
+              <SelectValue placeholder="팀 선택" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
+              <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 팀</SelectItem>
               {departments.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.archived_at ? `${dept.name} (비활성)` : dept.name}
@@ -453,7 +453,7 @@ export function WeeklyLogTimelineView({
                         >
                           <div
                             role="img"
-                            aria-label={`${item.title}, 부서: ${item.department_name}, 작성자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
+                            aria-label={`${item.title}, 팀: ${item.department_name}, 작성자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
                             title={tooltip}
                             className={cn(
                               "absolute inset-y-2 flex items-center overflow-hidden rounded",
@@ -539,7 +539,7 @@ export function WeeklyLogTimelineView({
               <thead>
                 <tr>
                   <th scope="col">제목</th>
-                  <th scope="col">부서</th>
+                  <th scope="col">팀</th>
                   <th scope="col">작성자</th>
                   <th scope="col">시작일</th>
                   <th scope="col">목표종료일</th>

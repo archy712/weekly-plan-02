@@ -65,7 +65,7 @@ export async function requireAuthorProfile(
     .maybeSingle();
 
   if (!profile?.department_id) {
-    return { error: "부서를 먼저 설정해주세요." };
+    return { error: "팀을 먼저 설정해주세요." };
   }
 
   return { userId: data.claims.sub, departmentId: profile.department_id };

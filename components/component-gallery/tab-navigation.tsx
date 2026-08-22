@@ -95,7 +95,7 @@ export function NavigationTab() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem>대시보드</DropdownMenuItem>
-                  <DropdownMenuItem>부서 관리</DropdownMenuItem>
+                  <DropdownMenuItem>팀 관리</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </BreadcrumbItem>

@@ -55,7 +55,7 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
         {isEmpty ? (
           <EmptyState
             title="집계할 업무일지가 없습니다"
-            description="선택한 부서·기간에 등록된 주간업무일지가 없습니다."
+            description="선택한 팀·기간에 등록된 주간업무일지가 없습니다."
           />
         ) : (
           <>

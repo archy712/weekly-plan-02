@@ -218,11 +218,11 @@ export function UserAdminTable({
           </Button>
         </form>
         <Select value={currentDepartmentId} onValueChange={handleDepartmentChange}>
-          <SelectTrigger className="w-48" aria-label="부서 필터">
-            <SelectValue placeholder="부서 선택" />
+          <SelectTrigger className="w-48" aria-label="팀 필터">
+            <SelectValue placeholder="팀 선택" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 부서</SelectItem>
+            <SelectItem value={ALL_DEPARTMENTS_FILTER}>전체 팀</SelectItem>
             {departments.map((dept) => (
               <SelectItem key={dept.id} value={dept.id}>
                 {dept.archived_at ? `${dept.name} (비활성)` : dept.name}
@@ -289,7 +289,7 @@ export function UserAdminTable({
                     {/* 소속 부서는 to-one 임베드라 부모를 안정적으로 정렬할 수 없어 정렬 불가
                         일반 헤더로 둔다(증분 로딩은 서버 정렬만 사용). */}
                     <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                      소속 부서
+                      소속 팀
                     </TableHead>
                     {/* 역할은 "슈퍼관리자→관리자→일반" 커스텀 순위라 DB ORDER BY로 표현할 수
                         없어 정렬 불가 일반 헤더로 둔다. */}
