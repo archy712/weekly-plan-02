@@ -1,9 +1,16 @@
 "use client";
 
 import Link, { useLinkStatus } from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -26,30 +33,50 @@ function TabPendingIndicator() {
 
 export function AdminTabNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const activeTab = TABS.find((tab) => pathname.startsWith(tab.href)) ?? TABS[0];
 
   return (
-    // 탭 6개가 좁은 화면에서 flex-wrap 없이 그대로 눌리면 각 탭 라벨이 줄바꿈되며 세로로
-    // 쌓인 것처럼 보인다 — overflow-x-auto + shrink-0 + whitespace-nowrap으로 줄바꿈 대신
-    // 가로 스크롤을 쓰도록 바꾼다(탭 UI의 표준 모바일 패턴).
-    <nav className="-mx-5 flex gap-1 overflow-x-auto border-b px-5 sm:mx-0 sm:px-0">
-      {TABS.map((tab) => {
-        const isActive = pathname.startsWith(tab.href);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={cn(
-              "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
-              isActive
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.label}
-            <TabPendingIndicator />
-          </Link>
-        );
-      })}
+    <nav>
+      {/* 모바일: 탭 6개를 가로로 눌러 넣으면(overflow-x-auto) 화면 밖 탭이 안 보여
+          "메뉴가 몇 개인지, 지금 몇 번째인지" 알기 어렵다는 피드백에 따라, 이 앱의 다른
+          필터들(dashboard-filters.tsx 등)과 동일한 Select 컴포넌트로 전환했다 — 현재 탭이
+          라벨로 항상 보이고, 나머지는 펼쳐서 한눈에 고를 수 있다. */}
+      <div className="border-b pb-3 sm:hidden">
+        <Select value={activeTab.href} onValueChange={(href) => router.push(href)}>
+          <SelectTrigger className="w-full" aria-label="관리자 콘솔 메뉴 선택">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TABS.map((tab) => (
+              <SelectItem key={tab.href} value={tab.href}>
+                {tab.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {/* 데스크탑: 기존 가로 탭 그대로 유지 */}
+      <div className="hidden gap-1 border-b sm:flex">
+        {TABS.map((tab) => {
+          const isActive = pathname.startsWith(tab.href);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                "-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.label}
+              <TabPendingIndicator />
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }
