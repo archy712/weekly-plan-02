@@ -45,10 +45,14 @@ export function WeeklyLogViewSwitcher({
   filters: FilterPresetFilters;
 }) {
   return (
+    // 모바일에서는 w-fit이라 탭 3개가 왼쪽에 작게 뭉쳐 있고 오른쪽이 비어 보인다는 피드백에
+    // 따라, 좁은 화면에서는 폭 전체를 3등분(flex-1)해 채우고 sm 이상에서만 기존처럼
+    // 내용 크기만큼만 차지하도록 되돌린다(다운로드·신규 작성 버튼과 한 줄에 나란히 둘 공간이
+    // 충분해지므로).
     <div
       role="tablist"
       aria-label="진행업무 보기 전환"
-      className="inline-flex w-fit items-center gap-1 rounded-md border bg-muted/30 p-1"
+      className="flex w-full items-center gap-1 rounded-md border bg-muted/30 p-1 sm:w-fit"
     >
       {VIEWS.map(({ key, href, label, Icon }) => (
         <Link
@@ -57,7 +61,7 @@ export function WeeklyLogViewSwitcher({
           role="tab"
           aria-selected={key === current}
           className={cn(
-            "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors",
+            "flex flex-1 items-center justify-center gap-1.5 rounded px-2.5 py-1.5 text-sm font-medium transition-colors sm:flex-none",
             key === current
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",

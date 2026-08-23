@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER } from "@/lib/types";
 import type { MyWorkSummary } from "@/lib/types/stats";
@@ -67,6 +67,14 @@ export function MyWorkSummaryWidget({
 
   return (
     <Card>
+      {/* 이 카드의 숫자(예: "진행중 2")가 바로 아래 필터 영역의 "총 N건"(전 사용자·현재
+          필터 기준 목록 건수)과 무관하다는 게 한눈에 안 들어온다는 피드백에 따라, "내 업무"
+          라벨을 카드 자체에 항상 노출해 두 숫자가 서로 다른 집계라는 걸 명시한다. */}
+      <CardHeader className="border-b p-3 pb-2 sm:p-4 sm:pb-3">
+        <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
+          내 업무
+        </CardTitle>
+      </CardHeader>
       <CardContent className="grid grid-cols-3 divide-x p-0">
         {items.map((item) => {
           const disabled = item.count === 0;
