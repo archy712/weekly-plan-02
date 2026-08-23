@@ -83,20 +83,25 @@ export function WeeklyLogKanbanCardContent({
 
       <div
         className={cn(
-          "flex items-center gap-1 text-xs tabular-nums",
+          "flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs tabular-nums",
           overdue ? "font-medium text-destructive" : "text-muted-foreground",
         )}
       >
-        {overdue && <AlertTriangle className="size-3" aria-hidden />}
-        <span>
+        {overdue && <AlertTriangle className="size-3 shrink-0" aria-hidden />}
+        {/* 좁은 카드 폭에서 이 줄이 한 줄에 다 안 들어가면, whitespace-nowrap 없이는
+            "지연" 같은 한글 두 글자도 글자 사이에서 줄바꿈된다(word-break 기본값이 CJK를
+            글자 단위로 쪼갬) — 각 조각을 통째로 다음 줄로 넘기도록 개별 nowrap을 건다. */}
+        <span className="whitespace-nowrap">
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
         </span>
-        {overdue && <span className="font-medium">지연</span>}
+        {overdue && <span className="whitespace-nowrap font-medium">지연</span>}
         {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
             구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. 별도
             막대 블록 대신 날짜 줄에 인라인으로 붙여, 카드마다 진척률 유무로 높이가
             달라지지 않게 한다(목록 테이블과 동일한 원칙). */}
-        {displayProgress > 0 && <span>· {displayProgress}%</span>}
+        {displayProgress > 0 && (
+          <span className="whitespace-nowrap">· {displayProgress}%</span>
+        )}
       </div>
 
       <WeeklyLogReactionCounts up={item.reaction_up_count} down={item.reaction_down_count} />

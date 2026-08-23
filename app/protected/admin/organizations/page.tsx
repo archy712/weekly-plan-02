@@ -53,8 +53,8 @@ async function AdminOrganizationCard({ organizationId }: { organizationId: strin
   return (
     <Card className="max-w-md">
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-        <CardTitle className="text-base">{organization.name}</CardTitle>
-        <Badge variant={isArchived ? "secondary" : "success"}>
+        <CardTitle className="min-w-0 text-base">{organization.name}</CardTitle>
+        <Badge className="shrink-0 whitespace-nowrap" variant={isArchived ? "secondary" : "success"}>
           {isArchived ? "비활성" : "활성"}
         </Badge>
       </CardHeader>
@@ -151,8 +151,8 @@ async function SuperAdminOrganizationList() {
           return (
             <Card key={organization.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-                <CardTitle className="text-base">{organization.name}</CardTitle>
-                <Badge variant={isArchived ? "secondary" : "success"}>
+                <CardTitle className="min-w-0 text-base">{organization.name}</CardTitle>
+                <Badge className="shrink-0 whitespace-nowrap" variant={isArchived ? "secondary" : "success"}>
                   {isArchived ? "비활성" : "활성"}
                 </Badge>
               </CardHeader>

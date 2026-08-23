@@ -102,20 +102,27 @@ export function UserAdminDetail({
       </Link>
 
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
+        {/* 이메일이 길면(access1.dummy@example.com 등) 오른쪽 역할 배지와 한 줄에서
+            justify-between으로 경쟁하다가 배지 쪽 폭이 거의 0으로 눌려 "일반 사용자"가
+            글자 단위로 세로 줄바꿈되는 문제가 있었다(실측, 375px). 좁은 화면에서는 세로로
+            쌓고(배지를 아래로), sm 이상에서만 기존처럼 한 줄로 배치한다. */}
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             <Avatar size="lg" className={preset.bgClass}>
               <AvatarFallback className="bg-transparent text-lg">{preset.emoji}</AvatarFallback>
             </Avatar>
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
+            <div className="min-w-0">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-xl break-all">
                 {user.email}
                 {isSelf && <Badge variant="outline">나</Badge>}
               </CardTitle>
               <CardDescription>가입일 {formatDate(user.created_at)}</CardDescription>
             </div>
           </div>
-          <Badge variant={user.role === "user" ? "secondary" : "success"}>
+          <Badge
+            className="w-fit shrink-0 whitespace-nowrap"
+            variant={user.role === "user" ? "secondary" : "success"}
+          >
             {user.role === "superadmin"
               ? "슈퍼관리자"
               : user.role === "admin"
