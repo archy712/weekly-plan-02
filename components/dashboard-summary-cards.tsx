@@ -29,16 +29,18 @@ export function DashboardSummaryCards({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {cards.map((card) => (
         <Card key={card.label}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
               {card.label}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{card.value}</p>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+            <p className="text-xl font-semibold tabular-nums sm:text-2xl">
+              {card.value}
+            </p>
           </CardContent>
         </Card>
       ))}

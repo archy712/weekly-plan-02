@@ -67,13 +67,13 @@ export function MyWorkSummaryWidget({
 
   return (
     <Card>
-      <CardContent className="grid grid-cols-1 divide-y p-0 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <CardContent className="grid grid-cols-3 divide-x p-0">
         {items.map((item) => {
           const disabled = item.count === 0;
           const content = (
             <div
               className={cn(
-                "flex flex-col items-center gap-1 px-4 py-4 text-center transition-colors",
+                "flex flex-col items-center gap-0.5 px-2 py-3 text-center transition-colors sm:gap-1 sm:px-4 sm:py-4",
                 disabled
                   ? "text-muted-foreground"
                   : "hover:bg-muted/50 cursor-pointer",
@@ -81,13 +81,15 @@ export function MyWorkSummaryWidget({
             >
               <span
                 className={cn(
-                  "text-2xl font-semibold tabular-nums",
+                  "text-lg font-semibold tabular-nums sm:text-2xl",
                   disabled ? "text-muted-foreground" : "text-foreground",
                 )}
               >
                 {item.count.toLocaleString()}
               </span>
-              <span className="text-muted-foreground text-sm">{item.label}</span>
+              <span className="text-muted-foreground text-xs sm:text-sm">
+                {item.label}
+              </span>
             </div>
           );
 

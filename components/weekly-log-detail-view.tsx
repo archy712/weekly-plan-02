@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Coins, Pencil, Users } from "lucide-react";
+import { ArrowLeft, Building2, Coins, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -297,27 +297,37 @@ export function WeeklyLogDetailView({
   const progressNotEntered = !isCompleted && progress === 0;
 
   const breadcrumbNav = (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href="/protected/weekly-logs">진행업무</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href={`/protected/weekly-logs?department=${log.department_id}`}>
-              {log.department_name}
-            </Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="max-w-[240px] truncate">{log.title}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+    // 상세 페이지 진입 경로가 다양해(목록/칸반/타임라인/알림/댓글 알림 등) 브라우저 뒤로가기가
+    // 항상 목록으로 돌아간다는 보장이 없고, 브레드크럼만으로는 "뒤로가기"라는 장치가 눈에 띄지
+    // 않는다는 피드백에 따라 좌측에 명시적인 뒤로가기 아이콘 버튼을 추가한다.
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="icon" className="size-8 shrink-0" asChild>
+        <Link href="/protected/weekly-logs" aria-label="진행업무 목록으로 돌아가기">
+          <ArrowLeft className="size-4" aria-hidden />
+        </Link>
+      </Button>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/protected/weekly-logs">진행업무</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href={`/protected/weekly-logs?department=${log.department_id}`}>
+                {log.department_name}
+              </Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="max-w-[240px] truncate">{log.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    </div>
   );
 
   if (isEditing) {

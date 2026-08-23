@@ -1,7 +1,10 @@
 "use client";
 
+import { useId } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn, getRecentMonthsRange, getThisMonthRange, getThisWeekRange } from "@/lib/utils";
 
 // Task 029(`weekly-log-list-view.tsx`)에서 처음 만든 기간 입력 + 프리셋 버튼 UI를
@@ -34,25 +37,42 @@ export function DateRangeFilter({
     { label: "최근 3개월", range: getRecentMonthsRange(3) },
   ];
 
+  // 빈 date input 2개만 나란히 있으면 어느 쪽이 시작/종료인지 알아볼 수 없다는 피드백에 따라
+  // aria-label(스크린리더 전용)만이 아니라 화면에 보이는 라벨을 각 입력 위에 둔다. 컴포넌트가
+  // 한 페이지에 여러 번 렌더링될 일은 없지만(목록/칸반/타임라인/대시보드가 각자 자기 페이지에서
+  // 한 번씩만 사용) htmlFor 충돌을 피하기 위해 useId로 고유 id를 생성한다.
+  const fromId = useId();
+  const toId = useId();
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Input
-        type="date"
-        value={from ?? ""}
-        onChange={(e) => onFromChange(e.target.value)}
-        aria-label="시작일 이후"
-        max={to}
-        className="w-full sm:w-40"
-      />
-      <span className="text-muted-foreground text-sm">~</span>
-      <Input
-        type="date"
-        value={to ?? ""}
-        onChange={(e) => onToChange(e.target.value)}
-        aria-label="종료일 이전"
-        min={from}
-        className="w-full sm:w-40"
-      />
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={fromId} className="text-muted-foreground text-xs font-normal">
+          시작일
+        </Label>
+        <Input
+          id={fromId}
+          type="date"
+          value={from ?? ""}
+          onChange={(e) => onFromChange(e.target.value)}
+          max={to}
+          className="w-full sm:w-40"
+        />
+      </div>
+      <span className="text-muted-foreground pb-2 text-sm">~</span>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={toId} className="text-muted-foreground text-xs font-normal">
+          종료일
+        </Label>
+        <Input
+          id={toId}
+          type="date"
+          value={to ?? ""}
+          onChange={(e) => onToChange(e.target.value)}
+          min={from}
+          className="w-full sm:w-40"
+        />
+      </div>
       {(from || to) && (
         <Button type="button" variant="ghost" size="sm" onClick={onReset}>
           초기화

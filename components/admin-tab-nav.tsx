@@ -28,7 +28,10 @@ export function AdminTabNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 border-b">
+    // 탭 6개가 좁은 화면에서 flex-wrap 없이 그대로 눌리면 각 탭 라벨이 줄바꿈되며 세로로
+    // 쌓인 것처럼 보인다 — overflow-x-auto + shrink-0 + whitespace-nowrap으로 줄바꿈 대신
+    // 가로 스크롤을 쓰도록 바꾼다(탭 UI의 표준 모바일 패턴).
+    <nav className="-mx-5 flex gap-1 overflow-x-auto border-b px-5 sm:mx-0 sm:px-0">
       {TABS.map((tab) => {
         const isActive = pathname.startsWith(tab.href);
         return (
@@ -36,7 +39,7 @@ export function AdminTabNav() {
             key={tab.href}
             href={tab.href}
             className={cn(
-              "-mb-px flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+              "-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
               isActive
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
