@@ -164,7 +164,7 @@ export default function WeeklyLogDetailPage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <div className="flex-1 w-full max-w-2xl flex flex-col gap-6">
+    <div className="flex-1 w-full max-w-2xl mx-auto flex flex-col gap-6">
       <Suspense fallback={<WeeklyLogDetailSkeleton />}>
         <WeeklyLogDetailContent params={params} />
       </Suspense>
