@@ -128,9 +128,16 @@ export function WeeklyLogKanbanView({
 
   const filterKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}`;
   const [prevKey, setPrevKey] = useState(filterKey);
+  // 필터가 같아도 신규 작성·삭제 후 서버가 컬럼을 새로 내려주면(revalidatePath/router.refresh)
+  // 반영해야 하므로, 필터 키가 아니라 initialColumns 배열 참조 변경으로 컬럼 상태를 되돌린다
+  // (목록 페이지 weekly-log-list-view.tsx와 동일한 이유).
+  const [prevInitialColumns, setPrevInitialColumns] = useState(initialColumns);
+  if (initialColumns !== prevInitialColumns) {
+    setPrevInitialColumns(initialColumns);
+    setColumns(toColumnMap(initialColumns));
+  }
   if (filterKey !== prevKey) {
     setPrevKey(filterKey);
-    setColumns(toColumnMap(initialColumns));
     setSearchInput(currentSearchQuery ?? "");
     setActiveMobileStatus(
       STATUS_ORDER.includes(currentStatus as WeeklyLogStatus)

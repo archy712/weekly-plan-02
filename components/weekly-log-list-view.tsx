@@ -120,9 +120,19 @@ export function WeeklyLogListView({
   const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`;
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
+    setSearchInput(currentSearchQuery ?? "");
+  }
+
+  // 필터가 그대로여도 신규 작성·삭제 후 목록으로 돌아오면(revalidatePath/router.refresh)
+  // 서버가 첫 배치를 새로 내려준다. 필터 키만 비교하면 URL이 같아 이전 items가 그대로 남아
+  // "총 N건"만 바뀌고 목록은 갱신되지 않으므로, 서버 재렌더링마다 새로 생기는 initialItems
+  // 배열 참조가 바뀌면 목록 상태를 그 첫 배치로 되돌린다(클라이언트 상태 변경만으로는
+  // 참조가 바뀌지 않아 무한 스크롤로 이어 붙인 결과가 초기화되지 않는다).
+  const [prevInitialItems, setPrevInitialItems] = useState(initialItems);
+  if (initialItems !== prevInitialItems) {
+    setPrevInitialItems(initialItems);
     setItems(initialItems);
     setHasMore(initialHasMore);
-    setSearchInput(currentSearchQuery ?? "");
   }
 
   // 부서/상태/검색어/기간/작성자/정렬 필터는 클라이언트 상태가 아니라 URL로 관리한다 — 서버

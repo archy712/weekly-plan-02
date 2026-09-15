@@ -51,6 +51,17 @@ function toWeeklyLogPayload(data: WeeklyLogFormData) {
   };
 }
 
+// 목록·칸반·타임라인은 서로 다른 라우트(page.tsx)이고 revalidatePath는 지정한 경로 하나만
+// 무효화하므로, 목록 경로만 무효화하면 칸반·타임라인은 이전 결과를 계속 보여준다.
+// 항목이 새로 생기거나 사라지는 작성·수정·삭제에서만 호출할 것 — 칸반 드래그가 호출하는
+// 인라인 상태 변경(updateWeeklyLogStatusAction)에서 쓰면 드래그 직후 칸반이 서버 첫 배치로
+// 리셋돼 "더 보기"로 이어 붙인 카드가 사라진다(그 경로는 낙관적 업데이트로 이미 정확하다).
+function revalidateWeeklyLogViews() {
+  revalidatePath("/protected/weekly-logs");
+  revalidatePath("/protected/weekly-logs/kanban");
+  revalidatePath("/protected/weekly-logs/timeline");
+}
+
 export async function requireAuthorProfile(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<
@@ -107,7 +118,7 @@ export async function createWeeklyLogAction(
     return { success: false, error: "진행업무 저장 중 오류가 발생했습니다." };
   }
 
-  revalidatePath("/protected/weekly-logs");
+  revalidateWeeklyLogViews();
   // 첨부파일은 클라이언트가 이 id/department_id로 storage 업로드 경로를 구성해 저장 직후 업로드한다.
   return { success: true, id: inserted.id, departmentId: author.departmentId };
 }
@@ -148,7 +159,7 @@ export async function updateWeeklyLogAction(
     return { success: false, error: "수정 권한이 없거나 존재하지 않는 항목입니다." };
   }
 
-  revalidatePath("/protected/weekly-logs");
+  revalidateWeeklyLogViews();
   revalidatePath(`/protected/weekly-logs/${id}`);
   return { success: true };
 }
@@ -293,7 +304,7 @@ export async function deleteWeeklyLogAction(id: string): Promise<WeeklyLogAction
     return { success: false, error: "삭제 권한이 없거나 존재하지 않는 항목입니다." };
   }
 
-  revalidatePath("/protected/weekly-logs");
+  revalidateWeeklyLogViews();
   return { success: true };
 }
 
