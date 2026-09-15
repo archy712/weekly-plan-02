@@ -41,7 +41,13 @@ async function NewWeeklyLogContent() {
     archived: false,
   }));
 
-  return <WeeklyLogNewForm workTypeOptions={workTypeOptions} userId={data.claims.sub} />;
+  return (
+    <WeeklyLogNewForm
+      workTypeOptions={workTypeOptions}
+      userId={data.claims.sub}
+      nowIso={new Date().toISOString()}
+    />
+  );
 }
 
 export default function NewWeeklyLogPage() {

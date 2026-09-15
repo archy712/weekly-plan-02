@@ -16,9 +16,13 @@ import type { WorkTypeOption } from "@/lib/types";
 export function WeeklyLogNewForm({
   workTypeOptions,
   userId,
+  nowIso,
 }: {
   workTypeOptions: WorkTypeOption[];
   userId: string;
+  // 임시저장 만료(7일) 판정 기준 시각 — 클라이언트에서 Date.now()를 렌더 중에 읽지 않도록
+  // 서버 컴포넌트가 내려준다(hooks/use-weekly-log-draft.ts 주석 참고).
+  nowIso: string;
 }) {
   const router = useRouter();
   const attachmentsState = useWeeklyLogAttachments();
@@ -27,7 +31,7 @@ export function WeeklyLogNewForm({
   const createdRef = useRef<{ id: string; departmentId: string } | null>(null);
 
   // F042 임시저장(Task 041).
-  const draft = useWeeklyLogDraft(userId);
+  const draft = useWeeklyLogDraft(userId, nowIso);
   const formRef = useRef<UseFormReturn<WeeklyLogFormData> | null>(null);
   // [복원] 클릭 시 WeeklyLogForm을 새 defaultValues로 다시 마운트한다. Tiptap 에디터
   // (components/html-editor.tsx)는 생성 시점의 content만 초기값으로 쓰고 이후 value prop
@@ -81,8 +85,10 @@ export function WeeklyLogNewForm({
       createdRef.current = created;
       // 저장에 성공한 순간 draft는 더 이상 필요 없다 — 이후 첨부파일 업로드가 실패해
       // 재제출되더라도(createdRef 가드로 행은 재생성되지 않는다) 이미 저장된 행이 있으므로
-      // draft를 남겨두면 재진입 시 혼란만 준다.
-      draft.discard();
+      // draft를 남겨두면 재진입 시 혼란만 준다. 지우는 것만으로는 부족해서(watch 구독이 살아
+      // 있으면 submit 꼬리의 값 변경 알림이 디바운스를 다시 걸어 방금 지운 draft가 되살아난다)
+      // 자동 저장 자체를 멈추는 discardAndStop을 쓴다.
+      draft.discardAndStop();
     }
 
     if (attachmentsState.hasPendingUploads) {

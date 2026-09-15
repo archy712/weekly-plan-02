@@ -22,6 +22,9 @@ const DRAFT_SAVE_DEBOUNCE_MS = 1000;
 // content는 최대 5000자 제한이 있어 일반적으로 이 상한에 걸릴 일이 없지만, 직렬화 결과가
 // 비정상적으로 크면(예: 확장 프로그램 개입) 저장 자체를 건너뛴다.
 const DRAFT_MAX_SERIALIZED_LENGTH = 1_000_000;
+// 오래된 draft는 복원 제안 자체가 혼란스럽다 — 몇 주 전에 쓰다 만 내용을 "임시 저장된 내용이
+// 있습니다"로 들이밀면 사용자는 그게 무엇이었는지 기억하지 못한 채 배너만 계속 보게 된다.
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function buildDraftKey(userId: string): string {
   return `weekly-log-draft:new:${userId}`;
@@ -82,14 +85,27 @@ function getServerSnapshot(): string | null {
   return null;
 }
 
-export function useWeeklyLogDraft(userId: string) {
+// nowIso: 만료 판정 기준 시각. Date.now()를 렌더 중에 호출하면 react-hooks/purity 규칙에
+// 걸리므로(렌더는 순수해야 한다), 서버 컴포넌트가 확보한 시각을 prop으로 내려받아 쓴다 —
+// F040에서 칸반·"내 업무" 위젯이 todayIso를 서버에서 내려받는 것과 동일한 관례. 7일 TTL에
+// 서버 렌더 시각과 실제 조작 시각의 차이는 무시할 수 있는 수준이다.
+export function useWeeklyLogDraft(userId: string, nowIso: string) {
   const key = buildDraftKey(userId);
+  const nowMs = Date.parse(nowIso);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getSnapshot = useCallback(() => safeLocalStorageGet(key), [key]);
   const rawDraft = useSyncExternalStore(subscribeNever, getSnapshot, getServerSnapshot);
 
-  const initialDraft = useMemo(() => (rawDraft ? parseStoredDraft(rawDraft) : null), [rawDraft]);
+  // 만료분을 null로 취급하면 아래 정리 effect(손상된 draft 삭제 경로)가 저장소에서도 함께
+  // 지운다. Date.parse가 실패하면(NaN) 비교가 항상 false라 만료시키지 않는 쪽으로 안전하게
+  // 동작한다 — 잘못된 nowIso 때문에 멀쩡한 draft가 사라지면 안 되기 때문이다.
+  const initialDraft = useMemo(() => {
+    const parsed = rawDraft ? parseStoredDraft(rawDraft) : null;
+    if (!parsed) return null;
+    if (nowMs - parsed.savedAt.getTime() > DRAFT_MAX_AGE_MS) return null;
+    return parsed;
+  }, [rawDraft, nowMs]);
 
   // 파싱에 실패한(손상된 JSON·스키마 불일치) draft는 조용히 지운다 — setState를 호출하지
   // 않는 순수 정리 작업이라 이 useEffect는 캐스케이딩 렌더링을 유발하지 않는다. 화면에는
@@ -104,6 +120,10 @@ export function useWeeklyLogDraft(userId: string) {
   // (useEffect 안이 아님) setState를 직접 호출해도 안전하다.
   const [dismissed, setDismissed] = useState(false);
 
+  // 자동 저장 영구 중단 플래그(discardAndStop 전용). 저장 성공 이후의 모든 뒤늦은 쓰기를
+  // 막는 최종 방어선이라 state가 아니라 ref다 — 리렌더를 기다리지 않고 즉시 반영돼야 한다.
+  const stoppedRef = useRef(false);
+
   const hasDraft = initialDraft !== null && !dismissed;
   const savedAt = initialDraft?.savedAt ?? null;
 
@@ -116,6 +136,16 @@ export function useWeeklyLogDraft(userId: string) {
     safeLocalStorageRemove(key);
     setDismissed(true);
   }, [key]);
+
+  // 저장 성공 직후 전용 경로. discard()와 달리 이후의 자동 저장을 영구히 멈춘다 —
+  // react-hook-form은 submit 처리 꼬리에서 값 변경 알림을 한 번 더 흘릴 수 있어, watch 구독이
+  // 살아 있으면 방금 지운 draft가 디바운스 타이머를 타고 되살아난다(저장 완료 후 신규 작성에
+  // 다시 들어가면 이전 내용이 남아 있던 원인). 배너 [삭제]는 이 경로를 쓰면 안 된다 —
+  // 삭제 후 사용자가 빈 폼에 새로 입력한 내용은 계속 자동 저장돼야 하기 때문이다.
+  const discardAndStop = useCallback(() => {
+    stoppedRef.current = true;
+    discard();
+  }, [discard]);
 
   // [복원] 클릭 시 호출한다. localStorage는 사용자·확장프로그램이 임의로 쓸 수 있는
   // 저장소이므로, 폼(특히 Tiptap 에디터)에 주입하기 전 content를 다시 sanitize한다
@@ -144,8 +174,11 @@ export function useWeeklyLogDraft(userId: string) {
       // 스냅샷해 이후 값과 직렬화 비교한다 — RHF 내부 구현에 의존하지 않는 안전한 방식.
       const initialSerialized = JSON.stringify(form.getValues());
       const subscription = form.watch((value) => {
+        if (stoppedRef.current) return;
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
+          // 타이머가 걸린 뒤 저장이 성공했을 수도 있으므로 발화 시점에 한 번 더 확인한다.
+          if (stoppedRef.current) return;
           if (JSON.stringify(value) === initialSerialized) return;
           const payload: StoredDraft = {
             values: value as WeeklyLogFormData,
@@ -167,5 +200,5 @@ export function useWeeklyLogDraft(userId: string) {
     [key],
   );
 
-  return { hasDraft, savedAt, restore, discard, watchForm };
+  return { hasDraft, savedAt, restore, discard, discardAndStop, watchForm };
 }
