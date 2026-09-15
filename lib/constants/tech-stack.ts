@@ -85,20 +85,15 @@ export const TECH_STACK: TechCategory[] = [
       },
     ],
   },
+  {
+    id: "deploy",
+    title: "배포 & 운영",
+    items: [
+      {
+        name: "Vercel",
+        description:
+          "GitHub 저장소 연동 자동 배포로 프로덕션 운영 중 — weekly-plan-02.vercel.app",
+      },
+    ],
+  },
 ];
-
-export const PLANNED_TECH_STACK: TechCategory = {
-  id: "planned",
-  title: "배포 & CI/CD",
-  items: [
-    {
-      name: "Vercel",
-      description:
-        "Next.js 프로덕션 배포 대상으로 문서화되어 있으나(docs/guides/deployment-ops.md), 아직 실제 배포는 진행되지 않았습니다",
-    },
-    {
-      name: "GitHub Actions",
-      description: "PR 검증 · 테스트를 자동화하는 CI/CD, 아직 도입 전입니다",
-    },
-  ],
-};
