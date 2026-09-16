@@ -63,15 +63,17 @@ export const PROGRESS_CHART_COLORS: Record<WeeklyLogProgressBucket, string> = {
   unregistered: "hsl(var(--muted-foreground))",
 };
 
-// 업무 중요도 분포 차트 색상. 1~5가 순서가 있는 척도라는 점을 색으로도 드러내기 위해
-// 서로 다른 색을 나열하는 대신 --chart-4 하나의 명도(알파)만 낮음→높음 순으로 진하게
-// 단계적으로 올린다(부서별 M/M·금액 차트가 이미 --chart-1/--chart-2를, 업무 타입 차트가
-// --chart-1~5를 순환 사용 중이라 다른 색과 겹치지 않도록 --chart-4 유지). 라이트/다크
-// 테마 전환에도 --chart-4 자체가 테마별로 다른 값이라 별도 분기 없이 자동으로 맞는다.
+// 업무 중요도 분포 차트 색상. 1~5는 순서가 있는 척도(ordinal)라 서로 다른 색을 나열하는
+// categorical 팔레트가 아니라 **한 색상의 명도 단계**를 쓴다 — 색만 보고도 "낮음→높음"을
+// 읽을 수 있어야 하기 때문. 처음에는 --chart-4에 알파만 0.3→1로 올렸는데, 흰 카드 위에서
+// 단계 간 명도 차이가 거의 없고(가장 옅은 단계는 대비 1.13:1로 사실상 보이지 않음) 다섯
+// 막대가 모두 같은 색으로 보인다는 피드백이 있어, 단계마다 명도를 실제로 벌린 전용 램프
+// (--chart-importance-1~5, app/globals.css)로 교체했다. 라이트/다크 값은 각각 따로
+// 골랐으므로 한쪽만 고치지 말 것.
 export const IMPORTANCE_CHART_COLORS = [
-  "hsl(var(--chart-4) / 0.3)",
-  "hsl(var(--chart-4) / 0.48)",
-  "hsl(var(--chart-4) / 0.65)",
-  "hsl(var(--chart-4) / 0.83)",
-  "hsl(var(--chart-4) / 1)",
+  "hsl(var(--chart-importance-1))",
+  "hsl(var(--chart-importance-2))",
+  "hsl(var(--chart-importance-3))",
+  "hsl(var(--chart-importance-4))",
+  "hsl(var(--chart-importance-5))",
 ] as const;

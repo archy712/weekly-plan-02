@@ -34,6 +34,16 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    /* 업무 중요도(1~5) 분포 차트 전용 순서형(ordinal) 램프. 1~5는 순서가 있는 척도라
+       서로 다른 색을 나열하는 categorical 팔레트가 아니라 "한 색상의 명도 단계"를 쓴다.
+       라이트/다크는 자동 반전이 아니라 각각 따로 고른 값이며, (1) 단계마다 눈에 보이는
+       명도 간격, (2) 가장 옅은 단계도 카드 배경 대비 2:1 이상을 만족하도록 검증해 정했다.
+       lib/constants/chart-colors.ts가 hsl(var(...))로 참조한다. */
+    --chart-importance-1: 30 80% 65%;
+    --chart-importance-2: 30 78% 52%;
+    --chart-importance-3: 30 76% 42%;
+    --chart-importance-4: 30 76% 31%;
+    --chart-importance-5: 30 78% 20%;
     --radius: 0.5rem;
   }
   .dark {
@@ -65,6 +75,13 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    /* 다크 테마용 중요도 램프 — 어두운 카드 배경 위에서는 값이 커질수록 밝아지는
+       방향이 "진해진다"에 해당한다(라이트 값을 그대로 뒤집은 것이 아니라 별도 선정). */
+    --chart-importance-1: 30 55% 30%;
+    --chart-importance-2: 30 62% 41%;
+    --chart-importance-3: 30 70% 52%;
+    --chart-importance-4: 30 78% 64%;
+    --chart-importance-5: 30 88% 76%;
   }
 }
 

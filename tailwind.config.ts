@@ -58,6 +58,12 @@ export default {
           "3": "hsl(var(--chart-3))",
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
+          // 업무 중요도 분포 차트의 순서형 램프(globals.css와 함께 관리).
+          "importance-1": "hsl(var(--chart-importance-1))",
+          "importance-2": "hsl(var(--chart-importance-2))",
+          "importance-3": "hsl(var(--chart-importance-3))",
+          "importance-4": "hsl(var(--chart-importance-4))",
+          "importance-5": "hsl(var(--chart-importance-5))",
         },
       },
       borderRadius: {

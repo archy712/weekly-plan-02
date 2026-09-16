@@ -19,7 +19,6 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { IMPORTANCE_CHART_COLORS } from "@/lib/constants/chart-colors";
 import { formatImportanceLabel } from "@/lib/constants/importance";
-import { cn } from "@/lib/utils";
 import type { ImportanceLogStats } from "@/lib/types/stats";
 
 const chartConfig: ChartConfig = {
@@ -31,16 +30,16 @@ const chartConfig: ChartConfig = {
 // (dashboard-department-chart.tsx와 동일한 패턴).
 const BAR_THICKNESS = 28;
 
-// 옅은 배경(낮은 단계)에는 어두운 글자, 짙은 배경(높은 단계)에는 흰 글자를 써야 대비가
-// 유지된다 — IMPORTANCE_CHART_COLORS 인덱스가 이 임계값 미만이면 옅은 배경으로 취급.
-const DARK_TEXT_THRESHOLD_INDEX = 2;
-
-// 막대 안쪽에 "N건, NN%" 라벨을 그린다. 단계별로 배경 짙기가 달라 텍스트 색을 한
-// className으로 통일할 수 없어(업무 타입 차트와 차이점) LabelList content로 직접 그린다.
+// 막대 끝 **바깥쪽**에 "N건, NN%" 라벨을 그린다. 막대 안쪽에 넣던 이전 방식은 두 가지
+// 문제가 있었다: (1) 건수가 적은 단계는 막대가 라벨보다 짧아 글자가 막대 왼쪽으로 삐져나가
+// 축 라벨과 겹치거나 잘렸고(실측: "1건, 11%"가 "건, 11%"로 잘림), (2) 단계마다 배경 짙기가
+// 달라 글자색을 인덱스로 분기해야 했는데 그 기준이 라이트 테마에만 맞아, 다크 테마에서는
+// 램프 방향이 반대라(어두운 단계가 1번) 대비가 깨졌다. 바깥에 두면 배경이 항상 카드라
+// fill-foreground 하나로 두 테마 모두 안전하다.
 function renderImportanceLabel(total: number) {
   return function ImportanceLabel(props: LabelProps) {
-    const { x, y, width, height, value, index } = props;
-    if (typeof index !== "number" || typeof width !== "number" || typeof x !== "number") {
+    const { x, y, width, height, value } = props;
+    if (typeof width !== "number" || typeof x !== "number") {
       return null;
     }
     const numericValue = typeof value === "number" ? value : Number(value);
@@ -49,17 +48,13 @@ function renderImportanceLabel(total: number) {
     }
     const percent = total > 0 ? Math.round((numericValue / total) * 100) : 0;
     const cy = (typeof y === "number" ? y : 0) + (typeof height === "number" ? height : 0) / 2;
-    const isLight = index < DARK_TEXT_THRESHOLD_INDEX;
     return (
       <text
-        x={x + width - 10}
+        x={x + width + 8}
         y={cy}
-        textAnchor="end"
+        textAnchor="start"
         dominantBaseline="middle"
-        className={cn(
-          "text-xs font-medium",
-          isLight ? "fill-foreground" : "fill-white",
-        )}
+        className="fill-foreground text-xs font-medium"
       >
         {numericValue.toLocaleString()}건, {percent}%
       </text>
@@ -112,7 +107,7 @@ export function DashboardImportanceChart({ data }: { data: ImportanceLogStats[] 
               role="img"
               aria-label="업무 중요도별 진행업무 건수 가로 막대 그래프"
             >
-              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32 }}>
+              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 80 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis
