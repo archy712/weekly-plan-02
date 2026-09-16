@@ -31,6 +31,7 @@ import {
 import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
+import { WeeklyLogReactionHint } from "@/components/weekly-log-reaction-hint";
 import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
@@ -526,6 +527,9 @@ export function WeeklyLogListView({
           </div>
         )}
       </div>
+      {/* 추천/비추천 안내는 목록 바로 위에 한 줄 고정으로 둔다 — 행마다 반복되는 집계에
+          툴팁으로 붙이면 마우스 hover에서만 보여 모바일에서는 아예 읽을 수 없다. */}
+      <WeeklyLogReactionHint />
       {/* 재조회 중에는 이전 결과를 흐리게+비활성화해 "갱신 중"임을 알리되, 컨텍스트(무엇을
           보고 있었는지)는 유지한다. 필터 UI는 위에 있어 이 dim의 영향을 받지 않는다. */}
       <div

@@ -29,6 +29,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WeeklyLogKanbanColumn } from "@/components/weekly-log-kanban-column";
 import { WeeklyLogKanbanCardContent } from "@/components/weekly-log-kanban-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
+import { WeeklyLogReactionHint } from "@/components/weekly-log-reaction-hint";
 import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
@@ -425,6 +426,8 @@ export function WeeklyLogKanbanView({
           </div>
         )}
       </div>
+      {/* 칸반 카드도 같은 집계를 보여주므로 목록과 동일한 안내를 보드 위에 둔다. */}
+      <WeeklyLogReactionHint />
       <div
         className={cn("transition-opacity", isPending && "pointer-events-none opacity-60")}
         aria-busy={isPending}
