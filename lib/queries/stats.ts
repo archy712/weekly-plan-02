@@ -262,7 +262,7 @@ export async function getProgressByDepartment(
   return data ?? [];
 }
 
-// "내 업무" 개인 요약(Task 040/F040) — 지연/이번 주 마감/진행중 3개 지표를 왕복 1회로 조회.
+// "내 업무" 개인 요약(Task 040/F040) — 예정/진행중/완료/지연 4개 지표를 왕복 1회로 조회.
 // today_param은 칸반보드(app/protected/weekly-logs/kanban/page.tsx)와 동일하게 호출부가
 // 서버 렌더링 시점의 Node 날짜(formatDate(new Date()))를 넘겨야 한다 — RPC 내부는
 // current_date를 참조하지 않으므로 이 값이 두 화면의 "지연" 판정을 일치시키는 유일한 축이다.
@@ -273,9 +273,10 @@ export async function getMyWorkSummary(
   todayIso: string,
 ): Promise<MyWorkSummary> {
   const fallback: MyWorkSummary = {
-    overdue_count: 0,
-    due_this_week_count: 0,
+    planned_count: 0,
     in_progress_count: 0,
+    completed_count: 0,
+    overdue_count: 0,
   };
 
   const supabase = await createClient();

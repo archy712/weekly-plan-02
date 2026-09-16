@@ -1998,9 +1998,10 @@ export type Database = {
       stats_my_work_summary: {
         Args: { author_id_param: string; today_param: string }
         Returns: {
-          due_this_week_count: number
+          completed_count: number
           in_progress_count: number
           overdue_count: number
+          planned_count: number
         }[]
       }
       stats_progress_by_department: {

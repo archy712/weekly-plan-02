@@ -271,7 +271,7 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 
 ### "내 업무" 개인 요약 위젯과 "지연" 판정 규칙 3중 일치 (v2 ad hoc, F040)
 
-- 진행업무 목록 페이지 상단에 지연/이번 주 마감/진행중 3분할 카드(`components/my-work-summary-widget.tsx`)가 있고, 목록·칸반과 **별도의 `<Suspense>` 경계**로 감싸 위젯 집계 실패가 목록 스트리밍을 막지 않게 합니다. 집계는 `stats_my_work_summary(author_id_param, today_param)` RPC(기존 `stats_*` 7종과 동일한 `security invoker`/`anon` EXECUTE 회수 컨벤션) 1회 호출이며, `lib/queries/stats.ts`의 `getMyWorkSummary()`는 실패해도 예외를 던지지 않고 0 폴백 + 콘솔 로그만 남깁니다.
+- 진행업무 목록 페이지 상단에 예정/진행중/완료/지연 4분할 카드(`components/my-work-summary-widget.tsx`, 최초 3분할(지연/이번 주 마감/진행중)에서 ad hoc으로 교체 — 앞 세 칸은 진행상태 그대로라 서로 배타적이지만 "지연"만은 상태를 가로지르는 조건이라 예정·진행중과 겹칩니다)가 있고, 목록·칸반과 **별도의 `<Suspense>` 경계**로 감싸 위젯 집계 실패가 목록 스트리밍을 막지 않게 합니다. 집계는 `stats_my_work_summary(author_id_param, today_param)` RPC(기존 `stats_*` 7종과 동일한 `security invoker`/`anon` EXECUTE 회수 컨벤션) 1회 호출이며, `lib/queries/stats.ts`의 `getMyWorkSummary()`는 실패해도 예외를 던지지 않고 0 폴백 + 콘솔 로그만 남깁니다.
 - **"지연" 판정 규칙(`status <> 'completed' and target_end_date < today`)은 칸반보드(`components/weekly-log-kanban-column.tsx`) · 이 위젯 · F047 타임라인 뷰 3곳에서 문자 그대로 동일해야 합니다.** 한 곳만 바뀌면 사용자가 화면마다 다른 지연 건수를 보게 됩니다 — 이 판정 로직을 손볼 때는 반드시 3곳을 함께 확인하세요. RPC 내부에서 `current_date`를 직접 참조하지 않고 **`today_param`을 호출부(Node의 `new Date()` 기준)에서 파라미터로 받는 이유**도 동일합니다 — Postgres 세션 타임존(기본 UTC)과 서버 로컬 시각이 어긋나면 KST 사용자 기준으로 최대 하루 오차가 생기기 때문입니다.
 - **`author` 필터 축**이 `WeeklyLogsSearchParams`/`normalizeWeeklyLogFilters()`/`applyScalarFilters()`에 추가되어 있습니다. `applyScalarFilters()`는 목록 조회(`fetchWeeklyLogRows`)·총 건수(`countWeeklyLogs()`)·칸반(`fetchWeeklyLogsKanban`) **3곳이 공유**하므로, 이 필터 헬퍼에 새 축을 추가하거나 수정할 때 한 곳만 고치면 화면 목록과 "총 N건"이 어긋납니다(F039에서 이미 겪은 함정, F040에서 재확인).
 

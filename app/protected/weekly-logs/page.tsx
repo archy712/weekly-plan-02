@@ -50,7 +50,7 @@ async function MyWorkSummarySection() {
   const summary = await getMyWorkSummary(data.claims.sub, todayIso);
 
   return (
-    <MyWorkSummaryWidget summary={summary} authorId={data.claims.sub} todayIso={todayIso} />
+    <MyWorkSummaryWidget summary={summary} authorId={data.claims.sub} />
   );
 }
 

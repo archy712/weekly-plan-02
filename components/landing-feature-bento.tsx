@@ -105,7 +105,7 @@ const FEATURES: Feature[] = [
     icon: UserCheck,
     title: "내 업무 요약 위젯",
     description:
-      "지연·이번 주 마감·진행중 건수를 목록에 들어가는 즉시 확인합니다.",
+      "예정·진행중·완료·지연 건수를 목록에 들어가는 즉시 확인합니다.",
     span: 1,
   },
   {
