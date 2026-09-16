@@ -3,7 +3,17 @@
 import { useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type UseFormReturn } from "react-hook-form";
-import { CalendarDays, Gauge, Tag } from "lucide-react";
+import {
+  AlignLeft,
+  Coins,
+  Building2,
+  CalendarDays,
+  ClipboardList,
+  Clock,
+  Gauge,
+  Star,
+  Tag,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -126,14 +136,14 @@ export function WeeklyLogForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={handleFormSubmit} className="flex flex-col gap-6">
+      <form onSubmit={handleFormSubmit} className="flex flex-col gap-8">
         <FormSectionDivider label="기본 정보" />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="start_date"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="gap-3">
                 <FormLabel className="flex items-center gap-1.5">
                   <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
                   시작일
@@ -149,7 +159,7 @@ export function WeeklyLogForm({
             control={form.control}
             name="target_end_date"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="gap-3">
                 <FormLabel className="flex items-center gap-1.5">
                   <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
                   목표종료일
@@ -169,12 +179,12 @@ export function WeeklyLogForm({
           control={form.control}
           name="work_type"
           render={() => (
-            <FormItem>
+            <FormItem className="gap-3">
               <FormLabel className="flex items-center gap-1.5">
                 <Tag className="size-3.5 text-muted-foreground" aria-hidden />
                 업무 타입
               </FormLabel>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
                 {workTypeOptions.map(({ name: type, archived }) => (
                   <FormField
                     key={type}
@@ -214,16 +224,22 @@ export function WeeklyLogForm({
           control={form.control}
           name="importance"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>
+            <FormItem className="gap-3">
+              <FormLabel className="flex items-center gap-1.5">
+                <Star className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 업무 중요도{" "}
                 <span className="text-muted-foreground font-normal">
                   {formatImportanceLabel(field.value as (typeof IMPORTANCE_LEVELS)[number])}
                 </span>
               </FormLabel>
               <FormControl>
-                <div className="flex flex-col gap-2 pt-1">
+                <div className="flex flex-col gap-1 pt-2">
+                  {/* Slider 루트는 flex items-center라 기본 상태에서 thumb(size-4) 상단이
+                      컨트롤 박스 상단과 같은 선에 놓인다 — FormItem의 gap만 키워도 원형
+                      thumb(그리고 hover:ring-4 링)이 라벨에 붙어 보인다는 피드백이 반복돼,
+                      슬라이더 자체에 상하 여백(py-2)을 줘 라벨과 확실히 떼어 놓는다. */}
                   <Slider
+                    className="py-2"
                     min={IMPORTANCE_MIN}
                     max={IMPORTANCE_MAX}
                     step={1}
@@ -248,15 +264,20 @@ export function WeeklyLogForm({
           control={form.control}
           name="progress"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="gap-3">
               <FormLabel className="flex items-center gap-1.5">
                 <Gauge className="size-3.5 text-muted-foreground" aria-hidden />
                 진척률{" "}
                 <span className="text-muted-foreground font-normal">{field.value}%</span>
               </FormLabel>
               <FormControl>
-                <div className="flex flex-col gap-2 pt-1">
+                <div className="flex flex-col gap-1 pt-2">
+                  {/* Slider 루트는 flex items-center라 기본 상태에서 thumb(size-4) 상단이
+                      컨트롤 박스 상단과 같은 선에 놓인다 — FormItem의 gap만 키워도 원형
+                      thumb(그리고 hover:ring-4 링)이 라벨에 붙어 보인다는 피드백이 반복돼,
+                      슬라이더 자체에 상하 여백(py-2)을 줘 라벨과 확실히 떼어 놓는다. */}
                   <Slider
+                    className="py-2"
                     min={PROGRESS_MIN}
                     max={PROGRESS_MAX}
                     step={PROGRESS_STEP}
@@ -279,8 +300,11 @@ export function WeeklyLogForm({
           control={form.control}
           name="title"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>업무명</FormLabel>
+            <FormItem className="gap-3">
+              <FormLabel className="flex items-center gap-1.5">
+                <ClipboardList className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                업무명
+              </FormLabel>
               <FormControl>
                 <Input maxLength={100} {...field} />
               </FormControl>
@@ -292,8 +316,11 @@ export function WeeklyLogForm({
           control={form.control}
           name="content"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>업무 상세 내용 (주요 키워드 중심으로 작성해 주세요)</FormLabel>
+            <FormItem className="gap-3">
+              <FormLabel className="flex items-center gap-1.5">
+                <AlignLeft className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <span>업무 상세 내용 (주요 키워드 중심으로 작성해 주세요)</span>
+              </FormLabel>
               <FormControl>
                 <HtmlEditor {...field} />
               </FormControl>
@@ -302,13 +329,16 @@ export function WeeklyLogForm({
           )}
         />
         <FormSectionDivider label="추가 정보" />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-3">
           <FormField
             control={form.control}
             name="estimated_mm"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>예상 소요 M/M</FormLabel>
+              <FormItem className="gap-3">
+                <FormLabel className="flex items-center gap-1.5">
+                  <Clock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  예상 소요 M/M
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -326,8 +356,11 @@ export function WeeklyLogForm({
             control={form.control}
             name="estimated_cost"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>예상 소요 금액(단위:원)</FormLabel>
+              <FormItem className="gap-3">
+                <FormLabel className="flex items-center gap-1.5">
+                  <Coins className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span>예상 소요 금액(단위:원)</span>
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="text"
@@ -345,8 +378,11 @@ export function WeeklyLogForm({
             control={form.control}
             name="partner_company"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>관련 협력 회사</FormLabel>
+              <FormItem className="gap-3">
+                <FormLabel className="flex items-center gap-1.5">
+                  <Building2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  관련 협력 회사
+                </FormLabel>
                 <FormControl>
                   <Input maxLength={100} {...field} />
                 </FormControl>

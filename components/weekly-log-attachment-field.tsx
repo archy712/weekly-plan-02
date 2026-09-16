@@ -48,7 +48,10 @@ export function WeeklyLogAttachmentField({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">첨부파일</span>
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          <Paperclip className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          첨부파일
+        </span>
         {canAdd && (
           <span className="text-xs text-muted-foreground">
             파일당 최대 {formatFileSize(MAX_ATTACHMENT_SIZE_BYTES)}

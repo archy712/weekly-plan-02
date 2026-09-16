@@ -4,7 +4,20 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Coins, Pencil, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  CircleDot,
+  Clock,
+  Coins,
+  Gauge,
+  Pencil,
+  Star,
+  Tag,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -332,7 +345,7 @@ export function WeeklyLogDetailView({
 
   if (isEditing) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         {breadcrumbNav}
         <WeeklyLogForm
           workTypeOptions={workTypeOptions}
@@ -364,7 +377,7 @@ export function WeeklyLogDetailView({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {breadcrumbNav}
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold">{log.title}</h1>
@@ -407,9 +420,12 @@ export function WeeklyLogDetailView({
         </button>
       )}
       {canWrite && isQuickEditOpen ? (
-        <div className="flex flex-col gap-1.5">
-          <Label>업무 타입</Label>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+        <div className="flex flex-col gap-3">
+          <Label className="flex items-center gap-1.5">
+            <Tag className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            업무 타입
+          </Label>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
             {workTypeOptions.map(({ name: type, archived }) => {
               const checked = workType.includes(type);
               return (
@@ -441,10 +457,19 @@ export function WeeklyLogDetailView({
           </div>
         )
       )}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span>{log.department_name}</span>
-        {log.author_email && <span>{log.author_email}</span>}
-        <span>
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Users className="size-3.5 shrink-0" aria-hidden />
+          {log.department_name}
+        </span>
+        {log.author_email && (
+          <span className="flex items-center gap-1.5">
+            <UserRound className="size-3.5 shrink-0" aria-hidden />
+            {log.author_email}
+          </span>
+        )}
+        <span className="flex items-center gap-1.5">
+          <CalendarDays className="size-3.5 shrink-0" aria-hidden />
           {formatDate(log.start_date)} ~ {formatDate(log.target_end_date)}
         </span>
       </div>
@@ -457,9 +482,12 @@ export function WeeklyLogDetailView({
           편집용 슬라이더("진척률 입력")를 바로 아래 같은 블록에 둬 표시와 입력이 멀리
           떨어져 있던(둘 다 "진척률"이라는 같은 이름이라 헷갈리기까지 했던) 문제를
           해결한다 — 제목도 "진척률 현황"/"진척률 입력"으로 구분한다. */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">진척률 현황</span>
+          <span className="flex items-center gap-1.5 font-medium">
+            <Gauge className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            진척률 현황
+          </span>
           {/* progress가 기본값 0에서 한 번도 바뀌지 않은 업무는 값 자체보다 "아직
               입력되지 않았다"는 사실을 알리는 게 더 중요하므로, 평범한 요약 텍스트 대신
               빨간색 경고 문구로 대체한다(canWrite 여부와 무관하게 항상 노출). */}
@@ -510,30 +538,40 @@ export function WeeklyLogDetailView({
           // 완료로 간주하므로(위 displayProgress) 슬라이더를 감추고 안내만 남긴다 —
           // 진행중으로 되돌리면 마지막으로 저장했던 값 그대로 슬라이더가 다시 보인다.
           // "진척률 현황"과 너무 붙어 있어 구분이 안 된다는 피드백에 따라 위쪽 여백을 넉넉히 둔다.
-          <div className="mt-4">
+          <div className="mt-6">
             {isCompleted ? (
               <p className="text-sm text-muted-foreground">
                 완료 처리된 업무는 진척률을 100%로 간주합니다. 진척률을 다시 조정하려면
                 진행 상태를 먼저 되돌려주세요.
               </p>
             ) : (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="progress">진척률 입력 {progress}%</Label>
-                <Slider
-                  id="progress"
-                  min={PROGRESS_MIN}
-                  max={PROGRESS_MAX}
-                  step={PROGRESS_STEP}
-                  value={[progress]}
-                  disabled={isUpdatingProgress}
-                  onValueChange={([next]) => setProgress(next)}
-                  onValueCommit={([next]) => handleProgressCommit(next)}
-                  aria-label="진척률 입력"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="progress" className="flex items-center gap-1.5">
+                  <Gauge className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  진척률 입력 {progress}%
+                </Label>
+                {/* 슬라이더 자체의 상하 여백(py-2)은 weekly-log-form.tsx와 같은 이유다 —
+                    Slider 루트에 여백이 없으면 thumb(+hover ring) 상단이 컨트롤 박스
+                    상단과 같은 선이라 라벨에 붙어 보인다. 두 화면의 값이 어긋나지
+                    않도록 간격 구성(gap-3 + pt-2 + py-2)을 그대로 맞춘다. */}
+                <div className="flex flex-col gap-1 pt-2">
+                  <Slider
+                    className="py-2"
+                    id="progress"
+                    min={PROGRESS_MIN}
+                    max={PROGRESS_MAX}
+                    step={PROGRESS_STEP}
+                    value={[progress]}
+                    disabled={isUpdatingProgress}
+                    onValueChange={([next]) => setProgress(next)}
+                    onValueCommit={([next]) => handleProgressCommit(next)}
+                    aria-label="진척률 입력"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0%</span>
+                    <span>50%</span>
+                    <span>100%</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -541,10 +579,10 @@ export function WeeklyLogDetailView({
         )}
       </div>
       {(log.estimated_mm != null || log.estimated_cost != null || log.partner_company) && (
-        <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border bg-muted/30 px-4 py-3 text-sm">
+        <div className="flex flex-wrap gap-x-8 gap-y-3 rounded-md border bg-muted/30 px-4 py-3 text-sm">
           {log.estimated_mm != null && (
             <div className="flex items-center gap-1.5">
-              <Users className="size-3.5 text-muted-foreground" aria-hidden />
+              <Clock className="size-3.5 text-muted-foreground" aria-hidden />
               <span className="text-muted-foreground">예상 소요 M/M</span>{" "}
               <span className="font-medium">{log.estimated_mm} M/M</span>
             </div>
@@ -573,8 +611,11 @@ export function WeeklyLogDetailView({
       <WeeklyLogReactionButtons weeklyLogId={log.id} initialSummary={log.reactions} />
       {canWrite && isQuickEditOpen && (
         <>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="status">진행 상태</Label>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="status" className="flex items-center gap-1.5">
+              <CircleDot className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              진행 상태
+            </Label>
             <Select
               value={status}
               disabled={isUpdatingStatus}
@@ -592,23 +633,29 @@ export function WeeklyLogDetailView({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="importance">업무 중요도 {formatImportanceLabel(importance)}</Label>
-            <Slider
-              id="importance"
-              min={IMPORTANCE_MIN}
-              max={IMPORTANCE_MAX}
-              step={1}
-              value={[importance]}
-              disabled={isUpdatingImportance}
-              onValueChange={([next]) => setImportance(next as WeeklyLogImportance)}
-              onValueCommit={([next]) => handleImportanceCommit(next as WeeklyLogImportance)}
-              aria-label="업무 중요도"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              {IMPORTANCE_LEVELS.map((level) => (
-                <span key={level}>{formatImportanceLabel(level)}</span>
-              ))}
+          <div className="flex flex-col gap-3">
+            <Label htmlFor="importance" className="flex items-center gap-1.5">
+              <Star className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              업무 중요도 {formatImportanceLabel(importance)}
+            </Label>
+            <div className="flex flex-col gap-1 pt-2">
+              <Slider
+                className="py-2"
+                id="importance"
+                min={IMPORTANCE_MIN}
+                max={IMPORTANCE_MAX}
+                step={1}
+                value={[importance]}
+                disabled={isUpdatingImportance}
+                onValueChange={([next]) => setImportance(next as WeeklyLogImportance)}
+                onValueCommit={([next]) => handleImportanceCommit(next as WeeklyLogImportance)}
+                aria-label="업무 중요도"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                {IMPORTANCE_LEVELS.map((level) => (
+                  <span key={level}>{formatImportanceLabel(level)}</span>
+                ))}
+              </div>
             </div>
           </div>
         </>
