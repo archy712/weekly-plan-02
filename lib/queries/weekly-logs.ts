@@ -101,6 +101,7 @@ export function normalizeWeeklyLogSort(raw: {
 }): WeeklyLogListSort {
   const key =
     raw.key === "title" ||
+    raw.key === "author_name" ||
     raw.key === "start_date" ||
     raw.key === "target_end_date" ||
     raw.key === "status"
@@ -146,6 +147,10 @@ function applyScalarFilters<
   return query;
 }
 
+// 작성자 정렬에 쓰는 PostgREST 계산 필드 이름. 실제 컬럼이 아니라 테이블 복합 타입을 인자로
+// 받는 SECURITY DEFINER 함수이며, 값은 화면 표시 우선순위(이름 → 이메일)와 동일하다.
+const AUTHOR_SORT_COLUMN = "author_sort_name";
+
 function buildWeeklyLogsQuery(
   supabase: Client,
   filters: WeeklyLogListFilters,
@@ -166,6 +171,15 @@ function buildWeeklyLogsQuery(
   } else if (sort.key === "status") {
     // 워크플로 오름차순(예정→진행중→완료) = 텍스트 내림차순(planned>in_progress>completed).
     query = query.order("status", { ascending: sort.direction === "desc" });
+  } else if (sort.key === "author_name") {
+    // 작성자 이름은 weekly_logs 컬럼이 아니라 PostgREST 계산 필드다(SECURITY DEFINER
+    // 함수 public.author_sort_name(weekly_logs) = coalesce(name, email), 마이그레이션
+    // add_weekly_logs_author_sort_name_computed_field 참고). 생성된 DB 타입에는 컬럼으로
+    // 잡히지 않지만 order()가 컬럼명을 문자열로 받으므로 그대로 넘기면 된다 — 대신 오타가
+    // 나도 타입 검사에 걸리지 않으니 이름은 반드시 상수로 관리할 것.
+    query = query.order(AUTHOR_SORT_COLUMN, {
+      ascending: sort.direction === "asc",
+    });
   } else {
     query = query.order(sort.key, { ascending: sort.direction === "asc" });
   }
@@ -181,8 +195,14 @@ function compareText(a: string, b: string) {
 }
 
 // 검색 분기에서 두 쿼리(title/content) 결과를 병합한 뒤 서버 정렬과 동일한 순서를 JS로
-// 재현한다(buildWeeklyLogsQuery의 order와 반드시 일치해야 한다).
-function compareRows(a: LogRow, b: LogRow, sort: WeeklyLogListSort) {
+// 재현한다(buildWeeklyLogsQuery의 order와 반드시 일치해야 한다). authorNames는 작성자 정렬일
+// 때만 채워지는 author_id → 표시 이름 맵이다(아래 fetchWeeklyLogRows 주석 참고).
+function compareRows(
+  a: LogRow,
+  b: LogRow,
+  sort: WeeklyLogListSort,
+  authorNames?: Map<string, string>,
+) {
   let c = 0;
   if (!sort.key) {
     c = compareText(b.start_date, a.start_date); // 시작일 내림차순
@@ -190,6 +210,14 @@ function compareRows(a: LogRow, b: LogRow, sort: WeeklyLogListSort) {
     switch (sort.key) {
       case "title":
         c = a.title.localeCompare(b.title, "ko");
+        break;
+      case "author_name":
+        // 제목 정렬과 동일하게 한국어 로캘 비교를 쓴다(DB 콜레이션과 완전히 같지는 않지만,
+        // 검색 분기에서만 쓰이는 재현 정렬이라 기존 제목 정렬과 같은 수준으로 맞춘다).
+        c = (authorNames?.get(a.author_id) ?? "").localeCompare(
+          authorNames?.get(b.author_id) ?? "",
+          "ko",
+        );
         break;
       case "start_date":
         c = compareText(a.start_date, b.start_date);
@@ -210,6 +238,26 @@ function compareRows(a: LogRow, b: LogRow, sort: WeeklyLogListSort) {
   c = compareText(b.created_at, a.created_at);
   if (c !== 0) return c;
   return compareText(b.id, a.id);
+}
+
+// 작성자 정렬 + 검색어가 동시에 걸린 경우에만 쓰는 정렬용 이름 조회. 값 우선순위(이름 →
+// 이메일)는 DB 계산 필드 author_sort_name과 동일해야 서버 정렬과 결과가 어긋나지 않는다.
+async function fetchAuthorSortNames(
+  supabase: Client,
+  rows: LogRow[],
+): Promise<Map<string, string>> {
+  const authorIds = [...new Set(rows.map((row) => row.author_id))];
+  if (authorIds.length === 0) return new Map();
+
+  const { data } = await supabase.rpc("get_profile_identities", {
+    profile_ids: authorIds,
+  });
+
+  const names = new Map<string, string>();
+  for (const identity of data ?? []) {
+    names.set(identity.id, identity.name?.trim() || identity.email);
+  }
+  return names;
 }
 
 // range가 있으면 [offset, offset+limit) 윈도를 반환하고, 더 있는지(hasMore)는 limit보다
@@ -249,7 +297,16 @@ async function fetchWeeklyLogRows(
     ]) {
       merged.set(row.id, row);
     }
-    const sorted = [...merged.values()].sort((a, b) => compareRows(a, b, sort));
+    // 작성자 정렬만은 병합 결과를 JS로 재정렬할 때 비교할 값이 행에 없다(작성자 신원은
+    // 조회가 끝난 뒤 hydrateWeeklyLogRows에서 붙는다). 그래서 이 분기에서만 병합된 행들의
+    // author_id로 get_profile_identities를 한 번 더 호출해 정렬용 이름 맵을 만든다 —
+    // 표시용 조회와 중복되지만 "검색어 + 작성자 정렬"이 동시에 걸린 경우에만 발생한다.
+    const mergedRows = [...merged.values()];
+    const authorNames =
+      sort.key === "author_name"
+        ? await fetchAuthorSortNames(supabase, mergedRows)
+        : undefined;
+    const sorted = mergedRows.sort((a, b) => compareRows(a, b, sort, authorNames));
 
     if (!range) return { rows: sorted, hasMore: false };
     const hasMore = sorted.length > range.offset + range.limit;

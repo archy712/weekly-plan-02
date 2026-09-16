@@ -4,7 +4,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -50,13 +49,17 @@ export function WeeklyLogTable({
               onSort={onSort}
               className="pl-4"
             />
-            {/* 작성자 이름은 weekly_logs 컬럼이 아니라 get_profile_identities RPC로만 조회돼
-                DB ORDER BY로 정렬할 수 없으므로(증분 로딩은 서버 정렬만 사용) 정렬 불가
-                일반 헤더로 둔다. */}
+            {/* 작성자 이름은 weekly_logs 컬럼이 아니지만, PostgREST 계산 필드
+                author_sort_name(SECURITY DEFINER 함수)로 다른 컬럼과 똑같이 서버 ORDER BY에
+                태울 수 있다(lib/queries/weekly-logs.ts의 buildWeeklyLogsQuery 참고). */}
             {showAuthor && (
-              <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                작성자
-              </TableHead>
+              <SortableTableHead
+                label="작성자"
+                sortKey="author_name"
+                currentSortKey={sortKey}
+                currentDirection={sortDirection}
+                onSort={onSort}
+              />
             )}
             <SortableTableHead
               label="시작일"

@@ -176,10 +176,17 @@ export type WeeklyLogKanbanColumn = {
 };
 
 // 목록 정렬 키. 증분 로딩에서는 일부만 로드된 상태의 클라이언트 정렬이 어긋나므로 정렬을
-// 전부 서버 ORDER BY로 처리한다 — 그래서 작성자(author_name)는 정렬 대상에서 제외한다.
-// 작성자 이름은 weekly_logs 컬럼이 아니라 profiles_select_own_or_admin RLS 때문에
-// get_profile_identities RPC로만 조회돼 DB에서 ORDER BY로 정렬할 수 없기 때문이다.
-export type WeeklyLogSortKey = "title" | "start_date" | "target_end_date" | "status";
+// 전부 서버 ORDER BY로 처리한다. author_name은 weekly_logs의 실제 컬럼이 아니라 PostgREST
+// 계산 필드 author_sort_name(마이그레이션 add_weekly_logs_author_sort_name_computed_field)에
+// 매핑되는 키다 — 작성자 이름은 profiles_select_own_or_admin RLS 때문에 embed로 가져올 수
+// 없어 원래 정렬 대상에서 빠져 있었고, SECURITY DEFINER 계산 필드로 그 제약을 우회했다
+// (lib/queries/weekly-logs.ts의 buildWeeklyLogsQuery 참고).
+export type WeeklyLogSortKey =
+  | "title"
+  | "author_name"
+  | "start_date"
+  | "target_end_date"
+  | "status";
 export type WeeklyLogSortDirection = "asc" | "desc";
 
 // 서버 목록 조회에 필요한 확정된 필터값. page.tsx가 searchParams를 해석해 만들고,
