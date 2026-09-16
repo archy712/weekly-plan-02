@@ -33,16 +33,19 @@ function formatPercent(count: number, total: number) {
   })}%`;
 }
 
-// 업무 타입별 건수(가로 막대). stats_logs_by_work_type은 데이터가 0건인 타입도 항상 8개
-// 행으로 반환하도록 설계되어 있어(진행상태 분포 차트와 동일한 원칙), 필터 조건에 따라
-// 막대 개수가 흔들리지 않는다. 부서별 건수 차트와 달리 상태로 스택하지 않는 단일 계열이라
-// 값이 큰 순서로 정렬해야 한눈에 비교하기 쉽다(작성 폼의 선택지 순서는 가나다순을 쓰지만,
-// 이 차트는 "어떤 타입이 많은지" 비교가 목적이라 건수 내림차순을 그대로 유지).
+// 업무 타입별 건수(가로 막대). stats_logs_by_work_type은 데이터가 0건인 타입도 항상 모든
+// 활성 타입을 행으로 반환하도록 설계되어 있어(진행상태 분포 차트와 동일한 원칙), 필터
+// 조건에 따라 막대 개수가 흔들리지 않는다.
+// 막대 순서는 **관리자 콘솔에서 드래그로 정한 순서(work_types.sort_order)**를 그대로
+// 따른다 — RPC가 이미 그 순서로 정렬해 내려주므로 여기서 다시 정렬하지 않는다. 한때는
+// "어떤 타입이 많은지" 비교를 위해 건수 내림차순으로 다시 정렬했지만, 진행업무 등록·상세
+// 화면의 체크박스 순서와 대시보드 막대 순서가 서로 달라 같은 타입을 눈으로 따라가기
+// 어렵다는 판단에 따라 사용자 요청으로 정렬 기준을 통일했다(이 클라이언트 재정렬을
+// 되살리면 관리자가 정한 순서가 화면에 반영되지 않는다).
 export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
   const total = data.reduce((sum, row) => sum + row.log_count, 0);
   const isEmpty = total === 0;
-  const sorted = [...data].sort((a, b) => b.log_count - a.log_count);
-  const chartHeight = Math.max(200, sorted.length * 36);
+  const chartHeight = Math.max(200, data.length * 36);
 
   return (
     <Card>
@@ -68,7 +71,7 @@ export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
               role="img"
               aria-label="업무 타입별 진행업무 건수 가로 막대 그래프"
             >
-              <BarChart data={sorted} layout="vertical" margin={{ left: 8, right: 32 }}>
+              <BarChart data={data} layout="vertical" margin={{ left: 8, right: 32 }}>
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis
@@ -109,7 +112,7 @@ export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
                   }
                 />
                 <Bar dataKey="log_count" radius={[0, 4, 4, 0]}>
-                  {sorted.map((row, index) => (
+                  {data.map((row, index) => (
                     <Cell
                       key={row.work_type}
                       fill={WORK_TYPE_CHART_COLORS[index % WORK_TYPE_CHART_COLORS.length]}
@@ -138,7 +141,7 @@ export function DashboardWorkTypeChart({ data }: { data: WorkTypeLogStats[] }) {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((row) => (
+                {data.map((row) => (
                   <tr key={row.work_type}>
                     <th scope="row">{row.work_type}</th>
                     <td>{row.log_count}</td>
