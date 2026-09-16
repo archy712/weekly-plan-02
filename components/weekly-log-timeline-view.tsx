@@ -21,7 +21,7 @@ import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
 import { STATUS_CHART_COLORS } from "@/lib/constants/chart-colors";
 import { addDaysToDateString, cn, diffDays } from "@/lib/utils";
-import { formatDate, getStatusLabel } from "@/lib/format";
+import { formatDate, formatProgressLabel, getStatusLabel } from "@/lib/format";
 import {
   ALL_DEPARTMENTS_FILTER,
   ALL_STATUSES_FILTER,
@@ -419,11 +419,12 @@ export function WeeklyLogTimelineView({
                     displayProgress,
                     progressFillPercent,
                   }) => {
-                    // 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-                    // 구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
-                    // 완료 업무는 displayProgress가 항상 100이라 여기 걸린다.
-                    const progressText =
-                      displayProgress > 0 ? ` · 진척률 ${displayProgress}%` : "";
+                    // 툴팁·aria 라벨의 진척률 표기는 목록 테이블·카드·칸반과 동일한 규칙을
+                    // 공유한다(진행중은 0%도 표시, 예정 0%는 숨김, 완료는 항상 100%).
+                    // 막대 채움 너비(progressFillPercent)는 이 표기와 무관하게 항상
+                    // displayProgress로 그린다.
+                    const progressLabel = formatProgressLabel(item.status, item.progress);
+                    const progressText = progressLabel ? ` · 진척률 ${progressLabel}` : "";
                     // 마우스오버 시 상태·기간·지연 여부·부서·작성자·진척률을 한 번에 보여주는
                     // 네이티브 title 툴팁 — 이 페이지의 다른 요소(아래 Link의 title 등)와
                     // 동일하게 별도 Tooltip 라이브러리 없이 브라우저 기본 툴팁을 재사용한다.

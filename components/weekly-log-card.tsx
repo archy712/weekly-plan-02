@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { HighlightedText } from "@/components/highlighted-text";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatProgressLabel } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
 import type { WeeklyLogListItem } from "@/lib/types";
@@ -19,9 +19,9 @@ export function WeeklyLogCard({
   showAuthor?: boolean;
   query?: string;
 }) {
-  // 완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(상세 페이지의
-  // displayProgress와 동일한 규칙, weekly-log-detail-view.tsx 참고).
-  const displayProgress = item.status === "completed" ? 100 : item.progress;
+  // 표시 규칙(진행중은 0%도 표시, 예정 0%는 숨김, 완료는 항상 100%)은 목록 테이블·칸반
+  // 카드·타임라인과 공유한다(lib/format.ts의 formatProgressLabel).
+  const progressLabel = formatProgressLabel(item.status, item.progress);
 
   return (
     <Card>
@@ -44,14 +44,12 @@ export function WeeklyLogCard({
         </CardTitle>
         <div className="flex shrink-0 items-center gap-1.5">
           <StatusBadge status={item.status} />
-          {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-              구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. 배지와
-              같은 줄에 붙여, 카드마다 진척률 유무로 CardContent 줄 수가 달라지지 않게 한다
-              (목록 테이블과 동일한 원칙). span 자체는 항상 렌더링해 고정 폭을 예약함으로써,
-              헤더가 justify-between이라 이 그룹의 폭이 바뀌면 배지가 좌우로 밀리는 것을
-              막는다(테이블 진행상태 셀과 동일한 원칙). */}
+          {/* 배지와 같은 줄에 붙여, 카드마다 진척률 유무로 CardContent 줄 수가 달라지지
+              않게 한다(목록 테이블과 동일한 원칙). span 자체는 항상 렌더링해 고정 폭을
+              예약함으로써, 헤더가 justify-between이라 이 그룹의 폭이 바뀌면 배지가 좌우로
+              밀리는 것을 막는다(테이블 진행상태 셀과 동일한 원칙). */}
           <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-            {displayProgress > 0 ? `${displayProgress}%` : ""}
+            {progressLabel ?? ""}
           </span>
         </div>
       </CardHeader>

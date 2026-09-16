@@ -13,7 +13,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { HighlightedText } from "@/components/highlighted-text";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatProgressLabel } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
 import type { WeeklyLogListItem, WeeklyLogSortKey } from "@/lib/types";
@@ -129,16 +129,13 @@ export function WeeklyLogTable({
               <TableCell className="py-3 pr-4 text-right">
                 <div className="flex items-center justify-end gap-1.5">
                   <StatusBadge status={item.status} />
-                  {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-                      구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다.
-                      완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(displayProgress와
-                      동일한 규칙). span 자체는 항상 렌더링해 고정 폭을 예약함으로써, 값이
-                      있는 행과 없는 행 사이에서 배지 위치가 좌우로 엇갈리지 않게 한다
-                      (justify-end라 퍼센트 유무에 따라 그룹 전체 폭이 바뀌면 배지가 밀림). */}
+                  {/* 표시 규칙은 lib/format.ts의 formatProgressLabel()이 단독으로 정한다
+                      (진행중은 0%도 표시, 예정 0%는 숨김, 완료는 항상 100%). span 자체는
+                      항상 렌더링해 고정 폭을 예약함으로써, 값이 있는 행과 없는 행 사이에서
+                      배지 위치가 좌우로 엇갈리지 않게 한다(justify-end라 퍼센트 유무에 따라
+                      그룹 전체 폭이 바뀌면 배지가 밀림). */}
                   <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                    {(item.status === "completed" ? 100 : item.progress) > 0
-                      ? `${item.status === "completed" ? 100 : item.progress}%`
-                      : ""}
+                    {formatProgressLabel(item.status, item.progress) ?? ""}
                   </span>
                 </div>
               </TableCell>

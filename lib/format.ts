@@ -27,6 +27,26 @@ export function getStatusLabel(status: WeeklyLogStatus): string {
   return STATUS_LABELS[status];
 }
 
+// 목록 테이블·목록 카드·칸반 카드·타임라인 막대가 공유하는 진척률 표시 규칙. 한 곳만
+// 바꾸면 같은 업무의 진척률이 화면마다 다르게 보이므로(지연 판정 3중 일치와 동일한 함정)
+// 반드시 이 함수를 거칠 것. 규칙은 세 가지다:
+//   - 완료: 실제 저장값과 무관하게 100%(끝까지 갱신하지 않고 남겨둔 값을 무시 —
+//     상세 페이지 displayProgress와 동일, weekly-log-detail-view.tsx 참고)
+//   - 진행중: 0%도 그대로 표시한다. 진행중인데 진척률 칸만 비어 있으면 "0%"인지
+//     "표시가 누락된 것"인지 화면에서 구분할 수 없다는 피드백에 따른 규칙이며,
+//     "아직 입력하지 않았다"는 사실은 상세 페이지의 빨간 안내 문구가 계속 담당한다.
+//   - 예정: 0%면 숨긴다. 시작 전이라 0%인 것이 당연해 표시해도 정보가 없고, 목록 한
+//     화면에 "0%"만 잔뜩 깔려 실제로 의미 있는 진행중 업무의 수치가 묻히기 때문이다.
+// 숨길 때는 null을 반환하므로, 호출부는 폭이 고정된 자리(빈 span 등)를 그대로 유지할 것.
+export function formatProgressLabel(
+  status: WeeklyLogStatus,
+  progress: number,
+): string | null {
+  if (status === "completed") return "100%";
+  if (status === "planned" && progress === 0) return null;
+  return `${progress}%`;
+}
+
 const PROGRESS_BUCKET_LABELS: Record<WeeklyLogProgressBucket, string> = {
   good: "양호",
   delayed: "지연",

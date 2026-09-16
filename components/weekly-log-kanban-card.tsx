@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { HighlightedText } from "@/components/highlighted-text";
-import { formatDate, getStatusLabel } from "@/lib/format";
+import { formatDate, formatProgressLabel, getStatusLabel } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
 import type { WeeklyLogListItem, WeeklyLogStatus } from "@/lib/types";
@@ -42,9 +42,9 @@ export function WeeklyLogKanbanCardContent({
     "text-sm font-medium leading-snug",
     item.status === "completed" && "italic line-through text-muted-foreground",
   );
-  // 완료된 업무는 실제 저장값과 무관하게 100%로 간주한다(상세 페이지의
-  // displayProgress와 동일한 규칙, weekly-log-detail-view.tsx 참고).
-  const displayProgress = item.status === "completed" ? 100 : item.progress;
+  // 표시 규칙(진행중은 0%도 표시, 예정 0%는 숨김, 완료는 항상 100%)은 목록 테이블·목록
+  // 카드·타임라인과 공유한다(lib/format.ts의 formatProgressLabel).
+  const progressLabel = formatProgressLabel(item.status, item.progress);
 
   return (
     <div className="flex flex-col gap-2">
@@ -95,13 +95,9 @@ export function WeeklyLogKanbanCardContent({
           {formatDate(item.start_date)} ~ {formatDate(item.target_end_date)}
         </span>
         {overdue && <span className="whitespace-nowrap font-medium">지연</span>}
-        {/* 진척률이 입력된(0%에서 바뀐) 업무만 노출한다 — 0%는 "아직 입력 안 함"과
-            구분할 수 없어(weekly-log-detail-view.tsx와 동일한 관례) 그냥 숨긴다. 별도
-            막대 블록 대신 날짜 줄에 인라인으로 붙여, 카드마다 진척률 유무로 높이가
+        {/* 별도 막대 블록 대신 날짜 줄에 인라인으로 붙여, 카드마다 진척률 유무로 높이가
             달라지지 않게 한다(목록 테이블과 동일한 원칙). */}
-        {displayProgress > 0 && (
-          <span className="whitespace-nowrap">· {displayProgress}%</span>
-        )}
+        {progressLabel && <span className="whitespace-nowrap">· {progressLabel}</span>}
       </div>
 
       <WeeklyLogReactionCounts up={item.reaction_up_count} down={item.reaction_down_count} />
