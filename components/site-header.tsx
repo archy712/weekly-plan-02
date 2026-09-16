@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Home } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { HeaderNav } from "@/components/header-nav";
 import { SiteHeaderTitle } from "@/components/site-header-title";
@@ -21,7 +21,7 @@ const headerNavFallback = (
 const headerTitleFallback = (
   <div className="flex items-center gap-2">
     <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-      <Home className="size-5" />
+      <ClipboardList className="size-5" />
     </span>
     <Skeleton className="h-5 w-28" />
   </div>
@@ -38,7 +38,7 @@ export function SiteHeader() {
         ) : (
           <Link href="/" className="flex items-center gap-2 text-lg font-bold">
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Home className="size-5" />
+              <ClipboardList className="size-5" />
             </span>
             진행업무
           </Link>

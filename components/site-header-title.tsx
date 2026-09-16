@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,7 +30,7 @@ export async function SiteHeaderTitle() {
   return (
     <Link href="/" className="flex items-center gap-2 text-lg font-bold">
       <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-        <Home className="size-5" />
+        <ClipboardList className="size-5" />
       </span>
       {title}
     </Link>

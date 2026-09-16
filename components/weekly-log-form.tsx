@@ -8,11 +8,11 @@ import {
   Building2,
   CalendarDays,
   CirclePercent,
-  ClipboardList,
   Clock,
   Coins,
   Star,
   Tag,
+  Type,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -302,7 +302,7 @@ export function WeeklyLogForm({
           render={({ field }) => (
             <FormItem className="gap-3">
               <FormLabel className="flex items-center gap-1.5">
-                <ClipboardList className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <Type className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 업무명
               </FormLabel>
               <FormControl>
