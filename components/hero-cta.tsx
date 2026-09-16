@@ -17,12 +17,19 @@ export async function HeroCta() {
       .maybeSingle();
     const organizationName = profile?.departments?.organizations?.name;
 
+    // 로그인 상태에서도 보조 CTA로 "기능 둘러보기"(랜딩 기능 섹션 앵커)를 함께 둬
+    // 비로그인 분기(로그인/회원가입 2개 버튼)와 버튼 수·무게감을 맞춘다.
     return (
-      <Button asChild size="lg">
-        <Link href="/protected">
-          {organizationName ? `${organizationName} 진행업무 보러가기` : "진행업무 보러가기"}
-        </Link>
-      </Button>
+      <>
+        <Button asChild size="lg">
+          <Link href="/protected">
+            {organizationName ? `${organizationName} 진행업무 보러가기` : "진행업무 보러가기"}
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="outline">
+          <a href="#features">기능 둘러보기</a>
+        </Button>
+      </>
     );
   }
 
@@ -34,6 +41,9 @@ export async function HeroCta() {
         </Button>
         <Button asChild size="lg" variant="outline">
           <Link href="/auth/sign-up">회원가입</Link>
+        </Button>
+        <Button asChild size="lg" variant="ghost">
+          <a href="#features">기능 둘러보기</a>
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">

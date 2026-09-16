@@ -7,161 +7,33 @@
 // 쿠키(getClaims)에 의존하는 동적 부분(LandingHeader·HeroCta)만 각각 <Suspense>로 격리한다.
 // next.config.ts의 cacheComponents: true 하에서 Suspense 밖의 동적 데이터 접근은 프로덕션
 // 빌드를 실패시키므로(공개 정보 페이지 F036~F038과 동일 제약), 이 경계 설정은 필수다.
+//
+// 화면 구성은 히어로(장식 배경 + 헤드라인 + CTA + 제품 미리보기)와 주요 기능 벤토 그리드
+// 두 섹션이며, 각각의 마크업은 아래 3개 컴포넌트로 분리돼 있다.
 import { Suspense } from "react";
-// 주요 기능 카드에 쓰이는 lucide 아이콘들 — 아래 features 배열에서 각 항목의 icon으로 사용.
-import {
-  Bell,
-  BellRing,
-  Bookmark,
-  Building2,
-  CalendarRange,
-  FileDown,
-  FileText,
-  Gauge,
-  History,
-  LayoutDashboard,
-  ListChecks,
-  MessagesSquare,
-  Paperclip,
-  Save,
-  ShieldCheck,
-  ThumbsUp,
-  UserCheck,
-} from "lucide-react";
 
 // LandingHeader/HeroCta: 쿠키 기반 세션(getClaims)을 읽는 동적 Server Component (아래 Suspense로 감쌈).
+// LandingHeroBackdrop/LandingAppPreview/LandingFeatureBento: 정적 장식·목업·기능 그리드.
 // SiteFooter: 공개 정보 페이지(컴포넌트/아이콘/기술 스택 갤러리)로 진입하는 공통 푸터 (정적).
+import { LandingAppPreview } from "@/components/landing-app-preview";
+import { LandingFeatureBento } from "@/components/landing-feature-bento";
 import { LandingHeader } from "@/components/landing-header";
+import { LandingHeroBackdrop } from "@/components/landing-hero-backdrop";
 import { SiteFooter } from "@/components/site-footer";
 import { HeroCta } from "@/components/hero-cta";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 // Skeleton: HeroCta가 세션을 확인하는 동안(Suspense pending) 보여줄 버튼 자리표시자.
 import { Skeleton } from "@/components/ui/skeleton";
-
-// 히어로 아래 "주요 기능" 섹션에 3열 그리드로 렌더링되는 기능 소개 카드 데이터.
-// 모듈 최상단의 정적 상수라 렌더마다 재생성되지 않으며, 각 실제 기능의 위치는 CLAUDE.md의
-// 해당 절(리치 텍스트 에디터·조직 계층(부문/부서/팀)·장(長) 지정·업무 타입/중요도·진척률·
-// PDF/Excel·대시보드·관리자 콘솔·실시간 알림·댓글/멘션·추천/비추천(F031)·첨부파일,
-// v2: F040~F047 각 기능 절)을 참고.
-// 순서 = 화면 노출 순서, title은 카드 key로도 쓰인다.
-const features = [
-  {
-    icon: FileText,
-    title: "리치 텍스트 진행업무",
-    description:
-      "서식 편집기로 진행업무 내용을 작성하고, 시작일·목표종료일·진행 상태까지 한 화면에서 체계적으로 기록하세요.",
-  },
-  {
-    icon: Building2,
-    title: "부문·부서·팀 계층 관리",
-    description:
-      "부문 아래 선택적으로 부서를 두고 그 아래 팀을 두는 계층 구조로 조직을 관리하고, 부문장·부서장·팀장을 지정해 소속 필터로 전체 현황을 한눈에 파악합니다.",
-  },
-  {
-    icon: ListChecks,
-    title: "업무 타입·중요도 분류",
-    description:
-      "업무 타입(다중 선택)과 1~5단계 중요도로 업무를 분류해 우선순위와 성격을 명확하게 관리하세요.",
-  },
-  {
-    icon: Gauge,
-    title: "진척률 관리",
-    description:
-      "0~100% 진척률을 슬라이더로 기록하면 목표종료일 기준 목표진척률과 자동 비교되어, 지연 여부를 대시보드에서 바로 확인할 수 있습니다.",
-  },
-  {
-    icon: FileDown,
-    title: "PDF·Excel 다운로드",
-    description:
-      "조회 중인 업무 목록을 한글 서식이 유지되는 PDF나 Excel(.xlsx)로 내려받아 보고 자료로 바로 활용하세요.",
-  },
-  {
-    icon: LayoutDashboard,
-    title: "통계 대시보드",
-    description:
-      "팀별·기간별·상태별·업무타입별·중요도별 집계를 차트로 시각화해 팀 현황을 데이터로 파악합니다.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "관리자 콘솔",
-    description:
-      "부문·부서·팀·사용자·업무 타입을 한 콘솔에서 관리하고, 슈퍼관리자는 전체 부문을 아우르는 권한으로 운영합니다.",
-  },
-  {
-    icon: Bell,
-    title: "실시간 알림",
-    description:
-      "멘션·댓글·답글이 달리면 실시간으로 알림을 받아 중요한 소통과 요청을 놓치지 않습니다.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "댓글·멘션 협업",
-    description:
-      "타 팀 업무에도 댓글과 대댓글을 남기고 @멘션으로 담당자를 호출해 함께 논의하세요.",
-  },
-  {
-    icon: ThumbsUp,
-    title: "추천·비추천",
-    description:
-      "부서와 무관하게 어떤 진행업무에도 추천·비추천을 남기고, 대시보드에서 팀 전체의 반응 현황을 확인하세요.",
-  },
-  {
-    icon: Paperclip,
-    title: "첨부파일 & 빠른 검색",
-    description:
-      "진행업무에 파일을 첨부하고, 제목·내용·기간 검색과 컬럼 정렬로 원하는 기록을 빠르게 찾아내며 검색어는 하이라이트로 바로 확인할 수 있습니다.",
-  },
-  {
-    icon: UserCheck,
-    title: "내 업무 요약 위젯",
-    description:
-      "목록에 들어가는 즉시 본인 담당 업무의 지연·이번 주 마감·진행중 건수를 한눈에 확인하세요.",
-  },
-  {
-    icon: Save,
-    title: "작성 중 임시저장",
-    description:
-      "새로고침하거나 실수로 페이지를 벗어나도 작성 중이던 내용이 브라우저에 자동 저장되어 그대로 복원할 수 있습니다.",
-  },
-  {
-    icon: BellRing,
-    title: "정기 리마인더 & 알림 설정",
-    description:
-      "이번 주 진행업무를 아직 작성하지 않았다면 알림으로 알려드리고, 댓글·멘션·리마인더 알림은 원하는 대로 켜고 끌 수 있습니다.",
-  },
-  {
-    icon: History,
-    title: "변경 이력 추적",
-    description:
-      "진행 상태·업무 타입·중요도가 언제 누구에 의해 바뀌었는지 상세 페이지에서 이력으로 되짚어보세요.",
-  },
-  {
-    icon: Bookmark,
-    title: "필터 프리셋 저장",
-    description:
-      "자주 쓰는 필터 조합을 이름 붙여 저장해두고, 목록·칸반 어디서든 한 번의 선택으로 다시 적용하세요.",
-  },
-  {
-    icon: CalendarRange,
-    title: "타임라인 뷰",
-    description:
-      "시작일부터 목표종료일까지 업무 일정을 시간축 위에 나란히 배치해 전체 흐름을 한눈에 파악합니다.",
-  },
-];
 
 export default function Home() {
   return (
     // 전체 페이지 세로 플렉스 컨테이너: 최소 화면 높이를 채워 푸터가 항상 하단에 붙게 한다.
-    <main className="min-h-screen flex flex-col items-center">
+    // overflow-x-clip: 히어로 배경(LandingHeroBackdrop)이 w-screen으로 full-bleed 되므로
+    // 스크롤바 폭만큼의 가로 오버플로가 생기는 것을 막는다.
+    <main className="min-h-screen flex flex-col items-center overflow-x-clip">
       <div className="flex-1 w-full flex flex-col gap-5 items-center">
-        {/* 헤더 + 본문 콘텐츠 묶음(푸터 제외). gap-20으로 헤더와 히어로 사이 간격 확보. */}
-        <div className="flex-1 w-full flex flex-col gap-20 items-center">
+        {/* 헤더 + 본문 콘텐츠 묶음(푸터 제외). 비로그인 시 LandingHeader가 null이라
+            여기 간격을 크게 잡으면 화면 상단이 통째로 비어 보이므로 gap은 작게 유지한다. */}
+        <div className="flex-1 w-full flex flex-col gap-6 items-center">
           {/* 헤더: 쿠키(getClaims)를 읽는 동적 컴포넌트라 Suspense로 격리(cacheComponents 제약).
               비로그인 시에는 LandingHeader가 null을 반환하므로 fallback도 null(자리 차지 안 함). */}
           <Suspense fallback={null}>
@@ -169,61 +41,67 @@ export default function Home() {
           </Suspense>
           {/* 본문 폭 제한 컨테이너(max-w-6xl, SiteHeader·보호 페이지 레이아웃과 동일 폭 —
               헤더와 어긋나지 않도록 반드시 함께 맞출 것). 상하 패딩은 sm 이상에서 넓어지는 반응형. */}
-          <div className="w-full max-w-6xl flex flex-col gap-10 px-5 pb-16 pt-8 sm:pb-20 sm:pt-10">
-          {/* ── 히어로 섹션: 서비스 한 줄 소개 + CTA ── */}
-          <section className="flex flex-col items-center gap-8 py-6 text-center">
-            {/* 대표 헤드라인. <br/>로 두 줄 고정, 폰트 크기는 sm/md에서 단계적으로 확대. */}
-            <h1 className="text-3xl font-bold sm:text-4xl md:text-5xl">
-              팀별 진행업무를
-              <br />
-              한 곳에서 기록하고 추적하세요
-            </h1>
-            <p className="max-w-xl text-muted-foreground">
-              팀원은 진행업무를 빠르게 기록하고, 관리자는 전체 팀의 업무
-              현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              {/* CTA 버튼: HeroCta가 세션을 조회해 로그인 상태(→"진행업무 보러가기")와
-                  비로그인 상태(→로그인/회원가입 버튼)를 분기. 세션 조회 중에는 fallback으로
-                  버튼 크기의 Skeleton 2개를 보여줘 레이아웃 이동(CLS)을 방지한다. */}
-              <Suspense
-                fallback={
-                  <>
-                    <Skeleton className="h-10 w-24 rounded-md" />
-                    <Skeleton className="h-10 w-24 rounded-md" />
-                  </>
-                }
-              >
-                <HeroCta />
-              </Suspense>
-            </div>
-          </section>
+          <div className="w-full max-w-6xl flex flex-col gap-16 px-5 pb-16 pt-4 sm:gap-24 sm:pb-20 sm:pt-6">
+            {/* ── 히어로 섹션: 배지 + 헤드라인 + CTA + 제품 미리보기 ──
+                relative: 자식인 LandingHeroBackdrop이 absolute로 이 섹션 기준에 깔린다. */}
+            <section className="relative flex flex-col items-center gap-6 pt-4 text-center sm:pt-8">
+              <LandingHeroBackdrop />
 
-          {/* ── 주요 기능 섹션: features 배열을 카드 그리드로 렌더링 ── */}
-          <section className="flex flex-col gap-8">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <h2 className="text-2xl font-bold sm:text-3xl">주요 기능</h2>
-              <p className="max-w-xl text-muted-foreground">
-                기록부터 협업, 통계, 관리까지 — 진행업무 운영에 필요한 기능을 한
-                곳에 담았습니다.
+              {/* 최신 업데이트 배지 — 서비스가 계속 개선되고 있다는 신호를 주는 장치. */}
+              <span className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-3.5 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur">
+                <span className="size-1.5 rounded-full bg-success" aria-hidden="true" />
+                v2 업데이트 · 타임라인 뷰와 필터 프리셋이 추가되었습니다
+              </span>
+
+              {/* 대표 헤드라인. <br/>로 두 줄 고정, 폰트 크기는 sm/md에서 단계적으로 확대.
+                  아래에서 위로 옅어지는 그라데이션 텍스트(bg-clip-text)로 평면적인 인상을 줄인다. */}
+              <h1 className="max-w-3xl text-balance break-keep bg-gradient-to-br from-foreground via-foreground to-foreground/55 bg-clip-text text-4xl font-bold leading-[1.2] tracking-tight text-transparent sm:text-5xl md:text-6xl">
+                팀별 진행업무를
+                {/* 모바일에서는 강제 줄바꿈을 끄고 text-balance에 맡긴다
+                    (좁은 폭에서 br을 그대로 두면 "하세요"만 한 줄로 떨어진다). */}
+                <br className="hidden sm:inline" />{" "}
+                한 곳에서 기록하고 추적하세요
+              </h1>
+              <p className="max-w-2xl text-balance break-keep text-muted-foreground sm:text-lg">
+                팀원은 진행업무를 빠르게 기록하고, 관리자는 전체 팀의 업무
+                현황을 한 곳에서 파악할 수 있는 업무 관리 서비스입니다.
               </p>
-            </div>
-            {/* 반응형 그리드: 모바일 1열 → sm 2열 → lg 3열. */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {features.map((feature) => (
-                // title은 배열 내 고유하므로 key로 사용. feature.icon은 컴포넌트 참조라 JSX로 렌더.
-                <Card key={feature.title}>
-                  <CardHeader>
-                    <feature.icon className="mb-2 size-8 text-primary" />
-                    <CardTitle className="text-base">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription>{feature.description}</CardDescription>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
+              <div className="flex flex-wrap justify-center gap-4">
+                {/* CTA 버튼: HeroCta가 세션을 조회해 로그인 상태(→"진행업무 보러가기")와
+                    비로그인 상태(→로그인/회원가입 버튼)를 분기. 세션 조회 중에는 fallback으로
+                    버튼 크기의 Skeleton 2개를 보여줘 레이아웃 이동(CLS)을 방지한다. */}
+                <Suspense
+                  fallback={
+                    <>
+                      <Skeleton className="h-10 w-24 rounded-md" />
+                      <Skeleton className="h-10 w-24 rounded-md" />
+                    </>
+                  }
+                >
+                  <HeroCta />
+                </Suspense>
+              </div>
+
+              {/* 제품 미리보기(칸반 화면 목업). 히어로의 시각적 앵커 역할. */}
+              <div className="mt-6 w-full sm:mt-10">
+                <LandingAppPreview />
+              </div>
+            </section>
+
+            {/* ── 주요 기능 섹션: 벤토 그리드 ──
+                id/scroll-mt: 히어로의 "기능 둘러보기" 앵커 이동 시 제목이 잘리지 않도록 여백 확보. */}
+            <section id="features" className="flex scroll-mt-24 flex-col gap-8">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  주요 기능
+                </h2>
+                <p className="max-w-xl text-muted-foreground">
+                  기록부터 협업, 통계, 관리까지 — 진행업무 운영에 필요한 기능을
+                  한 곳에 담았습니다.
+                </p>
+              </div>
+              <LandingFeatureBento />
+            </section>
           </div>
         </div>
         {/* 공통 푸터: 정적이므로 Suspense 불필요. 공개 정보 페이지(F036~F038)로 진입. */}
