@@ -9,9 +9,9 @@ import {
   Building2,
   CalendarDays,
   CircleDot,
+  CirclePercent,
   Clock,
   Coins,
-  Gauge,
   Pencil,
   Star,
   Tag,
@@ -485,7 +485,7 @@ export function WeeklyLogDetailView({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-1.5 font-medium">
-            <Gauge className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <CirclePercent className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             진척률 현황
           </span>
           {/* progress가 기본값 0에서 한 번도 바뀌지 않은 업무는 값 자체보다 "아직
@@ -547,7 +547,7 @@ export function WeeklyLogDetailView({
             ) : (
               <div className="flex flex-col gap-3">
                 <Label htmlFor="progress" className="flex items-center gap-1.5">
-                  <Gauge className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <CirclePercent className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                   진척률 입력 {progress}%
                 </Label>
                 {/* 슬라이더 자체의 상하 여백(py-2)은 weekly-log-form.tsx와 같은 이유다 —

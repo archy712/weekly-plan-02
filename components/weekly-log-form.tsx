@@ -5,12 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import {
   AlignLeft,
-  Coins,
   Building2,
   CalendarDays,
+  CirclePercent,
   ClipboardList,
   Clock,
-  Gauge,
+  Coins,
   Star,
   Tag,
 } from "lucide-react";
@@ -266,7 +266,7 @@ export function WeeklyLogForm({
           render={({ field }) => (
             <FormItem className="gap-3">
               <FormLabel className="flex items-center gap-1.5">
-                <Gauge className="size-3.5 text-muted-foreground" aria-hidden />
+                <CirclePercent className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 진척률{" "}
                 <span className="text-muted-foreground font-normal">{field.value}%</span>
               </FormLabel>
