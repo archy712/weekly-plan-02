@@ -124,6 +124,20 @@ export function computeTargetProgress(
   return Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
 }
 
+// 신규 작성 시의 초기 진행상태. 작성 폼에는 진행상태 입력이 없고 DB 컬럼 기본값이
+// 'in_progress'라 아직 시작하지 않은 업무까지 "진행중"으로 저장되던 문제가 있어,
+// 시작일 기준으로 서버에서 계산해 명시적으로 넣는다(오늘이 시작일보다 이르면 "예정",
+// 시작일에 도달했으면 "진행중"). 저장 이후의 상태 전환은 상세 페이지의 인라인 편집이
+// 담당하므로 수정(update) 경로에서는 다시 계산하지 않는다 — 수동으로 바꿔둔 상태를
+// 덮어쓰지 않기 위함. todayIso를 호출부에서 넘겨받는 이유는 computeTargetProgress와
+// 동일하다(Postgres 세션 타임존이 아니라 Node의 new Date() 기준으로 통일).
+export function deriveInitialWeeklyLogStatus(
+  startDate: string,
+  todayIso: string,
+): "planned" | "in_progress" {
+  return todayIso < startDate ? "planned" : "in_progress";
+}
+
 // 리다이렉트 대상 경로를 신뢰하기 전에 오픈 리다이렉트를 막는다. "/"로 시작하지 않는
 // 값(절대 URL, `@evil.com` 같은 userinfo 트릭 포함)이나 "//", "/\"로 시작하는 값
 // (브라우저가 프로토콜 상대 URL로 해석해 외부 host로 이동시킬 수 있음)은 전부 거부하고

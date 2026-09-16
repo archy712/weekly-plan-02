@@ -216,13 +216,20 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 
 ### 정기 작성 리마인더 (pg_cron, v2 ad hoc, F041)
 
-- **이 프로젝트 최초의 `pg_cron` 도입**입니다(v1의 "Realtime 최초 도입"과 동일한 성격의 인프라 리스크로 취급해 착수). `cron.job`에 `weekly_log_reminder` 잡 1개만 등록되어 있고(`schedule: '0 6 * * 5'` = 매주 금요일 06:00 UTC = 15:00 KST), `select public.create_weekly_log_reminders()`를 호출합니다. **`cron.schedule()` 호출은 마이그레이션 파일에도 `mcp__supabase__list_migrations` 이력에도 남지 않으므로**, 잡 등록 여부·스케줄 확인은 반드시 `execute_sql`로 `cron.job`/`cron.job_run_details`를 직접 조회하세요(운영 절차는 `docs/guides/deployment-ops.md` 신규 절 참고).
+- **이 프로젝트 최초의 `pg_cron` 도입**입니다(v1의 "Realtime 최초 도입"과 동일한 성격의 인프라 리스크로 취급해 착수). 이 도메인이 소유한 잡은 `weekly_log_` 접두사를 쓰며 현재 3개입니다 — `weekly_log_reminder`(`'0 6 * * 5'` = 매주 금요일 06:00 UTC = 15:00 KST, `select public.create_weekly_log_reminders()`), `weekly_log_notification_cleanup`(읽은 알림 90일 경과분 삭제), `weekly_log_status_rollover`(아래 "진행상태 자동 전환" 절). 그 외에 다른 도메인 소유 잡(`woodong_*` 등)이 같은 `cron.job`에 함께 등록돼 있습니다. **`cron.schedule()` 호출은 마이그레이션 파일에도 `mcp__supabase__list_migrations` 이력에도 남지 않으므로**, 잡 등록 여부·스케줄 확인은 반드시 `execute_sql`로 `cron.job`/`cron.job_run_details`를 직접 조회하세요(운영 절차는 `docs/guides/deployment-ops.md` 신규 절 참고).
 - **이 Supabase 프로젝트는 진행업무 도메인 외에 별도 ERP 도메인과 DB를 공유**합니다(`departments`/`profiles`/`weekly_logs` 등 외에 `menus`/`companies`/`products`/`org_*` 등 19종 테이블이 함께 있음). `pg_cron`은 데이터베이스 전역 자원이라, 새 cron 잡을 추가하기 전에 항상 `select jobname from cron.job`으로 기존 잡과 이름이 충돌하지 않는지 먼저 확인하세요. 반대로 **기존에 등록된 `weekly_log_reminder` 잡을 삭제·재스케줄할 때도 이 잡이 유일하게 이 도메인 소유임을 확인하고, `cron.job`을 통째로 비우는 조작은 절대 하지 마세요**(다른 도메인이 이미 잡을 등록했을 수 있음).
 - `create_weekly_log_reminders(target_week_start date default null)`는 `SECURITY DEFINER`이며 `authenticated`/`anon` 모두 EXECUTE 권한이 없습니다(`postgres`/`service_role`만) — 클라이언트는 이 경로를 호출할 수 없고, "알림은 클라이언트가 INSERT할 수 없다"는 원칙은 스케줄 알림에도 그대로 적용됩니다.
 - **"이번 주" 기준은 `now() at time zone 'Asia/Seoul'`로 함수 내부에서 명시적으로 계산**합니다(Postgres 세션 타임존이 아니라 항상 KST 고정) — Node의 `new Date()`로 계산하는 칸반·F040 위젯과 어긋나지 않게 하려는 의도이며, 세션 타임존을 바꿔도 결과가 달라지지 않음이 실측 확인되어 있습니다.
 - **"미작성" 정의는 "기간이 겹치는 항목"**(v1 Task 029의 검색·필터 관례를 재사용)입니다. 수신자 필터는 `department_id is not null AND notify_on_reminder = true AND is_active = true`로 — **`profiles.is_active`는 이 앱 소스에서 유일하게 참조하는 지점**입니다(다른 곳에서는 사용처 0건, ERP 도메인이 추가한 "ERP 로그인 허용 여부" 플래그라 로그인 자체가 막힌 계정에 작성 독려 알림을 보내는 것이 무의미하다는 판단으로 리마인더에서만 존중).
 - **중복 방지는 `period_start`(이번 주 월요일) + `on conflict (recipient_id, period_start) where type='reminder' do nothing`**으로 처리합니다 — 같은 주에 여러 번 실행돼도 사용자당 알림이 1건을 넘지 않습니다.
 - 컬럼 보호 트리거(`notifications_protect_columns`)는 `BEFORE UPDATE`에만 걸려 있어 이 함수의 INSERT 경로에는 `set_config`로 우회할 필요가 없습니다(기존 댓글·멘션 notify 함수 2종과의 차이점).
+
+### 진행업무 진행상태 자동 판정·전환 (ad hoc)
+
+- **작성 시점**: 작성 폼에는 진행상태 입력 필드가 없고 `weekly_logs.status`의 컬럼 기본값이 `'in_progress'`라, 원래는 시작일이 미래인 업무까지 전부 "진행중"으로 저장되고 있었습니다. `createWeeklyLogAction`이 `lib/utils.ts`의 `deriveInitialWeeklyLogStatus(startDate, todayIso)`(오늘 < 시작일이면 `planned`, 아니면 `in_progress`)로 계산한 값을 insert에 명시적으로 넣어 해결합니다. **`updateWeeklyLogAction`에서는 재계산하지 않습니다** — 상세 페이지 인라인 편집으로 사용자가 수동으로 정해둔 상태(특히 `completed`)를 수정 저장이 덮어쓰면 안 되기 때문입니다.
+- **시작일 도래 시점**: 위 계산은 작성 순간에만 일어나므로, 시작일이 되어도 아무도 손대지 않은 "예정" 업무는 계속 예정으로 남습니다. `rollover_weekly_log_status(target_date date default null)`(`SECURITY DEFINER`, `anon`/`authenticated` EXECUTE 회수 — 리마인더 함수와 동일 컨벤션)가 `status='planned' and start_date <= 오늘`인 행을 `in_progress`로 UPDATE하고, `pg_cron` 잡 `weekly_log_status_rollover`(`'5 15 * * *'` UTC = 매일 00:05 KST)가 이를 호출합니다. 기준 날짜는 `create_weekly_log_reminders()`와 동일하게 `now() at time zone 'Asia/Seoul'`로 함수 내부에서 KST 고정 계산합니다.
+- **전환은 `planned` → `in_progress` 한 방향뿐**입니다(역방향 복귀·`completed` 건드리기 없음) — 수정 경로에서 상태를 재계산하지 않는 것과 같은 판단(스케줄 잡이 사용자의 수동 결정을 뒤집지 않는다). 재실행해도 이미 전환된 행은 조건에서 빠지므로 안전합니다.
+- 이 UPDATE는 `weekly_logs_record_change_history` 트리거를 그대로 발화시켜 변경 이력이 남습니다. cron 경로는 `auth.uid()`가 NULL이라 `changed_by`가 NULL이 되고, `components/weekly-log-change-history.tsx`가 그 경우 변경자를 **"시스템"**으로 표시합니다(원래 있던 폴백이라 별도 처리 불필요). 마이그레이션은 `add_weekly_log_status_rollover`, 잡 등록은 `cron.schedule()`이라 마이그레이션 이력에 남지 않습니다(운영 절차는 `docs/guides/deployment-ops.md` 9절).
 
 ### 브라우저 저장소 (localStorage, v2 ad hoc)
 

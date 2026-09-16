@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/format";
+import { deriveInitialWeeklyLogStatus } from "@/lib/utils";
 import { sanitizeWeeklyLogContent } from "@/lib/sanitize-html-server";
 import { IMPORTANCE_MAX, IMPORTANCE_MIN } from "@/lib/constants/importance";
 import { PROGRESS_MAX, PROGRESS_MIN } from "@/lib/constants/progress";
@@ -108,6 +110,9 @@ export async function createWeeklyLogAction(
     .from("weekly_logs")
     .insert({
       ...toWeeklyLogPayload(parsed.data),
+      // 컬럼 기본값('in_progress')에 맡기면 시작일이 미래인 업무도 "진행중"으로 저장되므로
+      // 시작일 기준으로 계산해 명시적으로 지정한다(수정 경로에서는 재계산하지 않음).
+      status: deriveInitialWeeklyLogStatus(parsed.data.start_date, formatDate(new Date())),
       department_id: author.departmentId,
       author_id: author.userId,
     })

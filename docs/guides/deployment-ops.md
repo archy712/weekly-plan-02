@@ -170,6 +170,7 @@ MVP 이후 누적된 애플리케이션 전반의 성능을 **실측 기반**으
 |---|---|---|---|---|
 | `weekly_log_reminder` | `0 6 * * 5` (매주 금요일 06:00) | 매주 금요일 15:00 | `select public.create_weekly_log_reminders()` | 이번 주(월~일)와 기간이 겹치는 로그가 하나도 없는 사용자에게 `notifications`(`type='reminder'`) 생성. 수신자는 `department_id`가 있고 `notify_on_reminder=true`이며 `is_active=true`(ERP 로그인 허용 계정)인 사람으로 한정 |
 | `weekly_log_notification_cleanup` | `0 3 1 * *` (매월 1일 03:00) | 매월 1일 12:00 | `delete from notifications where read_at is not null and read_at < now() - interval '90 days'` | 7절의 알림 보존 정책(읽은 지 90일 지난 알림만 삭제) 자동 실행. Task 061(F058, Phase 8)에서 추가 — 등록 직후 합성 테스트 행(읽음 처리 후 `read_at`을 120일 전으로 지정)으로 실제 삭제 동작을 1회 검증하고 정리함 |
+| `weekly_log_status_rollover` | `5 15 * * *` (매일 15:05) | 매일 00:05(익일) | `select public.rollover_weekly_log_status()` | 시작일이 도래한 `status='planned'` 진행업무를 `in_progress`로 전환. KST 자정 직후에 돌도록 UTC 15:05로 등록. 작성 시점의 초기 상태는 서버 액션이 계산하지만, 그 뒤 시작일이 되어도 아무도 손대지 않으면 "예정"으로 남는 문제를 메움 |
 
 ### 조회·점검
 
@@ -237,6 +238,23 @@ select cron.schedule(
 ```
 
 즉시 1회 실행하려면 7절의 DELETE 문을 직접 실행하면 됩니다(이 함수는 `SECURITY DEFINER` RPC가 아니라 순수 SQL 문이라 별도 함수 호출 없이 그대로 실행 가능).
+
+### 진행상태 자동 전환 잡(`weekly_log_status_rollover`)
+
+시작일이 도래한 "예정" 진행업무를 "진행중"으로 넘기는 잡입니다. 중단·재개·삭제 절차는 위 두 잡과 동일한 패턴이며(`jobname`만 바꿔서), 재등록은 다음과 같습니다.
+
+```sql
+select cron.schedule(
+  'weekly_log_status_rollover',
+  '5 15 * * *',
+  $$select public.rollover_weekly_log_status()$$
+);
+```
+
+- **수동으로 즉시 실행**하려면 `select public.rollover_weekly_log_status();`을 호출합니다. 특정 날짜 기준으로 돌리려면 `select public.rollover_weekly_log_status('2026-09-01'::date);`처럼 `target_date`를 넘기세요(검증·백필용). 리마인더 함수와 마찬가지로 `anon`/`authenticated`에는 EXECUTE 권한이 없어 `mcp__supabase__execute_sql`이나 SQL Editor로만 실행할 수 있습니다.
+- 반환값은 전환된 행 수입니다. 전환 대상이 없으면 0을 반환하며, 몇 번을 실행해도 이미 `in_progress`/`completed`인 행은 건드리지 않으므로(조건이 `status='planned'`) 재실행이 안전합니다.
+- 전환은 **`planned` → `in_progress` 한 방향뿐**입니다. 시작일을 미래로 미뤘다고 해서 `in_progress`를 `planned`로 되돌리거나 `completed`를 건드리지 않습니다 — 사용자가 상세 페이지에서 수동으로 정해둔 상태를 스케줄 잡이 뒤집지 않게 하기 위함입니다.
+- 이 UPDATE는 `weekly_logs_record_change_history` 트리거를 발화시켜 10절의 변경 이력이 1건씩 쌓입니다. 이 경로는 `auth.uid()`가 NULL이라 `changed_by`도 NULL이고, 상세 페이지 변경 이력 섹션은 그 경우 변경자를 **"시스템"**으로 표시합니다.
 
 ## 10. 변경 이력(weekly_log_change_history) 보존 정책 (Task 045, F043)
 

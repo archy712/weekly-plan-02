@@ -1910,6 +1910,10 @@ export type Database = {
       is_superadmin: { Args: never; Returns: boolean }
       next_master_code: { Args: { p_entity: string }; Returns: string }
       reorder_work_types: { Args: { work_type_ids: string[] }; Returns: number }
+      rollover_weekly_log_status: {
+        Args: { target_date?: string }
+        Returns: number
+      }
       search_mentionable_profiles: {
         Args: { max_results?: number; search_query: string }
         Returns: {
