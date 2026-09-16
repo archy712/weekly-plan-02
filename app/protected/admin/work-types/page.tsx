@@ -4,19 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { AdminWorkTypesSkeleton } from "@/components/admin-work-types-skeleton";
 import { EmptyState } from "@/components/empty-state";
-import { WorkTypeCardList } from "@/components/work-type-card";
 import { WorkTypeFormDialog } from "@/components/work-type-form-dialog";
-import { WorkTypeRowActions } from "@/components/work-type-row-actions";
-import { Badge } from "@/components/ui/badge";
+import { WorkTypeSortableList } from "@/components/work-type-sortable-list";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 async function WorkTypesContent() {
   const supabase = await createClient();
@@ -46,9 +36,14 @@ async function WorkTypesContent() {
 
   const organizations = organizationRows ?? [];
 
+  // 노출 순서는 관리자가 드래그로 정한 sort_order를 따른다(같은 값이면 이름순) — 진행업무
+  // 등록/상세 화면의 업무 타입 체크박스도 동일한 기준으로 정렬한다.
   let workTypesQuery = supabase
     .from("work_types")
-    .select("id, name, created_at, archived_at, organization_id, organizations:organizations(name)")
+    .select(
+      "id, name, created_at, archived_at, organization_id, sort_order, organizations:organizations(name)",
+    )
+    .order("sort_order")
     .order("name");
   if (!isSuperAdmin) {
     workTypesQuery = workTypesQuery.eq("organization_id", organizationId);
@@ -59,14 +54,25 @@ async function WorkTypesContent() {
     throw workTypesError;
   }
 
-  const workTypes = (workTypeRows ?? []).map((workType) => ({
-    id: workType.id,
-    name: workType.name,
-    created_at: workType.created_at,
-    archived_at: workType.archived_at,
-    organization_id: workType.organization_id,
-    organization_name: workType.organizations?.name ?? "",
-  }));
+  // 슈퍼관리자는 여러 부문의 업무 타입을 한 테이블에서 보므로, 부문끼리 섞이지 않도록
+  // 부문명으로 먼저 묶는다(정렬 자체는 부문 안에서만 의미가 있다). PostgREST로는 embed된
+  // organizations.name 기준 부모 정렬이 안 되므로 여기서 한 번 더 정렬한다.
+  const workTypes = (workTypeRows ?? [])
+    .map((workType) => ({
+      id: workType.id,
+      name: workType.name,
+      created_at: workType.created_at,
+      archived_at: workType.archived_at,
+      organization_id: workType.organization_id,
+      organization_name: workType.organizations?.name ?? "",
+      sort_order: workType.sort_order,
+    }))
+    .sort(
+      (a, b) =>
+        a.organization_name.localeCompare(b.organization_name, "ko") ||
+        a.sort_order - b.sort_order ||
+        a.name.localeCompare(b.name, "ko"),
+    );
 
   // 업무일지 수는 삭제 가능 여부를 사용자가 미리 알 수 있게 하기 위한 것이라 업무 타입별로
   // count 집계 쿼리를 병렬로 실행한다(work_type은 FK가 아니라 배열 포함 검사로 센다).
@@ -79,7 +85,8 @@ async function WorkTypesContent() {
       return { id: workType.id, logCount: count ?? 0 };
     }),
   );
-  const countMap = new Map(counts.map((entry) => [entry.id, entry.logCount]));
+  // Map 대신 평범한 객체로 넘긴다(클라이언트 컴포넌트 prop 직렬화).
+  const logCounts = Object.fromEntries(counts.map((entry) => [entry.id, entry.logCount]));
 
   return (
     <div className="flex flex-col gap-4">
@@ -96,64 +103,13 @@ async function WorkTypesContent() {
           description="업무 타입 추가 버튼을 눌러 첫 업무 타입을 만들어보세요."
         />
       ) : (
-        <>
-          {/* 모바일에서는 고정폭 테이블이 가로 스크롤을 유발하므로 부서 관리와 동일하게
-              md 미만은 카드, md 이상은 테이블로 나눠 렌더링한다. */}
-          <WorkTypeCardList workTypes={workTypes} organizations={organizations} countMap={countMap} />
-          <div className="hidden overflow-hidden rounded-lg border shadow-sm md:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-11 pl-4 text-sm font-bold tracking-wide text-foreground uppercase">
-                    업무 타입명
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    소속 부문
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    진행업무 수
-                  </TableHead>
-                  <TableHead className="h-11 text-sm font-bold tracking-wide text-foreground uppercase">
-                    상태
-                  </TableHead>
-                  <TableHead className="h-11 pr-4 text-right text-sm font-bold tracking-wide text-foreground uppercase">
-                    액션
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {workTypes.map((workType) => {
-                  const logCount = countMap.get(workType.id) ?? 0;
-                  const isArchived = Boolean(workType.archived_at);
-
-                  return (
-                    <TableRow key={workType.id}>
-                      <TableCell className="py-3 pl-4 font-medium">{workType.name}</TableCell>
-                      <TableCell className="py-3 text-muted-foreground">
-                        {workType.organization_name}
-                      </TableCell>
-                      <TableCell className="py-3 tabular-nums text-muted-foreground">
-                        {logCount}건
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <Badge variant={isArchived ? "secondary" : "success"}>
-                          {isArchived ? "비활성" : "활성"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 pr-4">
-                        <WorkTypeRowActions
-                          workType={workType}
-                          organizations={organizations}
-                          logCount={logCount}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </>
+        /* 드래그 정렬이 필요해 목록 전체가 클라이언트 컴포넌트다. 모바일 카드/데스크탑
+           테이블 두 표현 모두 이 컴포넌트가 담당한다(md 미만은 카드, 이상은 테이블). */
+        <WorkTypeSortableList
+          workTypes={workTypes}
+          organizations={organizations}
+          logCounts={logCounts}
+        />
       )}
     </div>
   );

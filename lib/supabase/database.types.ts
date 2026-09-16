@@ -1847,6 +1847,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          sort_order: number
         }
         Insert: {
           archived_at?: string | null
@@ -1854,6 +1855,7 @@ export type Database = {
           id?: string
           name: string
           organization_id: string
+          sort_order?: number
         }
         Update: {
           archived_at?: string | null
@@ -1861,6 +1863,7 @@ export type Database = {
           id?: string
           name?: string
           organization_id?: string
+          sort_order?: number
         }
         Relationships: [
           {
@@ -1906,6 +1909,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
       next_master_code: { Args: { p_entity: string }; Returns: string }
+      reorder_work_types: { Args: { work_type_ids: string[] }; Returns: number }
       search_mentionable_profiles: {
         Args: { max_results?: number; search_query: string }
         Returns: {

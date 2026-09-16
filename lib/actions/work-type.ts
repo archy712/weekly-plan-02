@@ -10,6 +10,9 @@ export type WorkTypeActionResult =
   | { success: false; error: string };
 
 const WORK_TYPES_PATH = "/protected/admin/work-types";
+// 업무 타입의 이름·순서가 바뀌면 진행업무 작성/상세 화면의 선택지도 함께 갱신되어야 한다.
+const WEEKLY_LOG_NEW_PATH = "/protected/weekly-logs/new";
+const WEEKLY_LOG_DETAIL_PATH = "/protected/weekly-logs/[id]";
 
 // Postgres 오류 코드 (supabase-js는 PostgrestError.code에 문자열로 담아 전달한다).
 const UNIQUE_VIOLATION = "23505";
@@ -152,6 +155,48 @@ export async function restoreWorkTypeAction(id: string): Promise<WorkTypeActionR
   }
 
   revalidatePath(WORK_TYPES_PATH);
+  return { success: true };
+}
+
+// 관리자 콘솔의 드래그 정렬 저장. 클라이언트가 보낸 순서를 그대로 sort_order 1..N으로
+// 기록하며, 실제 쓰기 권한은 reorder_work_types RPC가 SECURITY INVOKER라 work_types의
+// UPDATE RLS(is_superadmin() OR (is_admin() AND organization_id = current_organization_id()))가
+// 그대로 판정한다. 권한이 없는 행은 예외 없이 조용히 제외되므로("RLS 켜짐 = 조용한 0건"),
+// RPC가 돌려준 갱신 건수와 요청 개수를 비교해 부분 실패를 잡아낸다.
+export async function reorderWorkTypesAction(
+  orderedIds: string[],
+): Promise<WorkTypeActionResult> {
+  if (orderedIds.length === 0) {
+    return { success: true };
+  }
+  // 같은 id가 두 번 들어오면 sort_order가 뒤 값으로 덮여 순서가 어긋나므로 미리 막는다.
+  if (new Set(orderedIds).size !== orderedIds.length) {
+    return { success: false, error: "업무 타입 순서가 올바르지 않습니다. 새로고침 후 다시 시도해주세요." };
+  }
+
+  const supabase = await createClient();
+  const auth = await requireLoggedIn(supabase);
+  if ("error" in auth) return { success: false, error: auth.error };
+
+  const { data: updatedCount, error } = await supabase.rpc("reorder_work_types", {
+    work_type_ids: orderedIds,
+  });
+
+  if (error) {
+    return { success: false, error: toActionError(error, "업무 타입 순서 저장 중 오류가 발생했습니다.") };
+  }
+  if ((updatedCount ?? 0) < orderedIds.length) {
+    return {
+      success: false,
+      error: "순서를 변경할 권한이 없는 업무 타입이 포함되어 있습니다.",
+    };
+  }
+
+  revalidatePath(WORK_TYPES_PATH);
+  // 진행업무 등록/상세(수정 폼 포함) 화면의 업무 타입 체크박스 순서도 이 값을 따르므로
+  // 함께 무효화한다.
+  revalidatePath(WEEKLY_LOG_NEW_PATH);
+  revalidatePath(WEEKLY_LOG_DETAIL_PATH, "page");
   return { success: true };
 }
 

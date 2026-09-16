@@ -30,6 +30,8 @@ async function NewWeeklyLogContent() {
     .select("name")
     .eq("organization_id", profile.departments.organization_id)
     .is("archived_at", null)
+    // 노출 순서는 관리자 콘솔에서 드래그로 정한 sort_order를 따른다(같은 값이면 이름순).
+    .order("sort_order")
     .order("name");
 
   if (workTypesError) {

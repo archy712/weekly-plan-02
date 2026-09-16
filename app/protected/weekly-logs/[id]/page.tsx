@@ -81,7 +81,13 @@ async function WeeklyLogDetailContent({
     getWeeklyLogComments(supabase, id),
     // 추천/비추천도 부서 무관 조회(F031). 익명 집계 + 로그인 사용자의 내 반응까지 함께 받는다.
     getWeeklyLogReactionSummary(supabase, id, data.claims.sub),
-    supabase.from("work_types").select("name, archived_at, organization_id").order("name"),
+    // 업무 타입 순서는 관리자 콘솔의 드래그 정렬(sort_order)을 따른다 — 등록 화면과 동일한
+    // 기준이라 작성/수정 어느 경로로 들어와도 체크박스 순서가 같다.
+    supabase
+      .from("work_types")
+      .select("name, archived_at, organization_id, sort_order")
+      .order("sort_order")
+      .order("name"),
     // 상태·업무타입·중요도 변경 이력(F043, v2 Task 045). 역시 부서 무관 SELECT 공개.
     getWeeklyLogChangeHistory(supabase, id),
   ]);
