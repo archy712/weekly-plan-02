@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { Megaphone, ThumbsDown, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,14 @@ export function WeeklyLogReactionButtons({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    // 아이콘만 있는 버튼이라 무엇을 누르라는 것인지 알기 어렵다는 피드백에 따라 안내 문구를
+    // 버튼 앞에 둔다. 좁은 화면에서는 문구가 길어 버튼과 같은 줄에 담기지 않으므로 wrap을
+    // 허용한다(문구가 다음 줄로 밀리는 대신 버튼이 잘리지 않게).
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
+        <Megaphone className="size-3.5 shrink-0" aria-hidden />
+        응원은 추천 👍, 아쉬우면 비추천 👎 — 한 번만 누를 수 있어요
+      </p>
       <Button
         type="button"
         variant={summary.my_reaction === "up" ? "default" : "outline"}
