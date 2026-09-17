@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { HighlightedText } from "@/components/highlighted-text";
+import { WeeklyLogNewBadge } from "@/components/weekly-log-new-badge";
 import { formatDate, formatProgressLabel, getStatusLabel } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
 import { cn } from "@/lib/utils";
@@ -31,12 +32,16 @@ export function WeeklyLogKanbanCardContent({
   overdue,
   interactive = true,
   query,
+  todayKst,
 }: {
   item: WeeklyLogListItem;
   overdue: boolean;
   interactive?: boolean;
   // F046 검색 결과 하이라이팅 — 칸반도 목록과 같은 q 필터를 쓰므로 함께 적용한다.
   query?: string;
+  // "NEW" 배지 판정 기준 날짜(KST). "지연" 판정용 todayIso와 따로 받는 이유는, todayIso가
+  // 목록 위젯·타임라인과 문자 그대로 같은 규칙을 유지해야 하는 축이라 건드리지 않기 위함이다.
+  todayKst: string;
 }) {
   const titleClassName = cn(
     "text-sm font-medium leading-snug",
@@ -49,18 +54,25 @@ export function WeeklyLogKanbanCardContent({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
-        {interactive ? (
-          <Link
-            href={`/protected/weekly-logs/${item.id}`}
-            className={cn(titleClassName, "hover:underline")}
-          >
-            <HighlightedText text={item.title} query={query} />
-          </Link>
-        ) : (
-          <span className={titleClassName}>
-            <HighlightedText text={item.title} query={query} />
-          </span>
-        )}
+        <div className="min-w-0">
+          {interactive ? (
+            <Link
+              href={`/protected/weekly-logs/${item.id}`}
+              className={cn(titleClassName, "hover:underline")}
+            >
+              <HighlightedText text={item.title} query={query} />
+            </Link>
+          ) : (
+            <span className={titleClassName}>
+              <HighlightedText text={item.title} query={query} />
+            </span>
+          )}
+          <WeeklyLogNewBadge
+            createdAt={item.created_at}
+            todayKst={todayKst}
+            className="ml-1.5 align-middle"
+          />
+        </div>
         {item.comment_count > 0 && (
           <span className="shrink-0 text-xs text-muted-foreground">
             💬 {item.comment_count}
@@ -111,12 +123,14 @@ export function WeeklyLogKanbanCard({
   overdue,
   onMoveStatus,
   query,
+  todayKst,
 }: {
   item: WeeklyLogListItem;
   canWrite: boolean;
   overdue: boolean;
   onMoveStatus: (target: WeeklyLogStatus) => void;
   query?: string;
+  todayKst: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -156,7 +170,12 @@ export function WeeklyLogKanbanCard({
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <WeeklyLogKanbanCardContent item={item} overdue={overdue} query={query} />
+          <WeeklyLogKanbanCardContent
+            item={item}
+            overdue={overdue}
+            query={query}
+            todayKst={todayKst}
+          />
         </div>
         {canWrite && (
           <DropdownMenu>

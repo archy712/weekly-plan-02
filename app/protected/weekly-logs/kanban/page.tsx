@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogKanbanView } from "@/components/weekly-log-kanban-view";
 import { WeeklyLogKanbanSkeleton } from "@/components/weekly-log-kanban-skeleton";
 import { fetchWeeklyLogsKanban, normalizeWeeklyLogFilters } from "@/lib/queries/weekly-logs";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatKstDate } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, WEEKLY_LOGS_KANBAN_COLUMN_PAGE_SIZE } from "@/lib/types";
 import type { Department } from "@/lib/types";
 
@@ -85,6 +85,7 @@ async function WeeklyLogKanbanContent({
       // 카드의 "지연" 표시(목표종료일 경과)는 서버 렌더링 시점 날짜를 그대로 기준으로 삼아
       // 클라이언트 컴포넌트 초기 렌더와 SSR 결과가 항상 일치하게 한다.
       todayIso={formatDate(new Date())}
+      todayKst={formatKstDate(new Date())}
       userId={data.claims.sub}
     />
   );

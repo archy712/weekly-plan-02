@@ -13,7 +13,7 @@ import {
   normalizeWeeklyLogSort,
 } from "@/lib/queries/weekly-logs";
 import { getMyWorkSummary } from "@/lib/queries/stats";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatKstDate } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, WEEKLY_LOGS_PAGE_SIZE } from "@/lib/types";
 import type { Department } from "@/lib/types";
 
@@ -127,6 +127,7 @@ async function WeeklyLogsContent({
       currentSortKey={sort.key}
       currentSortDirection={sort.direction}
       userId={data.claims.sub}
+      todayKst={formatKstDate(new Date())}
     />
   );
 }

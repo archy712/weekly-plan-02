@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { WeeklyLogTransferBadge } from "@/components/weekly-log-transfer-badge";
+import { WeeklyLogNewBadge } from "@/components/weekly-log-new-badge";
 import { HighlightedText } from "@/components/highlighted-text";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { formatDate, formatProgressLabel } from "@/lib/format";
@@ -27,6 +28,7 @@ export function WeeklyLogTable({
   sortDirection,
   onSort,
   query,
+  todayKst,
 }: {
   items: WeeklyLogListItem[];
   showAuthor?: boolean;
@@ -36,6 +38,8 @@ export function WeeklyLogTable({
   // F046 검색 결과 하이라이팅 — 제목 payload만 있어 제목에만 적용된다(목록 payload에
   // content가 없어 내용 스니펫은 표시하지 않음, F032 성능 개선과의 충돌 회피).
   query?: string;
+  // "NEW" 배지 판정 기준 날짜(KST). components/weekly-log-new-badge.tsx 참고.
+  todayKst: string;
 }) {
   return (
     <div className="hidden md:block overflow-hidden rounded-lg border shadow-sm">
@@ -107,6 +111,11 @@ export function WeeklyLogTable({
                     </span>
                   )}
                 </Link>
+                <WeeklyLogNewBadge
+                  createdAt={item.created_at}
+                  todayKst={todayKst}
+                  className="ml-2 align-middle"
+                />
                 <WeeklyLogReactionCounts
                   up={item.reaction_up_count}
                   down={item.reaction_down_count}

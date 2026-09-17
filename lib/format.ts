@@ -17,6 +17,16 @@ export function formatDate(value: string | Date): string {
   return value.slice(0, 10);
 }
 
+// 한국 시간(KST) 기준 달력 날짜(YYYY-MM-DD). formatDate()는 문자열이면 앞 10자를 자르고
+// Date면 실행 환경의 로컬 타임존을 따르므로, UTC로 저장된 timestamptz(created_at 등)나
+// UTC로 동작하는 서버(Vercel)의 현재 시각을 "오늘"과 비교하면 00:00~09:00 KST 사이에
+// 하루가 어긋난다. 달력 날짜 비교가 필요한 곳은 이 함수로 양쪽을 맞춘다.
+export function formatKstDate(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  // en-CA 로케일이 YYYY-MM-DD 형식을 그대로 돌려준다.
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
 const STATUS_LABELS: Record<WeeklyLogStatus, string> = {
   planned: "예정",
   in_progress: "진행중",

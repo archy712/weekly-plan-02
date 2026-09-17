@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
 import { WeeklyLogTransferBadge } from "@/components/weekly-log-transfer-badge";
+import { WeeklyLogNewBadge } from "@/components/weekly-log-new-badge";
 import { HighlightedText } from "@/components/highlighted-text";
 import { formatDate, formatProgressLabel } from "@/lib/format";
 import { getAvatarPreset } from "@/lib/constants/avatars";
@@ -15,10 +16,12 @@ export function WeeklyLogCard({
   item,
   showAuthor = false,
   query,
+  todayKst,
 }: {
   item: WeeklyLogListItem;
   showAuthor?: boolean;
   query?: string;
+  todayKst: string;
 }) {
   // 표시 규칙(진행중은 0%도 표시, 예정 0%는 숨김, 완료는 항상 100%)은 목록 테이블·칸반
   // 카드·타임라인과 공유한다(lib/format.ts의 formatProgressLabel).
@@ -42,6 +45,11 @@ export function WeeklyLogCard({
               </span>
             )}
           </Link>
+          <WeeklyLogNewBadge
+            createdAt={item.created_at}
+            todayKst={todayKst}
+            className="ml-2 align-middle"
+          />
         </CardTitle>
         <div className="flex shrink-0 items-center gap-1.5">
           <StatusBadge status={item.status} />
@@ -79,15 +87,23 @@ export function WeeklyLogCardList({
   items,
   showAuthor = false,
   query,
+  todayKst,
 }: {
   items: WeeklyLogListItem[];
   showAuthor?: boolean;
   query?: string;
+  todayKst: string;
 }) {
   return (
     <div className="flex flex-col gap-2 md:hidden">
       {items.map((item) => (
-        <WeeklyLogCard key={item.id} item={item} showAuthor={showAuthor} query={query} />
+        <WeeklyLogCard
+          key={item.id}
+          item={item}
+          showAuthor={showAuthor}
+          query={query}
+          todayKst={todayKst}
+        />
       ))}
     </div>
   );

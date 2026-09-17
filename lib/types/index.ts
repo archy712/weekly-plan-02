@@ -73,6 +73,7 @@ export type WeeklyLogListItem = Pick<
   | "progress"
   | "department_id"
   | "author_id"
+  | "created_at"
 > & {
   department_name: string;
   // 목록 화면의 부서 컬럼을 아바타+작성자명으로 대체하며 추가됨. profiles_select_own_or_admin

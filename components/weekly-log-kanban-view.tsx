@@ -83,6 +83,7 @@ export function WeeklyLogKanbanView({
   currentUserDepartmentId,
   isAdmin,
   todayIso,
+  todayKst,
   userId,
 }: {
   initialColumns: WeeklyLogKanbanColumnData[];
@@ -100,6 +101,8 @@ export function WeeklyLogKanbanView({
   currentUserDepartmentId: string;
   isAdmin: boolean;
   todayIso: string;
+  // 오늘(KST) 등록 업무의 "NEW" 배지 판정 기준(components/weekly-log-new-badge.tsx 참고).
+  todayKst: string;
   // F045(Task 046) 필터 프리셋의 localStorage 키 네임스페이스. 목록 페이지와 동일하게
   // 서버 컴포넌트가 확보한 값을 prop으로 내려받는다.
   userId: string;
@@ -483,6 +486,7 @@ export function WeeklyLogKanbanView({
                   currentUserDepartmentId={currentUserDepartmentId}
                   isAdmin={isAdmin}
                   todayIso={todayIso}
+                  todayKst={todayKst}
                   query={currentSearchQuery}
                 />
               </div>
@@ -496,6 +500,7 @@ export function WeeklyLogKanbanView({
                   overdue={activeOverdue}
                   interactive={false}
                   query={currentSearchQuery}
+                  todayKst={todayKst}
                 />
               </Card>
             ) : null}

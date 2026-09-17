@@ -75,6 +75,7 @@ export function WeeklyLogListView({
   currentSortKey,
   currentSortDirection,
   userId,
+  todayKst,
 }: {
   initialItems: WeeklyLogListItem[];
   initialHasMore: boolean;
@@ -94,6 +95,8 @@ export function WeeklyLogListView({
   // F045(Task 046) 필터 프리셋의 localStorage 키 네임스페이스. 서버 컴포넌트가 이미 확보한
   // 값을 prop으로 내려받는다(클라이언트에서 세션을 다시 읽지 않음 — F042 draft와 동일 관례).
   userId: string;
+  // 오늘(KST) 등록 업무의 "NEW" 배지 판정 기준. 서버 렌더 시각으로 고정된다.
+  todayKst: string;
 }) {
   const router = useRouter();
   // 필터/정렬 변경은 URL 쿼리파라미터만 바뀌는 soft navigation이라 page.tsx의 Suspense
@@ -560,8 +563,14 @@ export function WeeklyLogListView({
               sortDirection={currentSortDirection}
               onSort={handleSort}
               query={currentSearchQuery}
+              todayKst={todayKst}
             />
-            <WeeklyLogCardList items={items} showAuthor query={currentSearchQuery} />
+            <WeeklyLogCardList
+              items={items}
+              showAuthor
+              query={currentSearchQuery}
+              todayKst={todayKst}
+            />
             {/* 더 있으면 하단 센티넬을 두고, 화면에 들어오면 다음 배치를 로딩한다. 진행률을
                 알 수 없는 조회라 비결정형 인디케이터 바로 "불러오는 중"만 알린다. */}
             {hasMore && (

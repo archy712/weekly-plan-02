@@ -382,6 +382,7 @@ async function hydrateWeeklyLogRows(
       department_id: row.department_id,
       department_name: row.departments?.name ?? "",
       author_id: row.author_id,
+      created_at: row.created_at,
       author_name: author?.name ?? null,
       author_email: author?.email ?? null,
       author_avatar_key: author?.avatar_key ?? "fox",
