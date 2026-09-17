@@ -19,9 +19,10 @@ import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
+import { WeeklyLogNewBadge } from "@/components/weekly-log-new-badge";
 import { STATUS_CHART_COLORS } from "@/lib/constants/chart-colors";
 import { addDaysToDateString, cn, diffDays } from "@/lib/utils";
-import { formatDate, formatProgressLabel, getStatusLabel } from "@/lib/format";
+import { formatDate, formatKstDate, formatProgressLabel, getStatusLabel } from "@/lib/format";
 import {
   ALL_DEPARTMENTS_FILTER,
   ALL_STATUSES_FILTER,
@@ -61,6 +62,7 @@ export function WeeklyLogTimelineView({
   currentTo,
   currentAuthorId,
   todayIso,
+  todayKst,
 }: {
   items: WeeklyLogListItem[];
   // 렌더 상한(WEEKLY_LOGS_TIMELINE_PAGE_SIZE) 초과로 일부가 잘렸는지 여부 — page.tsx가
@@ -77,6 +79,9 @@ export function WeeklyLogTimelineView({
   currentTo: string;
   currentAuthorId?: string;
   todayIso: string;
+  // 오늘(KST) 등록 업무의 "NEW" 배지 판정 기준(components/weekly-log-new-badge.tsx 참고).
+  // "지연" 판정용 todayIso는 칸반·"내 업무" 위젯과 문자 그대로 같은 규칙을 유지해야 해 따로 받는다.
+  todayKst: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -184,6 +189,8 @@ export function WeeklyLogTimelineView({
     // 막대·행 라벨만으로는 서로 구분이 안 된다는 피드백에 따라 작성자 식별자를 함께 쓴다
     // (list/kanban 카드와 동일한 author_name → author_email → 폴백 우선순위, weekly-log-card.tsx 등 참고).
     const authorLabel = item.author_name ?? item.author_email ?? "알 수 없는 사용자";
+    // 시각적 배지(WeeklyLogNewBadge)와 같은 판정을 툴팁·aria 라벨에도 반영하기 위해 계산해 둔다.
+    const isNew = formatKstDate(item.created_at) === todayKst;
     const dateRangeText = `${formatDate(item.start_date)} ~ ${formatDate(item.target_end_date)}`;
     // 완료 처리된 업무는 실제 progress 값(끝까지 갱신 안 하고 남겨뒀을 수 있음)과
     // 무관하게 100%로 간주한다 — 상세 페이지의 displayProgress와 동일한 규칙
@@ -215,6 +222,7 @@ export function WeeklyLogTimelineView({
       dateRangeText,
       displayProgress,
       progressFillPercent,
+      isNew,
     };
   });
 
@@ -418,6 +426,7 @@ export function WeeklyLogTimelineView({
                     dateRangeText,
                     displayProgress,
                     progressFillPercent,
+                    isNew,
                   }) => {
                     // 툴팁·aria 라벨의 진척률 표기는 목록 테이블·카드·칸반과 동일한 규칙을
                     // 공유한다(진행중은 0%도 표시, 예정 0%는 숨김, 완료는 항상 100%).
@@ -428,7 +437,8 @@ export function WeeklyLogTimelineView({
                     // 마우스오버 시 상태·기간·지연 여부·부서·작성자·진척률을 한 번에 보여주는
                     // 네이티브 title 툴팁 — 이 페이지의 다른 요소(아래 Link의 title 등)와
                     // 동일하게 별도 Tooltip 라이브러리 없이 브라우저 기본 툴팁을 재사용한다.
-                    const tooltip = `${item.title}\n${item.department_name} · ${authorLabel}\n${dateRangeText} · ${getStatusLabel(item.status)}${overdue ? " · 지연" : ""}${progressText}`;
+                    const newText = isNew ? " · 오늘 등록" : "";
+                    const tooltip = `${item.title}${newText}\n${item.department_name} · ${authorLabel}\n${dateRangeText} · ${getStatusLabel(item.status)}${overdue ? " · 지연" : ""}${progressText}`;
                     return (
                       <div
                         key={item.id}
@@ -443,7 +453,16 @@ export function WeeklyLogTimelineView({
                           className="flex min-w-0 flex-col justify-center gap-0.5 px-2 hover:text-primary"
                           title={tooltip}
                         >
-                          <span className="truncate text-sm hover:underline">{item.title}</span>
+                          {/* 라벨 열 폭이 고정(LABEL_WIDTH)이라 제목만 말줄임하고 배지는 항상 보이게
+                              shrink-0으로 둔다. */}
+                          <span className="flex min-w-0 items-center gap-1">
+                            <span className="truncate text-sm hover:underline">{item.title}</span>
+                            <WeeklyLogNewBadge
+                              createdAt={item.created_at}
+                              todayKst={todayKst}
+                              className="shrink-0"
+                            />
+                          </span>
                           <span className="text-muted-foreground truncate text-xs">
                             {authorLabel}
                           </span>
@@ -454,7 +473,7 @@ export function WeeklyLogTimelineView({
                         >
                           <div
                             role="img"
-                            aria-label={`${item.title}, 팀: ${item.department_name}, 담당자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
+                            aria-label={`${item.title}${isNew ? ", 오늘 등록" : ""}, 팀: ${item.department_name}, 담당자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
                             title={tooltip}
                             className={cn(
                               "absolute inset-y-2 flex items-center overflow-hidden rounded",

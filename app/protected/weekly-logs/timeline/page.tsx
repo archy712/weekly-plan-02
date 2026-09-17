@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogTimelineView } from "@/components/weekly-log-timeline-view";
 import { WeeklyLogTimelineSkeleton } from "@/components/weekly-log-timeline-skeleton";
 import { fetchWeeklyLogsTimeline, normalizeWeeklyLogFilters } from "@/lib/queries/weekly-logs";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatKstDate } from "@/lib/format";
 import { getThisMonthRange } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER, WEEKLY_LOGS_TIMELINE_PAGE_SIZE } from "@/lib/types";
 import type { Department } from "@/lib/types";
@@ -96,6 +96,7 @@ async function WeeklyLogTimelineContent({
       // 막대의 "지연" 강조(목표종료일 경과)는 서버 렌더링 시점 날짜를 그대로 기준으로 삼아
       // 칸반보드·"내 업무" 위젯과 동일한 판정을 보장한다(CLAUDE.md 타임존 절 참고).
       todayIso={formatDate(new Date())}
+      todayKst={formatKstDate(new Date())}
     />
   );
 }
