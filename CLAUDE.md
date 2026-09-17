@@ -232,6 +232,16 @@ React Hook Form + Zod 조합이 표준입니다. 상세 패턴(스키마 정의,
 - **전환은 `planned` → `in_progress` 한 방향뿐**입니다(역방향 복귀·`completed` 건드리기 없음) — 수정 경로에서 상태를 재계산하지 않는 것과 같은 판단(스케줄 잡이 사용자의 수동 결정을 뒤집지 않는다). 재실행해도 이미 전환된 행은 조건에서 빠지므로 안전합니다.
 - 이 UPDATE는 `weekly_logs_record_change_history` 트리거를 그대로 발화시켜 변경 이력이 남습니다. cron 경로는 `auth.uid()`가 NULL이라 `changed_by`가 NULL이 되고, `components/weekly-log-change-history.tsx`가 그 경우 변경자를 **"시스템"**으로 표시합니다(원래 있던 폴백이라 별도 처리 불필요). 마이그레이션은 `add_weekly_log_status_rollover`, 잡 등록은 `cron.schedule()`이라 마이그레이션 이력에 남지 않습니다(운영 절차는 `docs/guides/deployment-ops.md` 9절).
 
+### 진행상태 ↔ 진척률 자동 동기화 (ad hoc)
+
+- **"완료"와 진척률 100%는 항상 같이 갑니다.** `sync_weekly_log_status_progress()` `BEFORE INSERT OR UPDATE OF status, progress` 트리거(`SECURITY INVOKER`, `set search_path = ''` — `validate_weekly_log_work_type()`와 동일 컨벤션)가 네 방향을 모두 처리합니다: status가 `completed`로 바뀌면 `progress := 100`, `completed`에서 풀리면 progress가 100일 때만 **예정 0% / 진행중 90%**로 내림, progress가 100이 되면 `status := 'completed'`, progress가 100에서 내려가면 `status`를 시작일 기준(`start_date > 오늘(KST)`이면 `planned`, 아니면 `in_progress` — `deriveInitialWeeklyLogStatus()`와 같은 규칙)으로 되돌림. 한 문장에서 두 컬럼이 같이 바뀌면 **상태 변경이 우선**합니다(결과가 항상 하나로 정해지도록). 트리거 도입 이전에 생긴 불일치 행(완료인데 100% 미만)은 마이그레이션에서 100으로 보정했습니다.
+- **규칙을 앱이 아니라 DB에 둔 이유**는 진입점이 상세 페이지 인라인 Select·진척률 슬라이더·칸반 드래그·전체 수정 폼·PostgREST 직접 호출로 5개나 되기 때문입니다 — 앱에 두면 한 경로만 빠뜨려도 불변식이 깨집니다. 진척률 100% 미만으로 내릴 때 쓰는 90은 DB 안의 리터럴이고 `lib/constants/progress.ts`에는 없습니다(앱은 이 값을 계산하지 않고 서버가 돌려준 값을 그대로 씁니다).
+- **동기화로 함께 바뀐 값도 변경 이력에 남습니다** — `weekly_logs_record_change_history`는 `AFTER UPDATE OF status, work_type, importance, progress`라 SET 절에 둘 중 하나만 있어도 발화하고, 함수 본문이 `IS DISTINCT FROM`으로 네 컬럼을 각각 비교하므로 status·progress 두 건이 모두 기록됩니다.
+- **서버 액션 3종(`updateWeeklyLogStatusAction`/`updateWeeklyLogProgressAction`/`updateWeeklyLogAction`)은 `WeeklyLogSyncActionResult`(`{ success: true; status; progress }`)를 반환**합니다 — 클라이언트가 보낸 값 하나만으로는 반대쪽이 얼마가 됐는지 알 수 없어, `UPDATE ... RETURNING`(`.select("id, status, progress")`)으로 받은 실제 저장값을 돌려줍니다. 낙관적 업데이트를 하는 화면(`components/weekly-log-detail-view.tsx`의 인라인 편집, `components/weekly-log-kanban-view.tsx`의 `moveItem`)은 **규칙을 다시 계산하지 말고 이 반환값으로 반대쪽 state를 맞출 것** — 규칙이 두 곳에 생기면 DB와 화면이 어긋납니다.
+- 상세 페이지의 진척률 슬라이더는 **완료된 업무에서도 감추지 않습니다**(이전에는 감추고 안내 문구만 뒀음) — 100%에서 내리는 것이 곧 "완료 해제"라, 감추면 이 동기화의 역방향을 화면에서 쓸 수 없기 때문입니다. 두 컨트롤(진행 상태 Select·진척률 슬라이더) 아래에 서로를 바꾼다는 안내 문구가 각각 붙어 있습니다.
+- 이 불변식 덕분에 "완료면 진척률을 100%로 간주"하던 표시용 보정은 불필요해졌습니다(`weekly-log-detail-view.tsx`의 `displayProgress`는 실제 값을 그대로 씀). `lib/format.ts`의 `formatProgressLabel()`과 `components/weekly-log-timeline-view.tsx`에는 같은 보정이 방어적으로 남아 있습니다.
+- 마이그레이션은 `add_weekly_log_status_progress_sync`와 `fix_weekly_log_status_progress_trigger_columns` 2건이며, 다른 DB 변경과 동일하게 Supabase MCP `apply_migration`으로 적용되어 로컬 `supabase/migrations/`에는 보이지 않습니다.
+
 ### 브라우저 저장소 (localStorage, v2 ad hoc)
 
 - **이 프로젝트 최초의 브라우저 스토리지 도입**입니다(그전까지 `localStorage`/`sessionStorage` 사용처 0건). 두 곳에서 사용합니다 — 작성 중 임시저장(F042, `hooks/use-weekly-log-draft.ts`, 키 `weekly-log-draft:new:{userId}`)과 목록·칸반 필터 프리셋 저장(F045, `hooks/use-filter-presets.ts`, 키 `weekly-log-filter-presets:{userId}`). 안전 접근 래퍼(`safeLocalStorageGet`/`Set`/`Remove`, `try/catch`로 감싸고 도메인 지식 없음)는 `lib/storage/local-storage.ts`에 있고, 새로운 `localStorage` 사용처를 추가할 때는 반드시 이 래퍼를 재사용하세요.

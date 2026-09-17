@@ -179,8 +179,11 @@ export function WeeklyLogDetailView({
     setWorkType(values.work_type);
     setImportance(values.importance as WeeklyLogImportance);
     savedImportanceRef.current = values.importance as WeeklyLogImportance;
-    setProgress(values.progress);
-    savedProgressRef.current = values.progress;
+    // 진행상태·진척률은 제출값이 아니라 서버가 돌려준 실제 저장값을 쓴다 — 폼에 진행상태
+    // 필드는 없지만 진척률을 100%로 저장하면 DB 트리거가 상태까지 "완료"로 바꾸기 때문이다.
+    setStatus(result.status);
+    setProgress(result.progress);
+    savedProgressRef.current = result.progress;
 
     toast.success("수정되었습니다.");
     setIsEditing(false);
@@ -199,7 +202,16 @@ export function WeeklyLogDetailView({
         toast.error(result.error);
         return;
       }
-      toast.success(`${getStatusLabel(next)} 상태로 변경되었습니다.`);
+      // 진척률은 DB 트리거가 함께 맞추므로("완료" -> 100%, 완료 해제 -> 예정 0%·진행중 90%)
+      // 클라이언트에서 규칙을 다시 계산하지 않고 서버가 돌려준 실제 저장값을 그대로 반영한다.
+      const progressChanged = result.progress !== savedProgressRef.current;
+      setProgress(result.progress);
+      savedProgressRef.current = result.progress;
+      toast.success(
+        progressChanged
+          ? `${getStatusLabel(next)} 상태로 변경되었습니다. 진척률도 ${result.progress}%로 함께 변경되었습니다.`
+          : `${getStatusLabel(next)} 상태로 변경되었습니다.`,
+      );
       router.refresh();
     } catch {
       setStatus(previous);
@@ -270,7 +282,14 @@ export function WeeklyLogDetailView({
         return;
       }
       savedProgressRef.current = next;
-      toast.success(`진척률이 ${next}%로 변경되었습니다.`);
+      // 100%로 올리면 "완료", 100%에서 내리면 완료 해제까지 DB 트리거가 함께 처리한다.
+      const statusChanged = result.status !== status;
+      setStatus(result.status);
+      toast.success(
+        statusChanged
+          ? `진척률이 ${next}%로 변경되어 진행상태도 '${getStatusLabel(result.status)}'(으)로 함께 변경되었습니다.`
+          : `진척률이 ${next}%로 변경되었습니다.`,
+      );
       router.refresh();
     } catch {
       setProgress(savedProgressRef.current);
@@ -304,11 +323,10 @@ export function WeeklyLogDetailView({
   // 목표진척률: 시작일~목표종료일 대비 오늘 위치(%, 100 초과分은 클램프). 저장하지 않고
   // 매 렌더링마다 계산한다 — DB에 별도 컬럼을 두지 않는 이유는 lib/utils.ts 참고.
   const targetProgress = computeTargetProgress(log.start_date, log.target_end_date, todayIso);
-  // 완료 처리된 업무는 실제 슬라이더 값이 100%에 못 미쳐도(사용자가 마지막으로 저장한
-  // 값 그대로 남아있을 수 있음) 진척률 비교 자체를 무시하고 100%로 간주한다 — "완료"인데
-  // 진척률 막대가 0%로 보이는 모순을 없애기 위함. DB의 실제 progress 값은 건드리지
-  // 않는다(상태를 다시 진행중으로 되돌리면 원래 값이 그대로 남아 있어야 하므로).
-  const displayProgress = isCompleted ? 100 : progress;
+  // "완료"와 진척률 100%는 DB 트리거(weekly_logs_sync_status_progress)가 양방향으로
+  // 맞춰주므로 완료된 업무의 progress는 항상 100이다(과거에는 둘이 어긋날 수 있어 완료면
+  // 무조건 100으로 간주하는 표시용 보정이 여기 있었다 — 이제 실제 값을 그대로 쓴다).
+  const displayProgress = progress;
   // 완료된 업무는 진척률이 목표에 못 미쳐도 "진척 부진"으로 보지 않는다 — 칸반·타임라인의
   // 지연 판정(status !== "completed")과 동일한 원칙. 다만 판정 기준 자체(진척률 vs
   // 목표진척률)는 칸반·타임라인의 마감일 기준 "지연"과 다르므로 변수명은 delayed지만
@@ -583,47 +601,46 @@ export function WeeklyLogDetailView({
         {canWrite && isQuickEditOpen && (
           // 진척률 계산 방법이 마땅치 않아(자동 산출 대신) 사용자가 직접 슬라이더로
           // 입력한다 — 업무 중요도 슬라이더와 동일한 드래그 중 로컬 반영 + 손을 뗄 때만
-          // 저장(onValueCommit) 패턴. 완료 처리된 업무는 진척률 계산 자체를 무시하고
-          // 완료로 간주하므로(위 displayProgress) 슬라이더를 감추고 안내만 남긴다 —
-          // 진행중으로 되돌리면 마지막으로 저장했던 값 그대로 슬라이더가 다시 보인다.
+          // 저장(onValueCommit) 패턴. 완료된 업무에서도 슬라이더를 감추지 않는다 —
+          // 100%에서 내리는 것이 곧 "완료 해제"라 이 슬라이더가 진행상태 Select와 함께
+          // 완료 <-> 100% 동기화의 두 진입점 중 하나이기 때문이다(감추면 반대 방향
+          // 동작을 이 화면에서 쓸 수 없다).
           // "진척률 현황"과 너무 붙어 있어 구분이 안 된다는 피드백에 따라 위쪽 여백을 넉넉히 둔다.
           <div className="mt-6">
-            {isCompleted ? (
-              <p className="text-sm text-muted-foreground">
-                완료 처리된 업무는 진척률을 100%로 간주합니다. 진척률을 다시 조정하려면
-                진행 상태를 먼저 되돌려주세요.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="progress" className="flex items-center gap-1.5">
-                  <CirclePercent className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                  진척률 입력 {progress}%
-                </Label>
-                {/* 슬라이더 자체의 상하 여백(py-2)은 weekly-log-form.tsx와 같은 이유다 —
-                    Slider 루트에 여백이 없으면 thumb(+hover ring) 상단이 컨트롤 박스
-                    상단과 같은 선이라 라벨에 붙어 보인다. 두 화면의 값이 어긋나지
-                    않도록 간격 구성(gap-3 + pt-2 + py-2)을 그대로 맞춘다. */}
-                <div className="flex flex-col gap-1 pt-2">
-                  <Slider
-                    className="py-2"
-                    id="progress"
-                    min={PROGRESS_MIN}
-                    max={PROGRESS_MAX}
-                    step={PROGRESS_STEP}
-                    value={[progress]}
-                    disabled={isUpdatingProgress}
-                    onValueChange={([next]) => setProgress(next)}
-                    onValueCommit={([next]) => handleProgressCommit(next)}
-                    aria-label="진척률 입력"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
-                  </div>
+            <div className="flex flex-col gap-3">
+              <Label htmlFor="progress" className="flex items-center gap-1.5">
+                <CirclePercent className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                진척률 입력 {progress}%
+              </Label>
+              {/* 슬라이더 자체의 상하 여백(py-2)은 weekly-log-form.tsx와 같은 이유다 —
+                  Slider 루트에 여백이 없으면 thumb(+hover ring) 상단이 컨트롤 박스
+                  상단과 같은 선이라 라벨에 붙어 보인다. 두 화면의 값이 어긋나지
+                  않도록 간격 구성(gap-3 + pt-2 + py-2)을 그대로 맞춘다. */}
+              <div className="flex flex-col gap-1 pt-2">
+                <Slider
+                  className="py-2"
+                  id="progress"
+                  min={PROGRESS_MIN}
+                  max={PROGRESS_MAX}
+                  step={PROGRESS_STEP}
+                  value={[progress]}
+                  disabled={isUpdatingProgress}
+                  onValueChange={([next]) => setProgress(next)}
+                  onValueCommit={([next]) => handleProgressCommit(next)}
+                  aria-label="진척률 입력"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
                 </div>
               </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                {isCompleted
+                  ? "완료된 업무의 진척률은 100%입니다. 100% 미만으로 내리면 진행상태가 자동으로 되돌아갑니다."
+                  : "진척률을 100%로 올리면 진행상태가 자동으로 '완료'로 바뀝니다."}
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -673,27 +690,36 @@ export function WeeklyLogDetailView({
       <WeeklyLogReactionButtons weeklyLogId={log.id} initialSummary={log.reactions} />
       {canWrite && isQuickEditOpen && (
         <>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="status" className="flex items-center gap-1.5">
-              <CircleDot className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              진행 상태
-            </Label>
-            <Select
-              value={status}
-              disabled={isUpdatingStatus}
-              onValueChange={(value) => handleStatusChange(value as WeeklyLogStatus)}
-            >
-              <SelectTrigger id="status" className="w-32" aria-label="진행 상태">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {getStatusLabel(option)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <Label htmlFor="status" className="flex items-center gap-1.5">
+                <CircleDot className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                진행 상태
+              </Label>
+              <Select
+                value={status}
+                disabled={isUpdatingStatus}
+                onValueChange={(value) => handleStatusChange(value as WeeklyLogStatus)}
+              >
+                <SelectTrigger id="status" className="w-32" aria-label="진행 상태">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {getStatusLabel(option)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* 위 진척률 슬라이더의 안내와 짝을 이루는 반대 방향 설명 — 두 컨트롤이 서로를
+                바꾼다는 사실을 각 컨트롤 옆에서 바로 알 수 있게 한다. */}
+            <p className="text-xs text-muted-foreground">
+              {isCompleted
+                ? "완료를 해제하면 진척률이 100%에서 자동으로 내려갑니다(예정 0%, 진행중 90%)."
+                : "'완료'로 바꾸면 진척률이 자동으로 100%가 됩니다."}
+            </p>
           </div>
           <div className="flex flex-col gap-3">
             <Label htmlFor="importance" className="flex items-center gap-1.5">

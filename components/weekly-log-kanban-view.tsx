@@ -268,6 +268,23 @@ export function WeeklyLogKanbanView({
           total: prev[sourceStatus].total + 1,
         },
       }));
+      return;
+    }
+
+    // 진척률은 DB 트리거가 상태에 맞춰 함께 바꾸므로("완료" -> 100%, 완료 해제 -> 진행중
+    // 90%·예정 0%) 카드에 표시되는 진척률도 서버가 돌려준 실제 저장값으로 맞춘다 —
+    // 그대로 두면 완료 컬럼으로 옮긴 카드가 "60%" 같은 이전 값을 계속 보여준다.
+    const syncedProgress = result.progress;
+    if (syncedProgress !== item.progress) {
+      setColumns((prev) => ({
+        ...prev,
+        [targetStatus]: {
+          ...prev[targetStatus],
+          items: prev[targetStatus].items.map((i) =>
+            i.id === item.id ? { ...i, progress: syncedProgress } : i,
+          ),
+        },
+      }));
     }
   };
 

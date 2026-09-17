@@ -30,6 +30,14 @@ export type WeeklyLogActionResult =
   | { success: true }
   | { success: false; error: string };
 
+// 진행상태와 진척률은 DB 트리거(weekly_logs_sync_status_progress)가 서로를 자동으로
+// 맞추므로("완료" <-> 100%), 클라이언트가 보낸 값 하나만으로는 저장 결과를 알 수 없다.
+// 낙관적 업데이트를 하는 화면(상세 인라인 편집·칸반 드래그)이 반대쪽 값까지 정확히
+// 반영할 수 있도록 UPDATE ... RETURNING으로 받은 실제 저장값을 돌려준다.
+export type WeeklyLogSyncActionResult =
+  | { success: true; status: WeeklyLogStatus; progress: number }
+  | { success: false; error: string };
+
 export type CreateWeeklyLogActionResult =
   | { success: true; id: string; departmentId: string }
   | { success: false; error: string };
@@ -131,7 +139,7 @@ export async function createWeeklyLogAction(
 export async function updateWeeklyLogAction(
   id: string,
   values: WeeklyLogFormData,
-): Promise<WeeklyLogActionResult> {
+): Promise<WeeklyLogSyncActionResult> {
   if (!weeklyLogIdSchema.safeParse(id).success) {
     return { success: false, error: "잘못된 요청입니다." };
   }
@@ -153,7 +161,9 @@ export async function updateWeeklyLogAction(
     .from("weekly_logs")
     .update(toWeeklyLogPayload(parsed.data))
     .eq("id", id)
-    .select("id")
+    // 폼에 진행상태 필드는 없지만 진척률을 100%로 저장하면 트리거가 상태까지 "완료"로
+    // 바꾸므로, 상세 화면이 배지를 갱신할 수 있도록 저장된 상태도 함께 돌려받는다.
+    .select("id, status, progress")
     .maybeSingle();
 
   if (error) {
@@ -166,7 +176,7 @@ export async function updateWeeklyLogAction(
 
   revalidateWeeklyLogViews();
   revalidatePath(`/protected/weekly-logs/${id}`);
-  return { success: true };
+  return { success: true, status: updated.status as WeeklyLogStatus, progress: updated.progress };
 }
 
 export async function updateWeeklyLogWorkTypeAction(
@@ -251,7 +261,7 @@ export async function updateWeeklyLogImportanceAction(
 export async function updateWeeklyLogProgressAction(
   id: string,
   progress: number,
-): Promise<WeeklyLogActionResult> {
+): Promise<WeeklyLogSyncActionResult> {
   if (!weeklyLogIdSchema.safeParse(id).success) {
     return { success: false, error: "잘못된 요청입니다." };
   }
@@ -270,7 +280,9 @@ export async function updateWeeklyLogProgressAction(
     .from("weekly_logs")
     .update({ progress: parsed.data })
     .eq("id", id)
-    .select("id")
+    // 100%로 올리면 "완료", 100%에서 내리면 "완료 해제"까지 트리거가 함께 처리하므로
+    // 저장된 진행상태를 그대로 돌려받아 호출부가 배지를 갱신한다.
+    .select("id, status, progress")
     .maybeSingle();
 
   if (error) {
@@ -282,7 +294,7 @@ export async function updateWeeklyLogProgressAction(
 
   revalidatePath("/protected/weekly-logs");
   revalidatePath(`/protected/weekly-logs/${id}`);
-  return { success: true };
+  return { success: true, status: updated.status as WeeklyLogStatus, progress: updated.progress };
 }
 
 export async function deleteWeeklyLogAction(id: string): Promise<WeeklyLogActionResult> {
@@ -316,7 +328,7 @@ export async function deleteWeeklyLogAction(id: string): Promise<WeeklyLogAction
 export async function updateWeeklyLogStatusAction(
   id: string,
   status: WeeklyLogStatus,
-): Promise<WeeklyLogActionResult> {
+): Promise<WeeklyLogSyncActionResult> {
   if (!weeklyLogIdSchema.safeParse(id).success) {
     return { success: false, error: "잘못된 요청입니다." };
   }
@@ -330,7 +342,9 @@ export async function updateWeeklyLogStatusAction(
     .from("weekly_logs")
     .update({ status })
     .eq("id", id)
-    .select("id")
+    // "완료"로 바꾸면 100%, 완료를 해제하면 100%에서 내려가는 진척률까지 트리거가 함께
+    // 처리하므로 저장된 진척률을 그대로 돌려받아 호출부가 슬라이더·라벨을 갱신한다.
+    .select("id, status, progress")
     .maybeSingle();
 
   if (error) {
@@ -342,5 +356,5 @@ export async function updateWeeklyLogStatusAction(
 
   revalidatePath("/protected/weekly-logs");
   revalidatePath(`/protected/weekly-logs/${id}`);
-  return { success: true };
+  return { success: true, status: updated.status as WeeklyLogStatus, progress: updated.progress };
 }
