@@ -1,4 +1,4 @@
-# 부서별 주간업무일지 관리 v1 고도화 로드맵
+# 부서별 진행업무 관리 v1 고도화 로드맵
 
 MVP로 완성된 기록·조회 서비스를 **운영자가 직접 조직을 관리하고, 구성원이 서로 소통하며, 데이터로 현황을 읽어내는** 협업 플랫폼으로 확장한다.
 
@@ -9,13 +9,13 @@ v1 고도화는 MVP(`docs/roadmap/ROADMAP_mvp.md`, Task 001~024 완료)에서 "M
 - **[F019] 부서 관리 UI**: 관리자가 화면에서 부서를 추가/수정/비활성화 (현재는 seed 데이터 + SQL 수동 관리)
 - **[F020] 사용자 관리 UI**: 관리자가 사용자 목록을 조회하고, 개별 사용자의 상세 정보를 확인하며, `role`(`user`/`admin`)과 소속 부서를 지정/변경 (현재는 Supabase 콘솔에서 SQL 수동 변경)
 - **[F021] 기간 범위 검색/필터**: 시작일/목표종료일 범위로 목록을 좁히는 필터 (기존 키워드 검색 F016·진행상태 필터와 조합)
-- **[F022] 댓글·멘션 협업**: 주간업무일지에 댓글을 작성하고 `@`로 다른 사용자를 멘션
+- **[F022] 댓글·멘션 협업**: 진행업무에 댓글을 작성하고 `@`로 다른 사용자를 멘션
 - **[F023] 실시간 알림**: 멘션·댓글 발생 시 Supabase Realtime 기반으로 헤더에 즉시 알림 노출
 - **[F024] 통계/대시보드 차트**: 부서별·기간별·상태별 업무 현황을 차트로 시각화
 
 Phase 3 이후에는 원래 계획에 없던 ad hoc 요청 14건(F025~F030, F033~F035 포함)이 추가로 구현됐고(아래 "Phase 3 이후 ad hoc 확장" 5개 절), 여기에 **신규 요구사항 2건**이 Phase 6으로 추가되어 모두 구현 완료됐습니다:
 
-- **[F031] 주간업무일지 추천/비추천**: 개별 주간업무일지에 추천(좋아요)/비추천(싫어요)을 표시 — **✅ 구현 완료(Task 038, 결정 6종 확정 후 진행)**
+- **[F031] 진행업무 추천/비추천**: 개별 진행업무에 추천(좋아요)/비추천(싫어요)을 표시 — **✅ 구현 완료(Task 038, 결정 6종 확정 후 진행)**
 - **[F032] 애플리케이션 전반 성능 개선**: 특정 기능이 아니라 MVP 포함 전체 애플리케이션을 대상으로 하는 성능 개선 이니셔티브 — **✅ 구현 완료(Task 039, 결정 확정 후 진행). 인증 계정이 필요한 E2E 회귀 검증만 사용자 작업으로 대기**
 
 > F031·F032는 사용자가 한 줄로 던진 구두 요청에서 출발했습니다. 아래 Phase 6의 내용은 착수 시점엔 기존 설계 관례에서 유추한 초안이었으나, "주요 리스크 및 결정 필요 사항" 표의 F031·F032 결정 항목을 모두 확정한 뒤 구현을 완료했습니다.
@@ -121,14 +121,14 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - [x] `app/protected/admin/{loading,error}.tsx` 배치 — `error.tsx`는 기존 `components/error-state.tsx` 재사용. `loading.tsx`는 신규 `components/admin-layout-skeleton.tsx`(`ui/skeleton` 조합) 재사용
   - [x] **(구현 중 실측 발견 — 원래 계획에 없던 수정)** `cacheComponents: true` 하에서 `layout.tsx`가 `requireAdmin()`을 Suspense 밖에서 직접 `await`하면 "Uncached data ... accessed outside of `<Suspense>`" 콘솔 에러가 발생(라우트의 `loading.tsx`는 같은 세그먼트의 `layout.tsx` 최상위 실행 자체는 감싸주지 않음). `AdminLayout`을 얇은 동기 컴포넌트로 두고 내부에 `<Suspense fallback={<AdminLayoutSkeleton />}>`로 감싼 비동기 `AdminGuard` 컴포넌트를 두어 해소 — 이후 v1의 다른 신규 레이아웃(있다면)도 동일 패턴 적용 필요
   - **관련 파일**: `app/protected/admin/**`(`layout.tsx`, `page.tsx`, `departments/page.tsx`, `users/page.tsx`, `loading.tsx`, `error.tsx`), `lib/auth/require-admin.ts`(신규), `components/admin-tab-nav.tsx`(신규), `components/admin-layout-skeleton.tsx`(신규), `components/header-nav.tsx`, `components/weekly-log-list-view.tsx`, `app/protected/weekly-logs/page.tsx`
-  - **수락 기준**: 관리자 계정으로 `/protected/admin/departments`·`/protected/admin/users` 접근 시 빈 화면이 렌더링되고, 일반 사용자 계정으로 URL 직접 입력 시 목록 페이지로 리디렉션된다. 헤더 메뉴와 주간업무일지 목록 페이지 양쪽에서 관리자에게만 진입 링크가 보인다
+  - **수락 기준**: 관리자 계정으로 `/protected/admin/departments`·`/protected/admin/users` 접근 시 빈 화면이 렌더링되고, 일반 사용자 계정으로 URL 직접 입력 시 목록 페이지로 리디렉션된다. 헤더 메뉴와 진행업무 목록 페이지 양쪽에서 관리자에게만 진입 링크가 보인다
   - **테스트 체크리스트** (Playwright MCP + Supabase MCP `execute_sql`로 임시 테스트 계정을 만들어 실제 브라우저에서 검증, 종료 후 계정 삭제로 정리)
     - [x] 관리자 계정으로 `/protected/admin/*` 2개 라우트(부서 관리·사용자 관리 탭 전환 포함) 접근 성공 확인
     - [x] 일반 사용자 계정으로 URL 직접 접근(`/protected/admin/departments`) 시 `/protected/weekly-logs`로 리디렉션 확인 (UI 은닉만으로 방어하지 않음)
     - [x] 비로그인 상태 접근 시 기존 `proxy.ts` 게이트로 `/auth/login` 리디렉션되는지 확인 (`curl -L --max-redirs 0`로 307 확인)
     - [x] 부서 미설정 관리자 계정이 `/protected/admin/departments`에 접근할 때 온보딩 게이트(`/protected/profile`)가 관리자 확인보다 먼저 동작하는지 확인
-    - [x] 관리자 계정으로 주간업무일지 목록 페이지 진입 시 "관리자 콘솔" 링크가 보이고 클릭하면 `/protected/admin`(→ `/protected/admin/departments`)으로 이동하는지 확인. 역할을 DB에서 `admin`으로 승격한 직후 **재로그인 없이** 헤더·목록 페이지에 즉시 반영되는 것도 함께 확인(매 요청 `profiles.role` 재조회 구조)
-    - [x] 일반 사용자 계정으로 주간업무일지 목록 페이지 진입 시 해당 링크가 보이지 않는지 확인 (데스크톱 헤더·모바일 시트 메뉴 양쪽)
+    - [x] 관리자 계정으로 진행업무 목록 페이지 진입 시 "관리자 콘솔" 링크가 보이고 클릭하면 `/protected/admin`(→ `/protected/admin/departments`)으로 이동하는지 확인. 역할을 DB에서 `admin`으로 승격한 직후 **재로그인 없이** 헤더·목록 페이지에 즉시 반영되는 것도 함께 확인(매 요청 `profiles.role` 재조회 구조)
+    - [x] 일반 사용자 계정으로 진행업무 목록 페이지 진입 시 해당 링크가 보이지 않는지 확인 (데스크톱 헤더·모바일 시트 메뉴 양쪽)
   - **범위 밖 유지**: 실제 부서/사용자 CRUD 기능(Task 027·028), 기존 4개 페이지의 중복 부서 체크 리팩터링(헬퍼만 준비하고 교체는 선택)
 
 - **Task 026: 권한 모델 하드닝 및 관리자 쓰기 정책 마이그레이션 ✅**
@@ -152,7 +152,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - **리스크**: 이 Task는 **기존 프로필 저장 흐름(`components/profile-form.tsx`)을 깨뜨릴 수 있는 유일한 지점**이었으나, UI/서버 액션 코드는 변경하지 않고 DB 정책·트리거만 확장했고 위 테스트 2번 항목이 `profile-form.tsx`가 의존하는 것과 동일한 RLS 경로(본인 행 UPDATE)를 직접 재현해 회귀 없음을 확인함
 
 - **Task 027: 부서 관리 UI 구현 (F019) ✅**
-  - [x] `app/protected/admin/departments/page.tsx` 완성 — 부서 목록을 `ui/table`로 렌더링. 컬럼: 부서명 / 소속 인원 수 / 주간업무일지 수 / 상태(활성·비활성) / 액션. 인원·로그 수는 병렬 `count` 집계 쿼리로 조회해 **삭제 가능 여부를 사용자가 미리 알 수 있게** 함
+  - [x] `app/protected/admin/departments/page.tsx` 완성 — 부서 목록을 `ui/table`로 렌더링. 컬럼: 부서명 / 소속 인원 수 / 진행업무 수 / 상태(활성·비활성) / 액션. 인원·로그 수는 병렬 `count` 집계 쿼리로 조회해 **삭제 가능 여부를 사용자가 미리 알 수 있게** 함
   - [x] `components/department-form-dialog.tsx` 신규 — 추가/수정 겸용 `ui/dialog` + React Hook Form + `lib/schemas/department.ts`(신규, 이름 1~50자·필수·공백 트림). 다이얼로그를 열 때마다 최신 초기값으로 폼을 리셋
   - [x] `lib/actions/department.ts` 신규 — `createDepartmentAction` / `updateDepartmentAction` / `archiveDepartmentAction` / `restoreDepartmentAction` / `deleteDepartmentAction`. 기존 액션과 동일하게 `{success:true} | {success:false, error:string}` 반환, 성공 시 `revalidatePath("/protected/admin/departments")` 호출
   - [x] **부서명 중복 처리** — `23505`를 잡아 "이미 존재하는 부서명입니다."로 변환. 겸사겸사 `42501`(RLS 거부)도 "권한이 없습니다."로 매핑해 raw 에러 노출을 전면 차단
@@ -169,7 +169,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - **테스트 체크리스트** (Playwright MCP로 임시 관리자 계정 `qa-dept-admin-20260805@example.com` 생성해 실브라우저 검증, 종료 후 계정 완전 삭제 및 DB 원복 확인)
     - [x] 부서 추가 → 목록 즉시 반영 → 프로필 화면 드롭다운에도 노출 확인
     - [x] 기존 부서명과 동일한 이름으로 추가 시 한국어 중복 메시지가 표시되고 저장되지 않음 확인
-    - [x] 부서명 수정 시 해당 부서의 기존 주간업무일지 목록·상세에 즉시 반영 확인
+    - [x] 부서명 수정 시 해당 부서의 기존 진행업무 목록·상세에 즉시 반영 확인
     - [x] 부서원·로그가 있는 부서에서 하드 삭제 버튼이 비활성화되고 안내 문구가 노출됨 확인
     - [x] 참조 0건 부서를 하드 삭제 → 목록에서 사라짐 확인
     - [x] 부서 비활성화 후: 프로필 드롭다운에서 제외(단 현재 소속자에게는 "(비활성)" 라벨로 유지)되고, 목록 필터에는 "(비활성)"으로 남으며, 기존 로그는 계속 조회됨 확인
@@ -183,7 +183,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - [x] 20건 단위 페이지네이션 — `components/weekly-log-list-view.tsx`와 동일하게 서버가 전체 결과를 반환하고 클라이언트에서 20건씩 slice(`getPageNumbers()` 방식), `ui/pagination.tsx` 재사용. 34명 규모라 서버 side range 쿼리 불필요로 판단
   - [x] 목록 행 클릭 시 `app/protected/admin/users/[id]/page.tsx`로 이동, 인라인 역할 셀렉트는 빠른 변경용으로 별도 유지(`components/user-role-select.tsx` 공유 컴포넌트)
   - [x] **`app/protected/admin/users/[id]/page.tsx` 신규** — 프로필 전체(이메일·아바타·소속 부서·역할·전화번호·자기소개·가입일) 조회. 존재하지 않거나 형식이 잘못된 `id` 모두 `notFound()`로 404 처리(MVP Task 014 관례와 동일)
-  - [x] 사용자 상세 페이지에 **작성 업무일지 요약** 표시 — 총 건수, 상태별 분포, 최근 5건(클릭 시 `/protected/weekly-logs/[id]`로 이동)
+  - [x] 사용자 상세 페이지에 **작성 진행업무 요약** 표시 — 총 건수, 상태별 분포, 최근 5건(클릭 시 `/protected/weekly-logs/[id]`로 이동)
   - [x] 사용자 상세 페이지에 **역할·소속 부서 변경 폼** 배치 — 역할은 `components/user-role-select.tsx` 공유, 부서는 `ui/select` + 변경 확인 `alert-dialog`
   - [x] `lib/actions/user-admin.ts` 신규 — `updateUserRoleAction` / `updateUserDepartmentAction`. 호출자의 `profiles.role`을 매번 DB에서 재조회해 관리자인지 확인 후 실행(클라이언트 값 불신), RLS(`profiles_update_own_or_admin`)·트리거(`prevent_unauthorized_role_change`)로 이중 방어
   - [x] 역할 변경 UI — `components/user-role-select.tsx`가 `components/weekly-log-detail-view.tsx`의 `handleStatusChange` 패턴(즉시 반영 → 실패 시 롤백 → `sonner` 토스트)을 그대로 재사용해 목록 인라인·상세 폼 양쪽에 공유
@@ -193,9 +193,9 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - **관련 파일**: `app/protected/admin/users/page.tsx`, `app/protected/admin/users/[id]/page.tsx`(신규), `lib/actions/user-admin.ts`(신규), `components/user-admin-table.tsx`(신규), `components/user-admin-detail.tsx`(신규), `components/user-role-select.tsx`(신규), `components/admin-users-skeleton.tsx`(신규), `components/admin-user-detail-skeleton.tsx`(신규), `lib/types/index.ts`, `lib/format.ts`
   - **로드맵과 다르게 처리한 부분**: "마지막 관리자를 강등 시도 시 DB 트리거 거부 메시지가 노출되는지" 체크리스트 항목은 앱 경로에서는 관찰 불가능하다고 판단 — `updateUserRoleAction`이 자기 강등을 트리거보다 먼저·더 넓게 차단하기 때문에(위 항목 참고) 다른 관리자가 "마지막 관리자"를 대상으로 이 액션을 호출하는 시나리오 자체가 발생하지 않음(호출자도 관리자이므로 대상이 마지막 관리자면 호출자 자신인 경우만 존재). 트리거 자체의 정상 동작과 정확한 한국어 메시지는 `BEGIN/ROLLBACK` SQL로 직접 검증해 대체함(아래 테스트 항목 참고)
   - **DB 마이그레이션 불필요** — Task 026의 RLS·트리거로 충분함을 확인, 애플리케이션 코드만 작성
-  - **수락 기준**: 관리자가 목록에서 사용자를 조회하고, 개별 사용자의 상세 화면(프로필 전체 정보 + 작성 업무일지 요약)을 확인하고, 목록과 상세 양쪽에서 `admin`으로 승격/강등 및 소속 부서 변경이 가능하며, 변경이 재로그인 없이 즉시 권한에 반영된다
+  - **수락 기준**: 관리자가 목록에서 사용자를 조회하고, 개별 사용자의 상세 화면(프로필 전체 정보 + 작성 진행업무 요약)을 확인하고, 목록과 상세 양쪽에서 `admin`으로 승격/강등 및 소속 부서 변경이 가능하며, 변경이 재로그인 없이 즉시 권한에 반영된다
   - **테스트 체크리스트** (Playwright MCP + Supabase MCP, 임시 계정 `qa028-admin@example.com`/`qa028-target@example.com`을 실제 가입 플로우로 생성 후 SQL로 승격/부서 이동, 종료 후 완전 삭제해 34 profiles/1 admin/167 logs로 원복 확인)
-    - [x] 목록 → 상세 이동, 프로필 전체 정보와 작성 업무일지 요약(6건/1건 케이스, 최근 5건 절단) 정확히 표시 확인
+    - [x] 목록 → 상세 이동, 프로필 전체 정보와 작성 진행업무 요약(6건/1건 케이스, 최근 5건 절단) 정확히 표시 확인
     - [x] 존재하지 않는 UUID·형식이 잘못된 UUID 모두 404, 크래시 없음 확인
     - [x] 이메일 검색·부서 필터·역할 필터 각각 및 3종 동시 적용 확인(실제 36행 데이터셋 기준)
     - [x] 목록 인라인 역할 변경과 상세 페이지 폼 양쪽에서 낙관적 업데이트+토스트+DB 반영 확인, Playwright 요청 가로채기로 네트워크 실패를 재현해 값 롤백 + "네트워크 오류가 발생했습니다" 토스트 확인
@@ -215,7 +215,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 > 목표: 기존 `weekly_logs` 데이터를 더 잘 찾고(F021), 한눈에 읽을 수 있는(F024) 상태. **읽기 전용 확장이라 기존 권한 모델을 전혀 건드리지 않음.**
 > **선행 조건**: 없음 — Phase 1과 병렬 진행 가능 (충돌 지점은 `components/header-nav.tsx`의 `navLinks`뿐).
 
-- **Task 029: 주간업무일지 기간 범위 검색/필터 구현 (F021) ✅**
+- **Task 029: 진행업무 기간 범위 검색/필터 구현 (F021) ✅**
   - [x] `app/protected/weekly-logs/page.tsx` — `searchParams`에 `from`/`to` 추가. 기존 `department`/`q`/`status` 파라미터와 **AND 조합**으로 동작하며, 키워드 검색 분기(title/content 각각 `ilike` 후 병합)의 **양쪽 쿼리에 모두 동일한 날짜 조건을 적용**해야 함(한쪽만 적용하면 병합 결과가 필터를 우회)
   - [x] 필터 의미 확정 — "기간이 겹치는 항목"(`start_date <= to AND target_end_date >= from`) 방식을 기본으로 채택. 단순히 `start_date`만 비교하면 장기 과제가 조회 기간에서 누락되므로 부적절. **이 결정을 코드 주석에도 남길 것**
   - [x] 날짜 파라미터 검증 — `z.string().date()`로 형식 검증 후 실패 시 필터 미적용(에러 화면 대신 무시). `from > to`인 경우 값을 교환하거나 무시하고 안내 표시. MVP Task 014에서 잘못된 UUID가 500 크래시를 유발했던 사례와 동일한 방어
@@ -280,7 +280,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - [x] Playwright MCP로 대시보드 진입 → 4개 차트가 모두 렌더링되고 콘솔 에러 0건인지 확인 — 전체 세션 동안 콘솔 에러 0건 유지
     - [x] 차트 숫자가 Task 030의 RPC 결과 및 목록 페이지 실제 건수와 일치하는지 대조 — `stats_logs_by_department`/`stats_logs_by_status`/`stats_workload_summary`를 `execute_sql`로 직접 호출한 값(부서별 55/57/55건, 상태별 완료71/진행중79/예정17, ERP `mm_sum` 24·`cost_sum` 6.08억)이 화면 수치·sr-only 표와 정확히 일치. "이번 주" 프리셋(2026-08-03~08-09) 적용 시 전체 47건(10+17+20)도 RPC 재호출 결과 및 동일 조건의 `/protected/weekly-logs` 목록 페이지 페이지네이션(3페이지, 20+20+7=47)과 모두 일치 확인
     - [x] 기간/부서 필터 변경 시 모든 차트가 함께 갱신되는지 확인 — 부서 필터는 `getLogsByStatus`/`getMonthlyTrend`(요약 카드·도넛·월별 추이)에는 반영되지만, `stats_logs_by_department`/부서별 워크로드 루프 호출은 애초에 dept_id 파라미터가 없어(Task 030 설계, "부서 비교"가 목적) 부서별 건수·M/M·금액 차트는 부서 필터와 무관하게 항상 전체 부서를 비교하도록 의도적으로 구현 — 각 카드 캡션에 이 차이를 명시. 기간 필터는 요약 카드·부서별 건수·도넛에는 반영되고, 월별 추이·워크로드 차트는 `months`/부서 조건만 쓰는 별도 RPC라 기간 필터의 영향을 받지 않음(역시 캡션에 명시). 로그 0건 부서(접근제어 프로젝트팀) 선택 시 요약 카드 전부 0, 도넛·월별 추이만 EmptyState로 전환되고 부서별 건수·워크로드 차트는 설계대로 전체 부서 데이터 유지됨을 확인
-    - [x] 데이터 0건 조건(신규 부서 또는 데이터 없는 기간)에서 빈 차트가 오류 없이 안내 문구로 대체되는지 확인 — 로그 0건 부서 선택 시 도넛·월별 추이가 "집계할 업무일지가 없습니다" EmptyState로 대체, 콘솔 에러 0건
+    - [x] 데이터 0건 조건(신규 부서 또는 데이터 없는 기간)에서 빈 차트가 오류 없이 안내 문구로 대체되는지 확인 — 로그 0건 부서 선택 시 도넛·월별 추이가 "집계할 진행업무가 없습니다" EmptyState로 대체, 콘솔 에러 0건
     - [x] 라이트/다크 테마 각각에서 차트 색상 대비 확인 (스크린샷 대조) — `next-themes` 테마 전환 버튼으로 라이트→다크 전환 후 전체 페이지 스크린샷 대조, 상태 색상(주황/초록/회색)과 `--chart-1`/`--chart-2` 계열 색상 모두 두 테마에서 배경 대비 충분히 판독 가능함을 확인
     - [x] 1280/768/390 3개 뷰포트에서 레이아웃·축 라벨 확인 — 1280은 2열 그리드, 768/390은 1열로 정상 전환. 390에서 부서별 건수·워크로드 차트의 Y축 부서명("Commerce시스템팀")이 잘리는 문제를 실측으로 발견해 `YAxis width`를 96→108로 수정 후 재검증(전체 뷰포트에서 잘림 없음 확인)
     - [x] `npm run build` 후 번들 크기 및 대시보드 진입 전 recharts 청크가 로드되지 않는지 네트워크 실측 (PDF 청크와 동일한 방식) — recharts 청크(약 413KB)가 `.next/server/app/protected/dashboard/page_client-reference-manifest.js`에서만 참조되고 `weekly-logs`/`admin`/`profile` 등 다른 라우트의 client-reference-manifest에는 전혀 등장하지 않음을 확인. Next.js App Router의 라우트별 코드 스플리팅이 이미 이 격리를 자동으로 보장하므로 PDF(jsPDF)처럼 클릭 시점에 `await import()`하는 추가 동적 로딩은 불필요하다고 판단(대시보드는 진입 즉시 4개 차트를 모두 그리는 것이 목적이라 지연 로딩할 상호작용 시점 자체가 없음)
@@ -289,14 +289,14 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - `stats_workload_summary`가 부서별 그룹화 없이 단일 행만 반환하므로(Task 030 설계), "부서별 예상 M/M·금액" 차트를 만들기 위해 페이지에서 `stats_logs_by_department` 결과에 등장한 부서(해당 기간에 로그가 1건이라도 있는 부서)만 대상으로 부서마다 `getWorkloadSummary`를 병렬 호출해 조합. M/M과 금액은 스케일이 전혀 달라(개월 수 vs 억 단위 원화) 한 차트에 두 축으로 겹치면 dataviz 원칙("dual-axis 금지")에 위배되므로 두 개의 독립된 가로 막대 차트(예상 M/M 합계 / 예상 금액 합계)로 분리
     - 접근성 표 대체 콘텐츠는 별도 토글 UI 없이 `className="sr-only"` `<table>`로 각 차트 바로 아래 배치 — 스크린리더에는 전체 데이터가 읽히고 시각 사용자에게는 노출되지 않아 로드맵이 요구한 "표 대체 콘텐츠"를 UI 복잡도 추가 없이 충족
   - **범위 밖 유지**: 차트 이미지 내보내기(PNG), 대시보드 PDF 리포트, 사용자별 대시보드 커스터마이징(위젯 배치)은 요청 범위 밖
-  - **(Task 완료 후 별도 ad hoc 요청으로 추가)** 관리자 콘솔(`/protected/admin/*`)과 대시보드(`/protected/dashboard`)의 진입점이 헤더의 "대시보드"·"관리자 설정" 2개 링크와 주간업무일지 목록의 "관리자 콘솔" 버튼으로 흩어져 있어 어지럽다는 사용자 피드백에 따라, **대시보드를 전 사용자 공개에서 관리자 전용으로 전환**하고 `/protected/admin/dashboard`(관리자 콘솔의 랜딩 탭)로 이전. `app/protected/admin/layout.tsx`의 `requireAdmin()` 가드가 이미 `/protected/admin/**` 전체를 관리자 전용으로 막고 있어 별도 가드 코드 없이 자동 적용되며, 옮기며 페이지 내부의 부서 게이트(`profiles.department_id` 조회 리디렉션) 로직은 중복이라 제거함. `components/admin-tab-nav.tsx`의 `TABS`에 "대시보드"를 맨 앞에 추가해 부서 관리·사용자 관리와 함께 3개 탭으로 구성하고, `app/protected/admin/page.tsx`의 인덱스 리다이렉트 대상을 `/protected/admin/departments`에서 `/protected/admin/dashboard`로 변경해 관리자 콘솔 진입 시 대시보드로 랜딩하도록 함. 헤더(`components/header-nav.tsx`)의 "대시보드" 링크는 삭제하고 "관리자 설정" 링크는 "관리자 콘솔"로 개명해 진입점을 하나로 통일했으며, 일반 사용자는 더 이상 헤더에 아무 메뉴도 보이지 않음. 주간업무일지 목록(`components/weekly-log-list-view.tsx`)의 "관리자 콘솔" 버튼과 이를 위해 전달되던 `isAdmin` prop도 함께 제거(`app/protected/weekly-logs/page.tsx`의 `isAdmin` 변수 자체는 부서 필터 기본값 분기에 계속 사용되므로 유지). 옛 `app/protected/dashboard/` 디렉터리는 완전히 삭제되어 `/protected/dashboard` 경로는 404가 됨. `docs/PRD.md`도 이 변경에 맞춰 "통계 대시보드 페이지" 섹션을 "관리자 콘솔 - 대시보드 페이지"로 옮기고 메뉴 구조·기능 명세를 함께 갱신함
+  - **(Task 완료 후 별도 ad hoc 요청으로 추가)** 관리자 콘솔(`/protected/admin/*`)과 대시보드(`/protected/dashboard`)의 진입점이 헤더의 "대시보드"·"관리자 설정" 2개 링크와 진행업무 목록의 "관리자 콘솔" 버튼으로 흩어져 있어 어지럽다는 사용자 피드백에 따라, **대시보드를 전 사용자 공개에서 관리자 전용으로 전환**하고 `/protected/admin/dashboard`(관리자 콘솔의 랜딩 탭)로 이전. `app/protected/admin/layout.tsx`의 `requireAdmin()` 가드가 이미 `/protected/admin/**` 전체를 관리자 전용으로 막고 있어 별도 가드 코드 없이 자동 적용되며, 옮기며 페이지 내부의 부서 게이트(`profiles.department_id` 조회 리디렉션) 로직은 중복이라 제거함. `components/admin-tab-nav.tsx`의 `TABS`에 "대시보드"를 맨 앞에 추가해 부서 관리·사용자 관리와 함께 3개 탭으로 구성하고, `app/protected/admin/page.tsx`의 인덱스 리다이렉트 대상을 `/protected/admin/departments`에서 `/protected/admin/dashboard`로 변경해 관리자 콘솔 진입 시 대시보드로 랜딩하도록 함. 헤더(`components/header-nav.tsx`)의 "대시보드" 링크는 삭제하고 "관리자 설정" 링크는 "관리자 콘솔"로 개명해 진입점을 하나로 통일했으며, 일반 사용자는 더 이상 헤더에 아무 메뉴도 보이지 않음. 진행업무 목록(`components/weekly-log-list-view.tsx`)의 "관리자 콘솔" 버튼과 이를 위해 전달되던 `isAdmin` prop도 함께 제거(`app/protected/weekly-logs/page.tsx`의 `isAdmin` 변수 자체는 부서 필터 기본값 분기에 계속 사용되므로 유지). 옛 `app/protected/dashboard/` 디렉터리는 완전히 삭제되어 `/protected/dashboard` 경로는 404가 됨. `docs/PRD.md`도 이 변경에 맞춰 "통계 대시보드 페이지" 섹션을 "관리자 콘솔 - 대시보드 페이지"로 옮기고 메뉴 구조·기능 명세를 함께 갱신함
   - **(위 이전 작업 직후 별도 ad hoc 요청으로 추가)** `app/protected/admin/layout.tsx`의 타이틀("관리자 콘솔") 아래에 있던 부제 "부서와 사용자를 관리합니다." 문구를 사용자 요청으로 삭제 — 대시보드 탭 추가로 이미 부정확해진 설명이었고(부서·사용자 외에 대시보드도 다루므로), 탭 내비게이션 자체가 콘솔이 다루는 영역을 충분히 드러낸다고 판단해 재작성 대신 제거로 처리
 
 ---
 
 ### Phase 3: 협업 기능 (댓글·멘션)
 
-> 목표: 주간업무일지에서 대화가 이루어지는 상태. 이번 v1에서 **신규 테이블·신규 RLS가 추가되는 가장 큰 단위**.
+> 목표: 진행업무에서 대화가 이루어지는 상태. 이번 v1에서 **신규 테이블·신규 RLS가 추가되는 가장 큰 단위**.
 > **선행 조건**: Phase 1 완료(역할·부서 모델 확정). Phase 2와는 독립.
 
 - **Task 032: 댓글·멘션 스키마 및 서버 액션 구현 (F022 백엔드) ✅**
@@ -321,7 +321,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - **로드맵과 다르게 처리한 부분**: `weekly_log_comment_mentions`에 별도 `id` surrogate key를 두지 않고 `(comment_id, mentioned_user_id)` 복합 PK로 `unique(comment_id, mentioned_user_id)` 요구사항을 겸하도록 단순화(로드맵 명세에 `id` 컬럼이 명시돼 있었으나 정규화 목적상 복합 PK만으로 충분하다고 판단). `updateCommentAction`은 내용만 수정하고 멘션 목록은 재계산하지 않음(멘션 테이블에 DELETE RLS 정책이 없어 수정 시 멘션을 갈아끼우려면 정책을 추가로 열어야 하는데, 로드맵이 요구한 범위가 "내용 수정"이라 멘션 재계산은 Task 033/034 착수 시점에 실제로 필요해지면 추가하기로 함)
   - **수락 기준**: 댓글 CRUD가 서버 액션으로 동작하고, 멘션이 별도 테이블에 정규화되어 기록되며, 타인의 댓글을 수정/삭제할 수 없다
   - **테스트 체크리스트** (UI 이전 단계이므로 impersonation SQL을 하나의 트랜잭션에 모아 `SAVEPOINT`/`DO $$ ... $$` 블록으로 실행 후 `ROLLBACK`, 실제 데이터 변경 없이 검증. 테스트 계정: 일반 사용자 commerce05@example.com·commerce08@example.com(둘 다 Commerce시스템팀), 관리자 archy712@gmail.com, 대상 로그는 다른 부서 소속으로 선정)
-    - [x] 타 부서 사용자가 댓글을 작성할 수 있는지 확인 (의도된 완화가 실제로 동작하는지) — Commerce시스템팀 소속 사용자가 다른 부서 소속 주간업무일지에 댓글 INSERT 성공 확인
+    - [x] 타 부서 사용자가 댓글을 작성할 수 있는지 확인 (의도된 완화가 실제로 동작하는지) — Commerce시스템팀 소속 사용자가 다른 부서 소속 진행업무에 댓글 INSERT 성공 확인
     - [x] 타인의 댓글 UPDATE/DELETE 시도 시 거부되는지 확인 — commerce08이 commerce05의 댓글을 UPDATE/DELETE 모두 0건(거부) 확인
     - [x] 관리자는 타인의 댓글을 삭제할 수 있는지 확인 — 관리자 계정이 commerce05의 댓글을 소프트 삭제(1건) 성공 확인
     - [x] 존재하지 않는 사용자 id로 멘션 토큰을 조작해 전송 시 멘션 행이 생성되지 않고 댓글 저장은 성공하는지 확인 — 댓글 저장 자체는 항상 성공(멘션 파싱은 저장 이후 별도 단계)하고, 존재하지 않는 id로 직접 멘션 INSERT를 시도하면 FK 위반으로 명시적 거부됨을 확인(`weekly_log_comment_mentions_mentioned_user_id_fkey`)
@@ -367,10 +367,10 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 > Phase 4(실시간 알림) 착수 전 시점에, 계획에 없던 사용자 요청 4건을 별도 Task 번호 없이 이 섹션에 일괄 기록한다(뒤에 이미 Task 035~037이 예약되어 있어 번호 재배치 대신 이 방식을 택함). **이 섹션의 항목들은 로그인 테스트 계정이 세션에 없어 Playwright 실브라우저 검증을 거치지 못했고, `npx tsc --noEmit`/`npm run lint`/`npm run build` 통과로만 검증**했다 — 다른 Task들과 달리 실측 테스트 체크리스트가 없는 이유.
 
-- **목록·사용자 관리 테이블 정렬 헤더** — 주간업무일지 목록(`components/weekly-log-table.tsx`)과 관리자 사용자 관리 목록(`components/user-admin-table.tsx`)의 모든 컬럼 헤더를 클릭해 오름차순/내림차순으로 토글 정렬하도록 공통 `components/sortable-table-head.tsx`(신규)를 도입. `components/weekly-log-list-view.tsx`가 정렬 상태(`sortKey`/`sortDirection`)를 관리하며 서버 재조회 없이 클라이언트 사이드로 정렬한다(페이지당 20건 규모에서는 충분하다고 판단, RPC 추가 없음).
+- **목록·사용자 관리 테이블 정렬 헤더** — 진행업무 목록(`components/weekly-log-table.tsx`)과 관리자 사용자 관리 목록(`components/user-admin-table.tsx`)의 모든 컬럼 헤더를 클릭해 오름차순/내림차순으로 토글 정렬하도록 공통 `components/sortable-table-head.tsx`(신규)를 도입. `components/weekly-log-list-view.tsx`가 정렬 상태(`sortKey`/`sortDirection`)를 관리하며 서버 재조회 없이 클라이언트 사이드로 정렬한다(페이지당 20건 규모에서는 충분하다고 판단, RPC 추가 없음).
 - **대시보드 차트 라벨 개선** — 부서별 건수(스택 막대)·진행상태 분포(도넛)·부서별 예상 M/M·금액 차트(`components/dashboard-department-chart.tsx`, `dashboard-status-chart.tsx`, `dashboard-workload-chart.tsx`)에 막대/조각별 비율(%) 또는 절대값 라벨을 추가해 그래프만으로 값을 바로 읽을 수 있게 했다. 스택 막대는 세그먼트 폭이 24px 미만이면 라벨을 숨겨 텍스트 겹침을 방지.
 - **업무 타입(다중 선택) 속성 신설 — 신규 F025** — `weekly_logs.work_type text[]`(신규 컬럼, `cardinality > 0`이고 고정 10개 값만 허용하는 CHECK 제약)를 추가해 네트워크/데이터 추출/보고서 작성/보안/사업계획수립/솔루션 도입/시스템 개발/시스템 검토/클라우드/프로젝트 개발 중 1개 이상을 체크박스로 다중 선택하도록 구현. `lib/constants/work-types.ts`(신규)의 `WORK_TYPE_OPTIONS`(가나다순 정렬)가 폼 선택지·Zod 스키마·CHECK 제약·통계 RPC 4곳이 공유하는 단일 소스이며, 항목을 추가/제거하면 이 4곳을 함께 맞춰야 한다(아바타 프리셋과 동일한 동기화 관례). 작성 폼(`components/weekly-log-form.tsx`)뿐 아니라 **상세 페이지에서도 진행상태 Select와 동일하게 "수정" 모드에 들어가지 않고 체크/해제 즉시 저장**되도록 구현(`components/weekly-log-detail-view.tsx`, `updateWeeklyLogWorkTypeAction` 신규 — 낙관적 업데이트 → 실패 시 롤백 + 토스트 패턴은 기존 `updateWeeklyLogStatusAction`과 동일). 최소 1개 선택 제약 때문에 마지막 항목을 해제하려 하면 서버 호출 없이 즉시 에러 토스트로 막는다. 기존 더미 데이터 317건도 신규 10개 카테고리 기준으로 재배정.
-- **업무 타입별 통계 차트 추가** — 관리자 대시보드에 5번째 차트로 업무 타입별 건수(가로 막대, `components/dashboard-worktype-chart.tsx` 신규)를 추가. `stats_logs_by_work_type(from_date, to_date, dept_id)` RPC 신규(`SECURITY INVOKER`, 기존 `stats_*` 컨벤션과 동일하게 `anon` EXECUTE 명시적 회수), `lib/queries/stats.ts`/`lib/types/stats.ts`에 대응 항목 추가. 업무 타입이 10종으로 `--chart-1`~`--chart-5`(5색) 팔레트보다 많아 `WORK_TYPE_CHART_COLORS`(신규, `lib/constants/chart-colors.ts`)로 5색을 순환시켜 `Cell`로 막대마다 다른 색을 부여하고, 막대 안쪽에 "N건, NN.N%" 라벨을 표시. 하나의 업무일지가 여러 타입에 속할 수 있어 비율 합계가 100%를 넘을 수 있음을 캡션에 명시.
+- **업무 타입별 통계 차트 추가** — 관리자 대시보드에 5번째 차트로 업무 타입별 건수(가로 막대, `components/dashboard-worktype-chart.tsx` 신규)를 추가. `stats_logs_by_work_type(from_date, to_date, dept_id)` RPC 신규(`SECURITY INVOKER`, 기존 `stats_*` 컨벤션과 동일하게 `anon` EXECUTE 명시적 회수), `lib/queries/stats.ts`/`lib/types/stats.ts`에 대응 항목 추가. 업무 타입이 10종으로 `--chart-1`~`--chart-5`(5색) 팔레트보다 많아 `WORK_TYPE_CHART_COLORS`(신규, `lib/constants/chart-colors.ts`)로 5색을 순환시켜 `Cell`로 막대마다 다른 색을 부여하고, 막대 안쪽에 "N건, NN.N%" 라벨을 표시. 하나의 진행업무가 여러 타입에 속할 수 있어 비율 합계가 100%를 넘을 수 있음을 캡션에 명시.
 - **관련 파일**: 위 각 항목 참고. DB 변경(컬럼·CHECK 제약·RPC)은 전부 Supabase MCP `apply_migration`으로 직접 적용되어 로컬 `supabase/migrations/`에는 없음(`prevent_unauthorized_role_change()`와 동일한 배포 방식) — 스키마 확인 시 `mcp__supabase__list_migrations`/`execute_sql`로 실측할 것.
 - **범위 밖 유지**: 이 4건의 실브라우저 회귀 테스트는 다음 통합 검증(Task 036)에서 v1 나머지 기능과 함께 수행하기로 미룸.
 
@@ -382,10 +382,10 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 - **예상 소요 금액 콤마 구분자·단위 라벨 표시** — 등록·수정·상세 화면의 "예상 소요 금액" 라벨을 "(단위:원)"으로 명시하고, 입력 중 `lib/utils.ts`의 신규 `formatThousandsInput()`으로 3자리마다 콤마를 자동 삽입. 서버로 보낼 때(`toWeeklyLogPayload`)는 콤마를 제거하고 숫자로 변환.
 - **업무 중요도(1~5단계) 슬라이더 속성 신설 — 신규 F026** — `weekly_logs.importance smallint`(1~5 CHECK 제약, 기본값 3) 컬럼을 추가. 허용 범위·라벨은 `lib/constants/importance.ts`(`IMPORTANCE_MIN`/`MAX`/`LABELS`, `formatImportanceLabel()`)가 유일한 소스. 입력 UI는 체크박스가 아니라 신규 설치한 `ui/slider`(shadcn)이며, 상세 페이지는 업무 타입과 동일하게 별도 "수정" 모드 없이 슬라이더 조작만으로 즉시 저장하되 **드래그 중에는 로컬 상태만 갱신(`onValueChange`)하고 손을 뗄 때(`onValueCommit`)만 서버에 저장**해 과도한 요청을 피함(`updateWeeklyLogImportanceAction` 신규, 낙관적 업데이트 + 실패 시 롤백은 기존 진행상태 변경과 동일 패턴). 관리자 대시보드에 6번째 차트로 레이더 차트(`components/dashboard-importance-chart.tsx`, `stats_logs_by_importance` RPC 신규)를 추가해 1~5단계 분포를 시각화(다른 `stats_*`와 동일하게 0건 단계도 항상 5개 축으로 반환). 기존 더미 데이터 317건도 중요도 값으로 백필.
-- **관리자 콘솔 모바일 반응형 카드 레이아웃 확장** — 부서 관리(`app/protected/admin/departments/page.tsx`, `components/department-card.tsx` 신규)와 사용자 관리(`components/user-admin-card.tsx` 신규)의 테이블이 모바일에서 가로 스크롤을 유발하던 문제를, 주간업무일지 목록에 이미 적용돼 있던 "md 미만은 카드, md 이상은 테이블" 반응형 전환 패턴으로 동일하게 확장.
-- **조직(organizations) 계층 신설 및 관리 기능 — 신규 F027** — `departments.organization_id`(NOT NULL FK → 신규 `organizations` 테이블, `id`/`name`(unique)/`archived_at`/`created_at`)를 추가해 모든 부서가 반드시 하나의 조직에 속하도록 변경. 관리자 콘솔에 조직 관리 탭(`app/protected/admin/organizations/page.tsx`, `lib/actions/organization.ts`, `lib/schemas/organization.ts` 전부 신규)을 신설해 부서 관리와 동일한 CRUD+소프트 삭제 패턴(당시엔 여러 조직을 나열하는 목록이었으나, 이후 ad hoc으로 조직 범위 제한이 들어오며 단일 카드로 재작성됨 — 아래 항목 참고)을 제공. 헤더 왼쪽 타이틀(`components/site-header-title.tsx` 신규)과 로그인 상태의 랜딩 CTA(`components/hero-cta.tsx`)가 `profiles.department_id → departments.organization_id → organizations.name` 중첩 PostgREST embed로 로그인한 사용자의 소속 조직명을 동적으로 표시(예: "IT부문 주간업무"). 부서 추가/수정 다이얼로그(`department-form-dialog.tsx`)에 소속 조직 선택 `Select`를 추가.
+- **관리자 콘솔 모바일 반응형 카드 레이아웃 확장** — 부서 관리(`app/protected/admin/departments/page.tsx`, `components/department-card.tsx` 신규)와 사용자 관리(`components/user-admin-card.tsx` 신규)의 테이블이 모바일에서 가로 스크롤을 유발하던 문제를, 진행업무 목록에 이미 적용돼 있던 "md 미만은 카드, md 이상은 테이블" 반응형 전환 패턴으로 동일하게 확장.
+- **조직(organizations) 계층 신설 및 관리 기능 — 신규 F027** — `departments.organization_id`(NOT NULL FK → 신규 `organizations` 테이블, `id`/`name`(unique)/`archived_at`/`created_at`)를 추가해 모든 부서가 반드시 하나의 조직에 속하도록 변경. 관리자 콘솔에 조직 관리 탭(`app/protected/admin/organizations/page.tsx`, `lib/actions/organization.ts`, `lib/schemas/organization.ts` 전부 신규)을 신설해 부서 관리와 동일한 CRUD+소프트 삭제 패턴(당시엔 여러 조직을 나열하는 목록이었으나, 이후 ad hoc으로 조직 범위 제한이 들어오며 단일 카드로 재작성됨 — 아래 항목 참고)을 제공. 헤더 왼쪽 타이틀(`components/site-header-title.tsx` 신규)과 로그인 상태의 랜딩 CTA(`components/hero-cta.tsx`)가 `profiles.department_id → departments.organization_id → organizations.name` 중첩 PostgREST embed로 로그인한 사용자의 소속 조직명을 동적으로 표시(예: "IT부문 진행업무"). 부서 추가/수정 다이얼로그(`department-form-dialog.tsx`)에 소속 조직 선택 `Select`를 추가.
 - **비로그인 시 랜딩 페이지 헤더 제거 및 여백 개선** — 로그인 전 방문자에게는 헤더(히어로 섹션의 로그인/회원가입 CTA와 중복)를 숨기는 `components/landing-header.tsx` 신규(env var 미설정 상태는 경고 노출을 위해 항상 헤더 표시). 로그인한 사용자가 `/`로 돌아왔을 때는 기존처럼 `SiteHeader`를 그대로 노출. 본문 텍스트 단락·섹션 간격을 넓혀 가독성 개선.
-- **주간업무목록 Excel 다운로드 기능 추가 — 신규 F028** — 기존 PDF 전용 다운로드 버튼을 드롭다운으로 바꿔 PDF/Excel 중 선택 가능하게 하고, `exceljs`(신규 의존성) + `lib/excel/weekly-log-excel.ts`(신규)로 업무타입·중요도·예상소요기간/금액·협력업체·내용까지 포함한 Excel(.xlsx)을 클라이언트 사이드에서 생성. `weekly_logs.content`(sanitize된 HTML)는 `DOMParser`로 plain text만 추출해 셀에 기록. 화면에 적용된 필터·기간 조건과 항상 일치하도록 PDF와 동일한 데이터 소스를 재사용. 행 높이 25 고정 + 세로 가운데 정렬 적용.
+- **진행업무 목록 Excel 다운로드 기능 추가 — 신규 F028** — 기존 PDF 전용 다운로드 버튼을 드롭다운으로 바꿔 PDF/Excel 중 선택 가능하게 하고, `exceljs`(신규 의존성) + `lib/excel/weekly-log-excel.ts`(신규)로 업무타입·중요도·예상소요기간/금액·협력업체·내용까지 포함한 Excel(.xlsx)을 클라이언트 사이드에서 생성. `weekly_logs.content`(sanitize된 HTML)는 `DOMParser`로 plain text만 추출해 셀에 기록. 화면에 적용된 필터·기간 조건과 항상 일치하도록 PDF와 동일한 데이터 소스를 재사용. 행 높이 25 고정 + 세로 가운데 정렬 적용.
 - **업무 타입을 관리자가 관리하는 기능으로 전환 — 신규 F029, 조직별 소속 — F027 확장** — 원래 `lib/constants/work-types.ts`에 하드코딩돼 있던 업무 타입 10종을 신규 `work_types` 테이블(`id`/`name`/`organization_id`/`archived_at`/`created_at`)로 옮기고, 관리자 콘솔에 업무타입 관리 탭(`app/protected/admin/work-types/page.tsx`, `lib/actions/work-type.ts`, `lib/schemas/work-type.ts` 신규)을 부서 관리와 동일한 패턴으로 추가. **CHECK 제약은 다른 테이블을 참조할 수 없어** 기존 `weekly_logs_work_type_check`를 `validate_weekly_log_work_type()` `BEFORE INSERT OR UPDATE OF work_type` 트리거로 대체(cardinality > 0 + 각 값이 로그 작성 부서의 조직에 속한 `work_types.name`에 실존하는지 검증). `work_types.name`은 전역이 아니라 **`(organization_id, name)` 복합 unique**로 설계해 서로 다른 조직이 같은 이름을 각자 등록할 수 있게 함(전역 unique였다면 `stats_logs_by_work_type`의 `group by name`이 조직 간 카운트를 잘못 합산할 위험이 있어 `group by wt.id, wt.name`으로도 함께 수정). 작성/수정 폼과 상세 페이지의 체크박스는 이제 정적 배열이 아니라 서버가 조회해 내려주는 `workTypeOptions` prop이며, 부서 select의 "비활성 라벨링" 패턴을 그대로 다중 선택으로 옮겨 활성 타입은 항상 노출하고 비활성·타 조직 타입은 이미 선택된 로그에서만 "(비활성)" 라벨로 유지.
 - **관리자 콘솔을 소속 조직 범위로 제한 — 신규 F030** — 위 F027·F029로 조직이 여러 개 존재할 수 있게 되면서, "관리자는 자기 소속 조직만 관리한다"는 경계를 명확히 함(별도의 "전체 관리자" 등급은 두지 않기로 결정 — `profiles.role`은 여전히 `user`/`admin` 2단계). `current_department_id()`와 동일한 컨벤션(`SECURITY DEFINER STABLE`, `anon` EXECUTE 명시적 회수)으로 `current_organization_id()` 함수를 신설하고, `departments`/`work_types`의 INSERT/UPDATE/DELETE 정책과 `organizations`의 UPDATE 정책에 기존 `is_admin()` 조건과 AND로 `organization_id = current_organization_id()`(조직 자체는 `id = ...`)를 추가. `organizations`의 INSERT/DELETE 정책은 아예 제거(앱에 조직 생성·삭제 경로 없음). 대시보드·부서 관리·업무타입 관리·사용자 관리 4개 페이지가 각자 `requireAdmin()`을 호출해 `organizationId`를 얻어 조회 쿼리를 좁히고(`lib/auth/require-admin.ts`의 `CurrentProfile`에 `organizationId` 필드 추가), 통계 RPC 6개(`stats_logs_by_department`는 이때 처음으로 부서 단일값이 아닌 조직 필터가 필요해짐) 전부에 `org_id` 파라미터를 추가해 "전체 부서" 조회를 선택해도 다른 조직 데이터가 섞이지 않게 함. `profiles`에는 조직 컬럼이 없고 관련 RLS·트리거(`prevent_unauthorized_role_change`)는 과거 회귀 이력이 있어 건드리지 않기로 결정했으므로, 사용자 관리의 조직 범위 검증은 `lib/actions/user-admin.ts`의 서버 액션 레벨에서(대상 사용자의 현재/신규 부서가 호출자와 같은 조직인지 매번 재조회) 수행 — 자기 자신 강등 방지가 트리거보다 넓은 조건을 액션에서 추가로 거는 것과 동일한 선례를 따름. 조직 관리 탭은 여러 조직을 나열하던 목록에서 **관리자 소속 조직 1건짜리 단일 카드**(이름 수정·비활성화만, 생성·삭제 UI 없음)로 재작성됐고, 지난 F029에서 만든 업무타입의 "전체 조직/특정 조직" 필터 드롭다운은 관리자가 항상 자기 조직 하나만 보게 되어 의미가 없어져 제거함(`components/work-type-filters.tsx` 삭제, `lib/types/index.ts`의 `ALL_ORGANIZATIONS_FILTER`/`OrganizationFilter`도 함께 제거).
   - **DB 검증**: 실제 관리자 계정(`archy712@gmail.com`, IT부문 소속)의 uid로 `request.jwt.claim.sub`를 설정해 impersonate한 뒤, 임시로 두 번째 조직·부서를 만들어(트랜잭션 `ROLLBACK`) 자기 조직 부서 생성/조직 이름 수정은 허용되고 **다른 조직**의 부서 생성·조직 이름 수정 시도는 `insufficient_privilege`로 명시 거부됨을 확인. 서로 다른 조직에 동일 이름(`보안`) 업무 타입을 각자 등록할 수 있음과, `stats_logs_by_work_type`가 조직이 다른 동명 타입을 별도 행으로 정확히 분리 집계함(합산 안 됨)도 함께 확인.
@@ -424,7 +424,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 > F034 직후 들어온 UX 개선 요청 1건을 이어서 정리한다. 이번 5개 ad hoc 절 중 **DB 마이그레이션이 필요 없었던 유일한 사례**다.
 
-- **주간업무일지 목록의 부서 컬럼을 작성자 아바타+이름으로 대체 — 신규 F035** — 목록에서는 부서보다 "누가 작성했는지"가 한눈에 보이는 게 더 유용하다는 판단으로, `components/weekly-log-table.tsx`(데스크탑 테이블)·`components/weekly-log-card.tsx`(모바일 카드)의 부서 `Badge`를 아바타 프리셋(`lib/constants/avatars.ts`) + 작성자명(이름 우선, 없으면 이메일 폴백, 최종 폴백은 "알 수 없는 사용자") 조합으로 교체했다. `showDepartment` prop을 `showAuthor`로 리네이밍하고, `WeeklyLogTable`의 정렬 키도 `department_name`에서 `author_name`으로 교체(정렬 로직 자체는 기존 `sortable-table-head.tsx` 클라이언트 사이드 패턴 그대로 재사용, 서버 재조회 없음). `app/protected/weekly-logs/page.tsx`는 `weekly_logs` select에 `author_id`를 추가하고, **`profiles_select_own_or_admin` RLS 때문에 PostgREST embed로는 타인의 이름·아바타를 가져올 수 없어** 댓글 작성자 조회(F022)와 동일하게 조회된 로그들의 `author_id` 집합을 `get_profile_identities` RPC로 배치 조회한다(신규 RPC 없음, 기존 함수를 그대로 재사용). `lib/types/index.ts`의 `WeeklyLogListItem`에 `author_id`/`author_name`/`author_email`/`author_avatar_key` 4개 필드를 추가했다.
+- **진행업무 목록의 부서 컬럼을 작성자 아바타+이름으로 대체 — 신규 F035** — 목록에서는 부서보다 "누가 작성했는지"가 한눈에 보이는 게 더 유용하다는 판단으로, `components/weekly-log-table.tsx`(데스크탑 테이블)·`components/weekly-log-card.tsx`(모바일 카드)의 부서 `Badge`를 아바타 프리셋(`lib/constants/avatars.ts`) + 작성자명(이름 우선, 없으면 이메일 폴백, 최종 폴백은 "알 수 없는 사용자") 조합으로 교체했다. `showDepartment` prop을 `showAuthor`로 리네이밍하고, `WeeklyLogTable`의 정렬 키도 `department_name`에서 `author_name`으로 교체(정렬 로직 자체는 기존 `sortable-table-head.tsx` 클라이언트 사이드 패턴 그대로 재사용, 서버 재조회 없음). `app/protected/weekly-logs/page.tsx`는 `weekly_logs` select에 `author_id`를 추가하고, **`profiles_select_own_or_admin` RLS 때문에 PostgREST embed로는 타인의 이름·아바타를 가져올 수 없어** 댓글 작성자 조회(F022)와 동일하게 조회된 로그들의 `author_id` 집합을 `get_profile_identities` RPC로 배치 조회한다(신규 RPC 없음, 기존 함수를 그대로 재사용). `lib/types/index.ts`의 `WeeklyLogListItem`에 `author_id`/`author_name`/`author_email`/`author_avatar_key` 4개 필드를 추가했다.
 - **DB 마이그레이션 없음** — `weekly_logs.author_id`(MVP부터 존재)와 `get_profile_identities` RPC(F022에서 신설)가 이미 있어 스키마 변경이 필요 없었다.
 - **관련 파일**: `app/protected/weekly-logs/page.tsx`, `components/weekly-log-table.tsx`, `components/weekly-log-card.tsx`, `components/weekly-log-list-view.tsx`, `lib/types/index.ts`.
 - **범위 밖 유지**: 실브라우저 회귀 테스트는 다음 통합 검증(Task 036)으로 미룸. 부서 정보 자체는 삭제되지 않고 상세 페이지·부서 필터·PDF/Excel 다운로드에는 계속 노출되므로 별도 데이터 백필은 필요 없음.
@@ -475,7 +475,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - [x] **구독 정리(cleanup) 필수** — `useEffect` 반환값에서 `supabase.removeChannel(channel)` 호출. 코드 구현은 완료했고, 헤더가 속한 레이아웃(`app/protected/layout.tsx`)이 클라이언트 사이드 라우트 이동에서 리마운트되지 않는 구조라 실사용 시 채널이 라우트당 1개로 유지됨을 확인 — **다만 "10회 이동 후 채널 수"를 바이트 단위로 계측하는 것은 도구 한계로 완전히 검증하지 못함**(아래 "로드맵과 다르게 처리한 부분" 참고)
   - [x] 초기 데이터는 서버에서, 이후 갱신만 Realtime으로 — 헤더는 서버 컴포넌트에서 안 읽은 개수를 조회해 첫 페인트에 반영하고, 구독은 그 위에 증분으로 얹음(`cacheComponents` 하에서 Suspense fallback 유지)
   - [x] **연결 실패 폴백** — Realtime 연결이 끊기거나 실패해도 앱이 정상 동작해야 함. `channel.subscribe((status) => ...)`로 상태를 감지해 실패 시 폴링(예: 60초 간격) 또는 조용한 비활성화로 폴백하고, **에러 토스트로 사용자를 방해하지 않을 것** — 코드 구현 완료(아래 "다르게 처리한 부분" 참고, 강제 단절 실측은 도구 한계로 미완)
-  - [x] 알림 클릭 동선 — 해당 주간업무일지 상세 페이지의 댓글 위치로 이동(`/protected/weekly-logs/{id}#comment-{commentId}`) 후 자동으로 읽음 처리
+  - [x] 알림 클릭 동선 — 해당 진행업무 상세 페이지의 댓글 위치로 이동(`/protected/weekly-logs/{id}#comment-{commentId}`) 후 자동으로 읽음 처리
   - [x] [모두 읽음] 버튼, 알림 없을 때 EmptyState (`components/empty-state.tsx` 재사용)
   - [ ] 브라우저 탭 제목에 안 읽은 개수 표시 검토(선택) — 데스크탑 알림(Notification API)은 권한 요청 UX 부담이 있으므로 **이번 범위에서 제외**(로드맵 원문에도 선택 항목으로 명시, 미구현)
   - [x] 접근성 — 종 버튼에 `aria-label`(예: "알림 3건") 부여. MVP Task 015에서 아이콘 전용 버튼의 접근성 이름 누락이 실제로 발견된 전례가 있으므로 처음부터 반영 — Playwright `browser_snapshot`으로 "알림"(0건)·"알림 N건" 두 상태 모두 접근성 이름에 정상 반영됨을 확인
@@ -543,11 +543,11 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 
 ### Phase 6: 신규 요구사항 (추천/비추천 · 전체 성능 개선)
 
-> 목표: 구성원이 개별 주간업무일지에 추천/비추천으로 반응할 수 있고, MVP 시절부터 누적된 애플리케이션 전반의 성능 병목이 **실측 기반으로** 정리된 상태.
+> 목표: 구성원이 개별 진행업무에 추천/비추천으로 반응할 수 있고, MVP 시절부터 누적된 애플리케이션 전반의 성능 병목이 **실측 기반으로** 정리된 상태.
 > **선행 조건**: Phase 4·5와 기술적 의존성은 없으나(병렬 착수 가능), Task 039는 v1 전 기능이 올라간 뒤 측정해야 의미가 있으므로 **Task 036 완료 후 착수를 권장**한다.
 > **✅ 두 Task 모두 결정 확정 후 구현 완료**: 아래 항목은 착수 시점엔 기존 설계 관례(F022 댓글의 RLS 판단, Task 037의 점검 절차)에서 유추한 초안이었다. 착수 전 "주요 리스크 및 결정 필요 사항" 표의 F031·F032 행을 먼저 확정한 뒤(스키마·UI를 먼저 만들고 나중에 정책을 맞추면 마이그레이션을 두 번 쓰게 되므로) 구현했으며, 아래 각 Task에 확정된 결정과 실제 구현 내역을 반영해 두었다.
 
-- **Task 038: 주간업무일지 추천/비추천 기능 구현 (F031) ✅**
+- **Task 038: 진행업무 추천/비추천 기능 구현 (F031) ✅**
   - **확정된 결정(착수 전 사용자 확인, 리스크 표 F031 행)**: 자기 글 투표 **허용**(특수 케이스 없음) / 노출 범위 **상세 + 목록**(댓글수 배지와 동일한 2차 조회 방식) / 익명성 **익명 집계만**(명단 비공개, `get_profile_identities` 불필요) / 통계 반영 **대시보드 반영**(신규 `stats_reactions_summary` RPC) / 인터랙션 **낙관적 업데이트**(진행상태·중요도와 동일 관례) / 관리자 예외 **없음**(DELETE도 본인 행만, 수락 기준 "타인의 반응은 어떤 경로로도 조작할 수 없다"와 정합)
   - [x] **DB 마이그레이션 — `weekly_log_reactions` 테이블 신규 생성**(`create_weekly_log_reactions`, Supabase MCP `apply_migration`)
     - `id uuid pk`, `weekly_log_id → weekly_logs(id) on delete cascade`, `user_id → profiles(id) on delete cascade`, `reaction text` (`up` | `down` CHECK), `created_at`, `updated_at`(기존 `set_updated_at()` 트리거 재사용)
@@ -575,7 +575,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
     - [x] 낙관적 업데이트 — 버튼은 `isPending` 중 `disabled`로 연타 차단, 실패 시 이전 값 롤백 + 토스트(코드/패턴 확인). **네트워크 실패 강제 주입 재현은 생략** — 진행상태·역할 변경에서 동일 패턴을 Task 036·028에서 실측 검증한 이력이라 회귀만 확인
     - [x] 뷰포트 — 데스크탑(1280) 테이블 + 모바일(390) 카드 모두 집계 표시·버튼 레이아웃 정상. **다크모드 전용 스크린샷은 생략** — 버튼이 shadcn `Button`(default/outline) + `text-muted-foreground` 테마 토큰만 사용해 구조적으로 테마 인식
     - [x] 콘솔 에러·하이드레이션 경고 0건(전 세션 `browser_console_messages` all: error 0/warning 0), `npm run build` green, `npx tsc --noEmit` 0오류
-  - **범위 밖 유지**: 댓글에 대한 반응, 추천 종류 확장(👍 외 다양한 이모지 반응 — `docs/PRD.md` 4절에서 영구 제외로 명시된 "이모지 반응"은 **댓글** 대상이지만 업무일지에도 확장하지 않는다), 추천 발생 시 알림(F023) 연동, 추천순 정렬·인기 랭킹 화면, 추천 취소 이력 감사 로그
+  - **범위 밖 유지**: 댓글에 대한 반응, 추천 종류 확장(👍 외 다양한 이모지 반응 — `docs/PRD.md` 4절에서 영구 제외로 명시된 "이모지 반응"은 **댓글** 대상이지만 진행업무에도 확장하지 않는다), 추천 발생 시 알림(F023) 연동, 추천순 정렬·인기 랭킹 화면, 추천 취소 이력 감사 로그
 
 - **Task 039: 애플리케이션 전반 성능 개선 (F032)** 🚧 (인증 계정 필요한 E2E 회귀만 사용자 작업으로 대기)
   - **확정된 결정(착수 전 사용자 확인, 리스크 표 F032 행)**: 완료 조건 **측정 기반 일반 점검**(수치 목표 없이 측정→개선→재측정 기록 + 어드바이저 분류) / 영역 **DB 쿼리·인덱스 → 클라 번들 → 렌더링·캐싱 → 정적 자산 4개 전부를 순차로**
@@ -612,7 +612,7 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
   - **F038 기술 스택(`/tech-stack`)** — `package.json`의 dependencies+devDependencies를 8개 카테고리로 소개. **왼쪽 배지 = npm 최신 버전**(registry `.../{name}/latest` fetch, `"use cache"` + `cacheLife("hours")`로 시간 단위 캐싱, 오프라인/장애 시 선언값 폴백), **오른쪽 배지 = `node_modules` 실제 설치 버전**(서버에서 fs로 읽음). 최신≠설치면 왼쪽 배지 강조.
   - **공개 라우트 처리**: 세 페이지는 비로그인 랜딩 푸터에서도 진입하므로 `lib/supabase/proxy.ts` 공개 경로 예외에 `/component-gallery`·`/icon-gallery`·`/tech-stack`을 추가했다. 또한 `cacheComponents` 하에서 쿠키를 읽는 `<LandingHeader/>`를 Suspense 밖에서 렌더링하면 빌드가 실패하므로 세 페이지 모두 `<Suspense fallback={null}>`로 감쌌다(빌드 중 실측·수정).
   - **관련 파일**: `components/site-footer.tsx`, `lib/supabase/proxy.ts`, `app/{component-gallery,icon-gallery,tech-stack}/page.tsx`, `components/{component-gallery-view,icon-gallery-view,tech-stack-view}.tsx`, `lib/constants/{component-gallery,icon-gallery,tech-stack}.ts`, `lib/queries/npm-versions.ts`.
-- **주간업무목록·사용자 관리 총 건수 표시 — 신규 F039** — 두 목록 모두 무한 스크롤이라 화면엔 일부만 로드되므로, 현재 필터 조건에 맞는 **총 건수**를 별도 count 쿼리로 조회해 표시한다. 주간업무목록은 기간 프리셋 행 오른쪽에 "총 업무 N건"/"조건에 맞는 업무 N건", 사용자 관리는 필터 행 오른쪽에 "총 사용자 N명"/"조건에 맞는 사용자 N명"(둘 다 우측 정렬). 필터 로직을 `applyScalarFilters`(weekly-logs)·`applyUserFilters`(user-admin) 공용 헬퍼로 추출해 목록 조회와 건수 조회가 어긋나지 않게 했다. 검색어 없는 경우는 `count:'exact', head:true`로 정확 건수, 주간업무의 제목/내용 OR 검색은 두 ilike의 id 합집합 크기(.or() 미사용 관례 유지).
+- **진행업무 목록·사용자 관리 총 건수 표시 — 신규 F039** — 두 목록 모두 무한 스크롤이라 화면엔 일부만 로드되므로, 현재 필터 조건에 맞는 **총 건수**를 별도 count 쿼리로 조회해 표시한다. 진행업무 목록은 기간 프리셋 행 오른쪽에 "총 업무 N건"/"조건에 맞는 업무 N건", 사용자 관리는 필터 행 오른쪽에 "총 사용자 N명"/"조건에 맞는 사용자 N명"(둘 다 우측 정렬). 필터 로직을 `applyScalarFilters`(weekly-logs)·`applyUserFilters`(user-admin) 공용 헬퍼로 추출해 목록 조회와 건수 조회가 어긋나지 않게 했다. 검색어 없는 경우는 `count:'exact', head:true`로 정확 건수, 진행업무의 제목/내용 OR 검색은 두 ilike의 id 합집합 크기(.or() 미사용 관례 유지).
   - **관련 파일**: `lib/queries/weekly-logs.ts`, `lib/queries/user-admin.ts`, `app/protected/weekly-logs/page.tsx`, `app/protected/admin/users/page.tsx`, `components/weekly-log-list-view.tsx`, `components/user-admin-table.tsx`.
 - **의존성 안전 업데이트 (chore, F 번호 없음)** — 동일 메이저 내 minor/patch 8종만 업데이트(next 16.3.0, @supabase/supabase-js 2.112.2, lucide-react 1.30.0, recharts 3.10.1, sanitize-html 2.17.6, eslint-config-next 16.3.0, @types/node 26.2.0, postcss 8.5.26). **메이저 업그레이드(zod 3→4·eslint 9→10·typescript 5→7)는 호환성 위험으로 제외**. 실제 버전 갱신은 `package-lock.json`이 담고 package.json은 관례를 보존(exact 핀 2줄만 변경). eslint-config-next 16.3.0의 새 규칙이 CLAUDE.md에 명시된 의도적 `window.location.href` 하드 네비게이션을 경고로 표시하나 의도된 패턴이라 유지.
 - **랜딩 페이지 여백 정리 (style, F 번호 없음)** — 히어로 섹션 상하 간격·풋터 간격을 축소하되, 로그인 시 헤더–콘텐츠 간격은 내부 래퍼(`gap-20`)로 원복(`app/page.tsx`만 수정).
@@ -633,18 +633,18 @@ Phase 1·2는 병렬 진행 가능하며, Phase 3 → 4는 반드시 순차입�
 | F025 | 업무 타입(다중 선택) 분류 | ad hoc(Phase 3 이후 1차, Task 번호 없음) |
 | F026 | 업무 중요도(1~5단계) 속성 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F027 | 조직(organizations) 계층 및 조직 관리 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
-| F028 | 주간업무일지 목록 Excel 다운로드 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
+| F028 | 진행업무 목록 Excel 다운로드 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F029 | 업무 타입 관리 UI | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F030 | 관리자 콘솔 조직 범위 제한 | ad hoc(Phase 3 이후 2차, Task 번호 없음) |
 | F033 | 슈퍼관리자 등급(조직 생성·전 조직 수정/닫기) | ad hoc(Phase 3 이후 3차, Task 번호 없음) |
-| F031 | 주간업무일지 추천/비추천 | Task 038 (✅ 완료) |
+| F031 | 진행업무 추천/비추천 | Task 038 (✅ 완료) |
 | F032 | 애플리케이션 전반 성능 개선 | Task 039 (🚧 구현 완료, 인증 E2E 회귀만 대기) |
 | F034 | 슈퍼관리자 대시보드/부서/업무타입/사용자 관리 전 조직 확장 | ad hoc(Phase 3 이후 4차, Task 번호 없음) |
-| F035 | 주간업무일지 목록 작성자 아바타 표시(부서 컬럼 대체) | ad hoc(Phase 3 이후 5차, Task 번호 없음) |
+| F035 | 진행업무 목록 작성자 아바타 표시(부서 컬럼 대체) | ad hoc(Phase 3 이후 5차, Task 번호 없음) |
 | F036 | 컴포넌트 갤러리 페이지(shadcn Base UI 카탈로그) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
 | F037 | 아이콘 갤러리 페이지(lucide) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
 | F038 | 기술 스택 소개 페이지(package.json 기반) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
-| F039 | 목록 총 건수 표시(주간업무·사용자 관리) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
+| F039 | 목록 총 건수 표시(진행업무·사용자 관리) | ad hoc(Phase 6 이후 6차, Task 번호 없음) |
 | — | 통합 검증·마감 | Task 036, Task 037 |
 
 ## 데이터 모델 변경 요약 (MVP 대비)

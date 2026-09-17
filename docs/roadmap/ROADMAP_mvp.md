@@ -1,12 +1,12 @@
-# 부서별 주간업무일지 관리 개발 로드맵
+# 부서별 진행업무 관리 개발 로드맵
 
-부서원은 주간 업무를 기록·추적하고, 관리자는 전체 부서의 업무 현황을 한 곳에서 파악하는 웹 애플리케이션.
+부서원은 업무를 기록·추적하고, 관리자는 전체 부서의 업무 현황을 한 곳에서 파악하는 웹 애플리케이션.
 
 ## 개요
 
-부서별 주간업무일지 관리는 여러 부서로 구성된 조직의 실무자와 관리자를 위한 주간 업무 기록·추적 서비스로 다음 기능을 제공합니다:
+부서별 진행업무 관리는 여러 부서로 구성된 조직의 실무자와 관리자를 위한 업무 기록·추적 서비스로 다음 기능을 제공합니다:
 
-- **주간업무일지 CRUD**: 시작일/목표종료일/제목/본문으로 주간 업무를 기록하고 수정·삭제 (F001~F005)
+- **진행업무 CRUD**: 시작일/목표종료일/제목/본문으로 업무를 기록하고 수정·삭제 (F001~F005)
 - **진행상태 추적**: 업무를 예정/진행중/완료 3단계로 전환하며 진행 상황을 관리 (F006)
 - **부서 기반 접근 제어**: 조회(SELECT)는 전 부서 공개, 쓰기(작성/수정/삭제/진행상태변경)는 자기 부서 또는 관리자로 제한 (F007, F012)
 - **PDF 리포팅**: 현재 조회 중인 부서의 리스트를 표 형태 PDF로 다운로드 (F008)
@@ -118,7 +118,7 @@
 > 목표: DB 없이도 전체 화면과 사용자 플로우를 클릭으로 체험 가능한 상태. 이 Phase의 모든 작업은 Phase 3(DB)과 병렬 진행 가능.
 
 - **Task 004: 공통 컴포넌트 및 더미 데이터 구축** ✅ (2026-08-03)
-  - [x] `lib/dummy-data.ts` — 부서 5개(개발/디자인/마케팅/인사/영업팀, Task 008 seed명과 통일), 주간업무일지 16건(완료 7·미완료 9, 부서별 3~4건 분산)
+  - [x] `lib/dummy-data.ts` — 부서 5개(개발/디자인/마케팅/인사/영업팀, Task 008 seed명과 통일), 진행업무 16건(완료 7·미완료 9, 부서별 3~4건 분산)
   - [x] `components/site-header.tsx` 완성 — `components/header-nav.tsx`(신규, 서버 컴포넌트)에서 `getClaims()` + `profiles.role` 조회로 비로그인/일반/관리자 상태 판별, 데스크탑은 인라인 메뉴·모바일은 `components/mobile-nav.tsx`(신규, `ui/sheet` 기반 햄버거)로 분기
   - [x] `components/weekly-log-table.tsx`(데스크탑, `hidden md:block`) / `components/weekly-log-card.tsx`(모바일, `WeeklyLogCard`+`WeeklyLogCardList`, `md:hidden`) 뷰 분기 — 관리자용 부서 컬럼은 `showDepartment` prop으로 토글
   - [x] `components/status-badge.tsx` — 완료/진행중 배지 (`ui/badge`에 `success` variant 추가 후 사용, 다크모드 대비 Playwright로 확인)
@@ -130,12 +130,12 @@
 
 - **Task 005: 랜딩 페이지 UI 구현 (F015)** ✅ (2026-08-03)
   - [x] `app/page.tsx` 전면 교체 — 서비스 가치 제안 히어로 섹션(제목/설명/[로그인]·[회원가입] CTA), Task 002의 최소 placeholder(`<h1>` 한 줄)를 대체
-  - [x] 주요 기능 소개 카드 4종: 주간업무일지 작성/조회(`FileText`), 부서별 관리(`Building2`), 완료 상태 추적(`CheckCircle2`), PDF 다운로드(`Download`) — `ui/card` + `lucide-react` 아이콘
+  - [x] 주요 기능 소개 카드 4종: 진행업무 작성/조회(`FileText`), 부서별 관리(`Building2`), 완료 상태 추적(`CheckCircle2`), PDF 다운로드(`Download`) — `ui/card` + `lucide-react` 아이콘
   - [x] [로그인] / [회원가입] CTA 버튼 배치 및 라우팅 연결 (히어로 섹션에 별도 배치, 헤더의 CTA와 별개로 동작)
   - [x] 반응형 그리드 — 모바일 1열(`grid-cols-1`) → 태블릿 2열(`sm:grid-cols-2`) → 데스크탑 4열(`lg:grid-cols-4`)
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. Playwright로 1280px(데스크탑 4열)·768px(태블릿 2열)·390px(모바일 1열, 헤더 햄버거) 3개 뷰포트와 라이트/다크 테마(실제 `ThemeSwitcher` 토글) 렌더링, 히어로·헤더 CTA 클릭 시 `/auth/login`·`/auth/sign-up` 라우팅을 확인. 콘솔 에러 0건
   - **수락 기준 충족**: 비로그인 방문자가 랜딩에서 로그인·회원가입 페이지로 이동 가능
-  - **후속 수정 (2026-08-03, Task 009 구글 로그인 실사용 테스트 중 발견)**: 로그인된 상태로 랜딩(`/`)에 재방문하면 헤더는 로그인 상태를 반영하면서도 히어로 섹션엔 여전히 [로그인]/[회원가입] 버튼이 남아있어 어색하다는 피드백 확인. `components/hero-cta.tsx`(신규, 서버 컴포넌트)를 추가해 `getClaims()`로 로그인 여부를 확인 후 로그인 상태면 **[주간업무일지 보러가기]**(`/protected`로 이동, 부서 설정 여부에 따라 자동 분기) 버튼 하나로, 비로그인 상태면 기존 [로그인]/[회원가입] 두 버튼을 보여주도록 분기. `cacheComponents` 규칙에 따라 `Suspense`(버튼 크기의 `Skeleton` fallback)로 감쌈. Playwright로 로그인/비로그인 양쪽 상태와 다크모드에서 정상 분기 확인, 콘솔 에러 0건
+  - **후속 수정 (2026-08-03, Task 009 구글 로그인 실사용 테스트 중 발견)**: 로그인된 상태로 랜딩(`/`)에 재방문하면 헤더는 로그인 상태를 반영하면서도 히어로 섹션엔 여전히 [로그인]/[회원가입] 버튼이 남아있어 어색하다는 피드백 확인. `components/hero-cta.tsx`(신규, 서버 컴포넌트)를 추가해 `getClaims()`로 로그인 여부를 확인 후 로그인 상태면 **[진행업무 보러가기]**(`/protected`로 이동, 부서 설정 여부에 따라 자동 분기) 버튼 하나로, 비로그인 상태면 기존 [로그인]/[회원가입] 두 버튼을 보여주도록 분기. `cacheComponents` 규칙에 따라 `Suspense`(버튼 크기의 `Skeleton` fallback)로 감쌈. Playwright로 로그인/비로그인 양쪽 상태와 다크모드에서 정상 분기 확인, 콘솔 에러 0건
 
 - **Task 006: 인증 및 프로필 온보딩 UI 구현 (F010·F011·F012 마크업)** ✅ (2026-08-03)
   - [x] `components/login-form.tsx` 한국어화 + [구글로 계속하기] 버튼 UI 추가 (동작 연결은 Task 009로 TODO 주석 남김)
@@ -146,7 +146,7 @@
   - **검증**: `npx tsc --noEmit` / `npm run lint` 무오류 확인. Playwright로 `/auth/login`, `/auth/sign-up` 렌더링 및 콘솔 에러 0건 확인. ~~`/protected/profile`의 부서 선택 동작은 실제 인증 계정이 필요해 미검증~~ → ✅ **해소됨(2026-08-03)**: Task 009 이후 여러 임시 QA 계정으로 부서 선택·저장 동작을 반복 재확인 완료(아래 후속 개선 항목들 참고)
   - **후속 개선 (2026-08-03, 사용자 피드백)**: 부서 저장 시 사용자가 다음 행동을 알기 어렵다는 피드백에 따라 `sonner` 토스트("OO팀으로 설정/변경되었습니다")를 보여준 뒤(900ms) `/protected/weekly-logs`로 자동 이동하도록 통일(기존엔 최초 설정만 즉시 이동, 변경은 같은 화면에 텍스트만 표시했음 — **최초 설정/기존 변경 모두 이제 자동 이동으로 동일하게 동작**). `components/ui/sonner.tsx`의 `Toaster`를 `app/layout.tsx`에 전역 마운트(이번에 처음 사용됨 — Task 012에서 계획했던 sonner 토스트 인프라가 선반영됨)
 
-- **Task 007: 주간업무일지 3개 페이지 UI 구현 (더미 데이터)** ✅ (2026-08-03)
+- **Task 007: 진행업무 3개 페이지 UI 구현 (더미 데이터)** ✅ (2026-08-03)
   - [x] 목록 페이지(`app/protected/weekly-logs/page.tsx`) — `components/weekly-log-list-view.tsx`(신규, 클라이언트)에서 `WeeklyLogTable`/`WeeklyLogCardList`로 데스크탑·모바일 전환
   - [x] 목록 페이지 — `?admin=1` 쿼리 파라미터로 관리자 뷰 진입(더미 role 분기, Task011에서 실제 `profiles.role`/`searchParams` 기반 권한 로직으로 교체 예정), 부서 필터 `ui/select`로 클라이언트 필터링, [신규 작성] 링크·[PDF 다운로드](비활성 placeholder, Task013 대상) 버튼 배치
   - [x] 작성 페이지(`app/protected/weekly-logs/new/page.tsx`) — `components/weekly-log-form.tsx`(신규, 작성/수정 겸용) + `components/weekly-log-new-form.tsx`(신규 작성 전용 래퍼)로 폼 레이아웃 구현, [저장]/[취소] 모두 목록으로 이동(실 저장은 Task012)
@@ -224,7 +224,7 @@
     - [x] 부서 저장 직후 목록 페이지 접근이 즉시 허용되는지 확인
     - [x] 부서 설정 완료 계정이 불필요하게 프로필로 튕기지 않는지 확인
 
-- **Task 011: 주간업무일지 목록·상세 조회 구현 (F001, F002, F007)** ✅ (2026-08-03)
+- **Task 011: 진행업무 목록·상세 조회 구현 (F001, F002, F007)** ✅ (2026-08-03)
   - [x] 목록 페이지 Server Component에서 `await createClient()`로 `weekly_logs` 조회, 더미 데이터 제거 — `lib/dummy-data.ts`는 참조하는 곳이 완전히 사라져 파일 자체를 삭제
   - [x] **`cacheComponents: true` 주의** — 목록/상세 모두 기존 Suspense 경계(`WeeklyLogListSkeleton`/`WeeklyLogDetailSkeleton` fallback) 구조를 그대로 유지한 채 내부 쿼리만 실 DB 호출로 교체, `"use cache"`는 사용하지 않음
   - [x] 관리자 부서 필터를 `searchParams` 기반으로 구현 — 기존 `?admin=1` 더미 플래그를 제거하고 실제 `profiles.role`로 관리자 여부 판별, `?department=<uuid>` 파라미터로 필터. `components/weekly-log-list-view.tsx`의 부서 `Select`도 클라이언트 `useState` 필터에서 `router.push`로 URL을 갱신하는 방식으로 전환(서버 컴포넌트가 재실행되어 Suspense fallback과 함께 다시 조회)
@@ -241,7 +241,7 @@
     - [x] 타 부서 상세 id로 직접 접근 시 404 처리되는지 확인
     - [x] 데이터 0건일 때 EmptyState가 표시되는지 확인
 
-- **Task 012: 주간업무일지 작성·수정·삭제·완료 처리 구현 (F003~F006)** ✅ (2026-08-03)
+- **Task 012: 진행업무 작성·수정·삭제·완료 처리 구현 (F003~F006)** ✅ (2026-08-03)
   - [x] 작성 폼에 React Hook Form + Zod resolver 연결 (`lib/schemas/weekly-log.ts` 재사용) — `components/weekly-log-form.tsx`를 `useForm` + `zodResolver(weeklyLogSchema)` + shadcn `Form`/`FormField`/`FormMessage`로 재작성, 기존 `useState` 기반 수동 폼을 대체
   - [x] `department_id`는 폼 입력이 아니라 **작성자 프로필 기준으로 서버에서 자동 지정**, `author_id`는 세션 사용자로 고정 — `lib/actions/weekly-log.ts`에 신규 Server Action(`createWeeklyLogAction` 등) 도입. 이 저장소에 기존 Server Action 사례가 없었지만, "department_id는 서버에서 지정"이라는 요구를 클라이언트 신뢰 없이 충족하려면 서버 실행 컨텍스트가 필요해 이번 Task에서 처음 도입(로그인/프로필 폼의 "Client Component에서 `supabase.*` 직접 호출" 관례는 유지하되, DB 쓰기 중 서버 측 값 결정이 필요한 이 케이스만 예외로 분리). `getClaims()`로 세션 확인 후 `profiles.department_id`를 서버에서 조회해 삽입값에 사용 — RLS의 `weekly_logs_insert_own_department_or_admin` 정책(`department_id = current_department_id() AND author_id = auth.uid()`)과 이중으로 일치하도록 보장
   - [x] 수정 저장 — 상세 페이지 수정 모드에서 UPDATE 후 동일 페이지 갱신 — `updateWeeklyLogAction` 호출 후 `router.refresh()`로 현재 라우트 재조회, `is_completed`는 건드리지 않고 title/content/날짜만 갱신
@@ -263,11 +263,11 @@
   - [x] `lib/pdf/weekly-log-pdf.ts` 신규 작성 — `downloadWeeklyLogListPdf()`가 `jspdf`/`jspdf-autotable`을 `await import()`로 동적 로드해 코드 스플리팅(초기 번들에 미포함, 버튼 클릭 시에만 로드)한 뒤 `autoTable`로 표 생성
   - [x] **한글 폰트 임베딩** — `public/fonts/NotoSansKR-Regular.ttf`(서브셋, 2.4MB)를 정적 자산으로 두고, PDF 생성 시 `fetch()`로 받아 청크 단위 `arrayBufferToBase64()` 변환 후 `addFileToVFS`+`addFont`로 등록. 원본 Noto Sans KR 가변 폰트(10.4MB, OFL 라이선스)를 `fontTools.varLib.instancer`로 정적 Regular 인스턴스화한 뒤, `fontTools.subset`으로 한자(CJK 통합 한자) 영역을 제외하고 한글 완성형 11,172자 전체(U+AC00-D7A3)·라틴·문장부호만 남겨 2.4MB로 축소(원본 대비 약 1/4). 폰트를 JS 번들에 base64 리터럴로 심지 않고 정적 파일 `fetch`로 분리해 번들 크기 영향 자체를 없앰(로드맵이 우려했던 "번들 크기 영향"에 대한 실제 대응)
   - [x] PDF 헤더에 `부서명·출력일시`(`toLocaleString("ko-KR")`) 표기, 컬럼 구성 제목/시작일/목표종료일/완료상태(`lib/format.ts`의 `formatDate`/`getCompletionLabel` 재사용)
-  - [x] 파일명 규칙 `주간업무일지_{부서명}_{YYYYMMDD}.pdf` 구현(`buildFileName`), 부서명에 파일명 금지 문자(`\/:*?"<>|`) 포함 시 `_`로 치환
+  - [x] 파일명 규칙 `진행업무_{부서명}_{YYYYMMDD}.pdf` 구현(`buildFileName`), 부서명에 파일명 금지 문자(`\/:*?"<>|`) 포함 시 `_`로 치환
   - [x] `components/weekly-log-list-view.tsx`의 기존 비활성 PDF 버튼을 `onClick={handleDownloadPdf}`로 교체, 현재 렌더링 중인 `items`(관리자 부서 필터 적용된 목록)와 `scopeLabel`(관리자는 필터 부서명 또는 "전체", 일반 사용자는 본인 부서명)을 그대로 전달해 화면에 보이는 목록과 PDF 내용이 항상 일치하도록 함. 생성 중 로딩 상태("생성 중...", 버튼 비활성화), 실패 시 `sonner` 토스트 에러 처리 추가
   - [x] 0건일 때 처리 — `autoTable` body를 4열 병합 셀 `표시할 데이터가 없습니다`로 대체해 헤더만 있는 빈 표 대신 안내 문구가 보이는 PDF를 오류 없이 생성
   - **버그 수정 (구현 중 발견)**: `jspdf-autotable`은 헤더 행에 기본적으로 `fontStyle: "bold"`를 적용하는데, 임베딩한 한글 폰트는 `normal` 스타일로만 등록해 헤더 렌더링 시 `Unable to look up font label for font 'NotoSansKR', 'bold'` 경고와 함께 기본 폰트(Helvetica)로 폴백되어 헤더의 한글("제목/시작일/목표종료일/완료상태")이 깨진 글자로 출력되는 문제를 Playwright 콘솔 경고 + `pdftotext` 추출로 실측. `styles`/`headStyles`에 `fontStyle: "normal"`을 명시해 헤더도 등록된 한글 폰트를 그대로 쓰도록 해소(별도 bold 폰트 파일은 추가하지 않음)
-  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 QA 계정(개발팀) 1개를 만들어 SQL로 개발팀 2건·디자인팀 1건 `weekly_logs`를 시딩하고 Playwright로 확인: (1) 관리자 역할(SQL로 승격)에서 필터 "전체" 상태로 PDF 다운로드 → `주간업무일지_전체_20260803.pdf` 생성, `pdftotext`로 헤더·3건 본문 모두 정상 한글 렌더링 확인, (2) 부서 필터를 데이터 없는 마케팅팀으로 변경 후 다운로드 → `주간업무일지_마케팅팀_20260803.pdf`가 오류 없이 "표시할 데이터가 없습니다" 안내로 생성됨을 확인, (3) 계정을 일반 사용자로 되돌려 재로그인 → 본인 부서(개발팀) 2건만 담긴 `주간업무일지_개발팀_20260803.pdf` 생성 확인. 세 경우 모두 다운로드 후 목록 페이지 URL·렌더링 유지, 콘솔 에러 0건(단, 세션 시작 이후 누적된 Task012 이전 `dummy-log-overrides` 관련 stale 콘솔 이력이 `all:true` 조회 시 섞여 나왔으나 현재 소스에 해당 파일/참조가 전혀 없음을 grep으로 확인 — 이번 변경과 무관한 개발 서버 HMR 잔여 로그). 테스트 후 QA 계정과 시딩 데이터는 삭제
+  - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 실제 회원가입으로 QA 계정(개발팀) 1개를 만들어 SQL로 개발팀 2건·디자인팀 1건 `weekly_logs`를 시딩하고 Playwright로 확인: (1) 관리자 역할(SQL로 승격)에서 필터 "전체" 상태로 PDF 다운로드 → `진행업무_전체_20260803.pdf` 생성, `pdftotext`로 헤더·3건 본문 모두 정상 한글 렌더링 확인, (2) 부서 필터를 데이터 없는 마케팅팀으로 변경 후 다운로드 → `진행업무_마케팅팀_20260803.pdf`가 오류 없이 "표시할 데이터가 없습니다" 안내로 생성됨을 확인, (3) 계정을 일반 사용자로 되돌려 재로그인 → 본인 부서(개발팀) 2건만 담긴 `진행업무_개발팀_20260803.pdf` 생성 확인. 세 경우 모두 다운로드 후 목록 페이지 URL·렌더링 유지, 콘솔 에러 0건(단, 세션 시작 이후 누적된 Task012 이전 `dummy-log-overrides` 관련 stale 콘솔 이력이 `all:true` 조회 시 섞여 나왔으나 현재 소스에 해당 파일/참조가 전혀 없음을 grep으로 확인 — 이번 변경과 무관한 개발 서버 HMR 잔여 로그). 테스트 후 QA 계정과 시딩 데이터는 삭제
   - **테스트 체크리스트**
     - [x] Playwright MCP로 [PDF 다운로드] 클릭 시 파일 다운로드가 트리거되는지 확인
     - [x] 다운로드 후에도 목록 페이지가 유지되는지 확인
@@ -295,7 +295,7 @@
 ### Phase 4: 마감 및 배포 ✅
 
 - **Task 015: 반응형 및 접근성 마감 (F014)** ✅ (2026-08-04)
-  - [x] 데스크탑(1280)/태블릿(768)/모바일(390) 3개 뷰포트에서 7개 페이지 전수 점검 (Playwright MCP `browser_resize`) — 랜딩, 로그인, 회원가입, 프로필(온보딩), 주간업무일지 목록/작성/상세(조회·수정)
+  - [x] 데스크탑(1280)/태블릿(768)/모바일(390) 3개 뷰포트에서 7개 페이지 전수 점검 (Playwright MCP `browser_resize`) — 랜딩, 로그인, 회원가입, 프로필(온보딩), 진행업무 목록/작성/상세(조회·수정)
   - [x] 라이트/다크 양쪽 테마에서 대비(contrast) 및 배지 가독성 확인 — `완료`(녹색 배경/흰 텍스트)·`진행중`(secondary) 배지 라이트·다크 모두 판독 가능, 완료 항목의 취소선+이탤릭 스타일도 정상 렌더링 확인
   - [x] 폼 라벨-입력 연결, 키보드 내비게이션, 포커스 링, 다이얼로그 포커스 트랩 확인 — 로그인/회원가입/프로필/작성 폼 전 필드가 `label htmlFor`로 연결되어 접근성 이름 노출됨을 스냅샷으로 확인. 삭제 확인 `alert-dialog`와 모바일 햄버거 `sheet` 모두 Tab 포커스가 다이얼로그 내부(취소⇄삭제, 메뉴 링크들)에서만 순환하고 Escape 시 트리거 버튼으로 포커스가 정확히 복귀함을 실측(Radix 기본 동작)
   - [x] 모바일 헤더 메뉴 및 테이블→카드 전환 동작 확인 — 390px에서 `WeeklyLogCardList`(카드), 768px 이상에서 `WeeklyLogTable`(표) 전환이 `md:` 브레이크포인트 경계에서 정확히 일치함을 확인. 모바일 햄버거 메뉴(`components/mobile-nav.tsx`)는 로그인/비로그인 양쪽 상태에서 정상 오픈·포커스 이동·Escape 복귀 확인
@@ -332,11 +332,11 @@
   - [x] **목록 화면 검색 기능(F016)** — 제목/내용 키워드 검색 추가. `.or()`로 raw PostgREST 필터 문자열을 직접 조합하면 검색어에 콤마·괄호가 섞였을 때 필터 구조가 깨질 수 있어, 대신 title/content 각각을 안전한 파라미터 바인딩(`ilike`)으로 조회한 뒤 서버에서 병합·정렬하는 방식으로 구현(`lib/utils.ts`의 `escapeLikePattern`으로 `%`/`_` 리터럴 이스케이프까지 처리)
   - [x] **목록 화면 페이지네이션** — 20건 단위 클라이언트 사이드 페이지네이션(`npx shadcn add pagination`으로 `components/ui/pagination.tsx` 신규 설치). 부서 필터·검색어가 바뀌면 1페이지로 리셋. PDF 다운로드는 페이지네이션과 무관하게 현재 필터 기준 전체 목록을 대상으로 유지
   - [x] 모바일 카드 뷰 간격 축소 — 카드 간 간격(`gap-3`→`gap-2`)과 카드 내부 패딩(`p-6`→`p-4`) 축소
-  - [x] 목록 화면 중복 텍스트 제거 — 상단에 페이지 타이틀("주간업무일지")이 이미 있어 본문의 부서명(스코프 라벨) 및 중복 `<h1>` 타이틀 표시를 제거
+  - [x] 목록 화면 중복 텍스트 제거 — 상단에 페이지 타이틀("진행업무")이 이미 있어 본문의 부서명(스코프 라벨) 및 중복 `<h1>` 타이틀 표시를 제거
   - [x] **로그인 폼 브라우저 자동완성 지원** — 이메일/비밀번호 `input`에 `name`/`autoComplete`(`username`/`current-password`) 속성 추가, `<form autoComplete="on">` 명시. 앱이 직접 비밀번호를 저장하는 방식(localStorage 등)은 XSS 노출 위험이 있어 채택하지 않고, 브라우저 내장 비밀번호 관리자가 폼을 정상 인식하도록 하는 표준적인 방식으로 구현
   - [x] **로그아웃 하드 네비게이션으로 전환** — `components/logout-button.tsx`가 `router.push`(클라이언트 라우터 캐시 경유) 대신 로그인 폼과 동일하게 `window.location.href`를 쓰도록 수정 — 완전한 페이지 탐색이어야 브라우저 비밀번호 자동완성이 로그인 폼을 안정적으로 재인식함
   - [x] 로그인 폼 Tab 이동 순서 수정(이메일→비밀번호 직행), 회원가입 완료 흐름을 이메일 인증 대기에서 자동 로그인 + 랜딩 자동 이동(1.5초)으로 변경(Supabase Confirm Email 옵션 비활성화에 맞춤)
-  - [x] UI 스타일 다수 개선 — 헤더 로고에 아이콘 배지 추가 및 타이틀 강조, 상단 타이틀을 "IT부문 주간업무"로 변경, 목록 테이블 헤더 스타일링·부서명 배지화·행 호버 개선, 보호 레이아웃의 헤더-본문 간격 축소(`gap-20`→`gap-8`), 푸터 문구를 "Developed by archy712@gmail.com"으로 변경
+  - [x] UI 스타일 다수 개선 — 헤더 로고에 아이콘 배지 추가 및 타이틀 강조, 상단 타이틀을 "IT부문 진행업무"로 변경, 목록 테이블 헤더 스타일링·부서명 배지화·행 호버 개선, 보호 레이아웃의 헤더-본문 간격 축소(`gap-20`→`gap-8`), 푸터 문구를 "Developed by archy712@gmail.com"으로 변경
   - [x] `package.json`에 `"type": "module"` 추가 — Node ESM 재파싱 경고 제거(기능 변화 없음)
   - **검증**: 검색·페이지네이션·모바일 카드 간격·로그인 자동완성 DOM 속성은 이번 문서화 작업과 같은 세션에서 Playwright MCP로 직접 확인(임시 미리보기 라우트에 20/45건 더미 데이터를 넣어 페이지네이션 동작, 검색 필터링 결과, 빈 검색 결과 문구, 데스크탑/모바일 레이아웃을 스크린샷으로 대조한 뒤 라우트는 정리; 로그인 폼은 실제 `/auth/login`에서 `name`/`autocomplete` 속성이 DOM에 정확히 반영됨을 확인). 브라우저 비밀번호 관리자의 실제 저장·자동입력 동작 자체는 격리된 자동화 브라우저 프로필로는 검증 불가능해 사용자가 실제 브라우저로 최종 확인해야 하는 항목으로 남김. `npx tsc --noEmit`/`npm run lint`/`npm run build` 매 변경마다 무오류 확인. 부서 접근 권한 확장·필터 기본값·작성 폼 필드 추가·UI 스타일 항목들은 각 커밋 시점에 이미 반영·확인된 변경으로, 이번 로드맵 갱신 작업에서는 커밋 diff 검토로 내용만 재확인함(재검증 테스트는 다시 수행하지 않음)
   - **범위 밖 유지**: 부서 관리 UI, 관리자 지정 UI, 기간 범위 검색/필터는 PRD상 여전히 MVP 이후 범위로 제외
@@ -363,7 +363,7 @@
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정(`qa-badge-check@example.com`)으로 목록 페이지를 라이트/다크 테마 양쪽에서 스크린샷 대조 — 예정(주황)·진행중(초록)·완료(회색) 배지가 요청한 배색대로 렌더링되고 다크모드에서도 대비가 충분함을 확인. 전 구간 콘솔 에러 0건. 테스트 후 QA 계정은 `auth.users` DELETE로 정리
   - **범위 밖 유지**: 완료 항목의 취소선(`italic line-through`) 등 배지 외 스타일은 변경하지 않음 — 요청이 배지 색상에 한정됨
 
-- **Task 021: 주간업무일지 상세 내용 리치 텍스트(WYSIWYG) 에디터 도입 (F003, F004)** ✅ (2026-08-04)
+- **Task 021: 진행업무 상세 내용 리치 텍스트(WYSIWYG) 에디터 도입 (F003, F004)** ✅ (2026-08-04)
   - [x] **1차 구현(Textarea 기반 HTML 편집기)** — `ui/textarea` 위에 굵게/기울임/밑줄/제목/목록/링크/새 문단 툴바를 얹어 선택 영역을 HTML 태그 문자열로 감싸는 방식으로 구현, 상세 페이지는 결과 HTML을 렌더링. 커밋 전 사용자가 "HTML 문법이 안 보이고 즉시 반영되는 위지위그로 바꿀 수 있냐"고 요청해 아래 2차 구현으로 완전히 대체(1차 코드는 커밋되지 않음)
   - [x] **2차 구현(Tiptap WYSIWYG)** — 자체 구현(추가 의존성 없음) vs 검증된 라이브러리 도입 두 가지 방안을 제시해 사용자가 후자를 선택. `@tiptap/react`+`@tiptap/pm`+`@tiptap/starter-kit` 설치(v3는 `Underline`/`Link`가 StarterKit에 기본 포함되어 있어 별도 패키지 설치 후 중복 확인되어 제거) — `components/html-editor.tsx`를 contentEditable 기반으로 완전히 재작성, `StarterKit.configure({ heading: {levels:[3]}, strike/code/codeBlock/horizontalRule: false, link: {...} })`로 ALLOWED_TAGS와 1:1 대응하는 스키마만 노출
   - [x] `components/html-content.tsx` 신규 — sanitize된 HTML을 공통 prose 스타일(`PROSE_CONTENT_CLASS`, export)로 렌더링하는 공유 컴포넌트. 에디터의 실시간 편집 화면과 상세 페이지 읽기 전용 렌더링이 동일 클래스를 사용해 완전히 동일하게 보이도록 함(1차 구현의 "미리보기 토글"은 편집 화면 자체가 곧 결과이므로 불필요해져 제거)
@@ -373,7 +373,7 @@
   - **검증**: `npx tsc --noEmit`/`npm run lint` 무오류. 임시 QA 계정으로 실제 작성 화면에서 굵게·글머리 기호 목록·링크(브라우저 `prompt()` 기반)를 적용해 HTML 태그 노출 없이 즉시 서식이 반영됨을 확인 → 저장 → 상세 페이지 렌더링이 편집 화면과 완전히 동일함을 스크린샷으로 대조 → 수정 진입 시 저장된 HTML이 다시 WYSIWYG로 정확히 복원(굵게/목록/링크 버튼이 눌림 상태로 표시)됨을 확인. **XSS 방어 검증**: `<script>`, `<img onerror>`, `<p onclick>`, `<iframe src="javascript:...">`를 포함한 합성 `paste` 이벤트를 에디터에 직접 dispatch — ProseMirror 스키마 파싱 단계에서 이미 전부 제거되어(`<p>클릭 테스트</p>`만 남음) 전역 XSS 플래그가 하나도 설정되지 않음을 확인, SQL로 저장된 content도 순수하게 정제된 상태임을 재확인. 전 구간 콘솔 에러 0건. 테스트 계정·데이터는 정리
   - **범위 밖 유지**: 표/이미지 삽입, 글자수 실시간 카운터, placeholder 힌트 문구는 요청 범위 밖이라 추가하지 않음(글자수 제한은 기존과 동일하게 저장 시 zod `max(5000)` 검증으로만 처리)
 
-- **Task 022: 주간업무일지 첨부파일 업로드 구현 (F017 신규)** ✅ (2026-08-04)
+- **Task 022: 진행업무 첨부파일 업로드 구현 (F017 신규)** ✅ (2026-08-04)
   - [x] **DB 마이그레이션** — `weekly_log_attachments` 테이블 신규 생성(`id`, `weekly_log_id → weekly_logs(id) on delete cascade`, `department_id → departments(id)`, `file_name`, `file_path unique`, `file_size integer CHECK (0 < size <= 5242880)`, `content_type`, `uploaded_by → profiles(id)`, `created_at`) + `weekly_log_id` 인덱스. RLS는 `weekly_logs`와 동일한 관례로 SELECT 전 부서 공개, INSERT/DELETE만 업로더 소속 부서 또는 `admin`(UPDATE 정책 없음 — 삭제 후 재업로드 방식)
   - [x] **Storage 버킷 신규 생성** — `weekly-log-attachments`(private, `file_size_limit` 5MB). 경로 규칙 `{department_id}/{weekly_log_id}/{uuid}-{파일명}`을 전제로, 스토리지 RLS는 `(storage.foldername(name))[1] = current_department_id()`(또는 `is_admin()`)일 때만 INSERT/DELETE 허용, SELECT는 인증 사용자 전체 공개 — 테이블 RLS와 동일한 부서 기반 관례를 스토리지 레벨까지 확장
   - [x] `mcp__supabase__generate_typescript_types`로 `lib/supabase/database.types.ts` 재생성
@@ -407,7 +407,7 @@
   - **범위 밖 유지**: 실제 이미지 업로드형 아바타(프로필 사진), 전화번호 국가 코드/국제 형식 지원은 요청 범위 밖이라 추가하지 않음 — 아바타는 프리셋 선택 방식, 전화번호는 국내 형식(`000-0000-0000`) 고정
 
 - **Task 024: 아바타 헤더 노출, 프리셋 확장·팝업 선택 UX, 인증 화면 반응형·회원가입 필드 확장 (F018 보강)** ✅ (2026-08-04)
-  - [x] **헤더에 아바타 노출** — `components/header-nav.tsx`(데스크탑)·`components/mobile-nav.tsx`(모바일 시트)가 `profiles.avatar_key`를 함께 조회해 이메일 앞에 프리셋 아바타(`ui/avatar`+`AvatarFallback`)를 표시. 공통 헤더(`site-header.tsx`)가 전 페이지에서 공유되므로 주간업무일지 목록을 포함한 모든 보호된 페이지에 자동 반영됨(사용자가 요청한 목록 화면뿐 아니라 헤더가 노출되는 모든 화면에 동일하게 적용)
+  - [x] **헤더에 아바타 노출** — `components/header-nav.tsx`(데스크탑)·`components/mobile-nav.tsx`(모바일 시트)가 `profiles.avatar_key`를 함께 조회해 이메일 앞에 프리셋 아바타(`ui/avatar`+`AvatarFallback`)를 표시. 공통 헤더(`site-header.tsx`)가 전 페이지에서 공유되므로 진행업무 목록을 포함한 모든 보호된 페이지에 자동 반영됨(사용자가 요청한 목록 화면뿐 아니라 헤더가 노출되는 모든 화면에 동일하게 적용)
   - [x] **아바타 프리셋 8종 → 24종 확장** — `lib/constants/avatars.ts`의 `AVATAR_PRESETS`에 dog/lion/koala/cow/pig/frog/monkey/unicorn/wolf/raccoon/hamster/hedgehog/chicken/duck/butterfly/turtle 16종 추가. DB `profiles_avatar_key_check` CHECK 제약도 마이그레이션(`expand_profile_avatar_presets`)으로 24종 전체를 허용하도록 동기화(기존 CHECK를 DROP 후 확장된 목록으로 재생성)
   - [x] **아바타 선택을 팝업 다이얼로그로 전환** — `components/avatar-picker-dialog.tsx` 신규(기존 `ui/dialog` 재사용, 별도 라이브러리 추가 없음). 현재 아바타를 보여주는 트리거 버튼 → 클릭 시 24개 프리셋을 4~6열 그리드로 보여주는 `Dialog` → 항목 클릭 시 즉시 반영 후 자동 닫힘. `value`/`onChange`만 받는 순수 컴포넌트로 만들어 `profile-form.tsx`(RHF `FormField`)와 `sign-up-form.tsx`(일반 `useState`) 양쪽에서 재사용, 기존 `profile-form.tsx`의 인라인 8개 그리드는 이 컴포넌트로 완전히 대체
   - [x] **로그인/회원가입 화면 반응형 너비 (이후 원복됨)** — 사용자에게 "공통 헤더/푸터를 프로필 화면처럼 적용" vs "카드 너비만 반응형 확장" 두 방향을 제시해 후자를 선택받음. `app/auth/login/page.tsx`·`app/auth/sign-up/page.tsx`의 카드 컨테이너를 고정 `max-w-sm`에서 `max-w-sm sm:max-w-md md:max-w-lg`로 1차 변경(헤더 없는 기존 중앙 정렬 레이아웃 자체는 유지)
@@ -423,11 +423,11 @@
 
 | 기능 ID | 기능명 | 담당 Task |
 |---------|--------|-----------|
-| F001 | 주간업무일지 목록 조회 | Task 007(UI), Task 011 |
-| F002 | 주간업무일지 상세 조회 | Task 007(UI), Task 011 |
-| F003 | 주간업무일지 신규 작성 | Task 007(UI), Task 012, Task 021(리치 텍스트 에디터) |
-| F004 | 주간업무일지 수정 | Task 007(UI), Task 012, Task 021(리치 텍스트 에디터) |
-| F005 | 주간업무일지 삭제 | Task 007(UI), Task 012 |
+| F001 | 진행업무 목록 조회 | Task 007(UI), Task 011 |
+| F002 | 진행업무 상세 조회 | Task 007(UI), Task 011 |
+| F003 | 진행업무 신규 작성 | Task 007(UI), Task 012, Task 021(리치 텍스트 에디터) |
+| F004 | 진행업무 수정 | Task 007(UI), Task 012, Task 021(리치 텍스트 에디터) |
+| F005 | 진행업무 삭제 | Task 007(UI), Task 012 |
 | F006 | 진행상태 관리 | Task 007(UI), Task 012, Task 019(3단계 확장), Task 020(배지 색상) |
 | F007 | 전체 부서 조회 | Task 008(RLS), Task 011, Task 018(전체 사용자로 SELECT 개방) |
 | F008 | 부서별 리스트 PDF 다운로드 | Task 013 |

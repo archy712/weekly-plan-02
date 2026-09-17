@@ -1,4 +1,4 @@
-# 부서별 주간업무일지 관리 v2 고도화 로드맵
+# 부서별 진행업무 관리 v2 고도화 로드맵
 
 기록·협업 플랫폼으로 완성된 v1을 **"쓰는 사람이 덜 힘들고, 놓치지 않고, 되짚을 수 있는"** 운영 도구로 다듬는다.
 
@@ -10,8 +10,8 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 
 ### 우선순위 높음
 
-- **[F040] "내 업무" 개인 요약 위젯**: 주간업무일지 목록 상단에 본인 담당 업무의 **지연 / 이번 주 마감 / 진행중** 건수를 보여주는 미니 요약. F024 대시보드가 ad hoc 전환으로 관리자 전용(`/protected/admin/dashboard`)이 되면서 **일반 사용자는 자기 현황을 한눈에 볼 곳이 완전히 사라진** 상태를 메운다.
-- **[F041] 정기 작성 리마인더**: "**주간**"업무일지인데 정기 제출을 유도하는 장치가 전혀 없다. 이번 주 로그를 작성하지 않은 사용자에게 알림을 보낸다. **이 프로젝트 최초의 `pg_cron` 도입**이며, 동시에 "알림은 오직 DB 트리거로만 생성된다"는 v1의 원칙에 **스케줄 기반이라는 두 번째 경로**를 추가하는 작업이다.
+- **[F040] "내 업무" 개인 요약 위젯**: 진행업무 목록 상단에 본인 담당 업무의 **지연 / 이번 주 마감 / 진행중** 건수를 보여주는 미니 요약. F024 대시보드가 ad hoc 전환으로 관리자 전용(`/protected/admin/dashboard`)이 되면서 **일반 사용자는 자기 현황을 한눈에 볼 곳이 완전히 사라진** 상태를 메운다.
+- **[F041] 정기 작성 리마인더**: **주 단위로 기록하는 업무**인데 정기 제출을 유도하는 장치가 전혀 없다. 이번 주 로그를 작성하지 않은 사용자에게 알림을 보낸다. **이 프로젝트 최초의 `pg_cron` 도입**이며, 동시에 "알림은 오직 DB 트리거로만 생성된다"는 v1의 원칙에 **스케줄 기반이라는 두 번째 경로**를 추가하는 작업이다.
 - **[F042] 작성 중 임시저장(draft)**: Tiptap 리치텍스트 + 첨부파일이 결합된 긴 작성 폼인데 새로고침·실수 이탈 시 복구 수단이 0이다. `localStorage`에 debounce 자동 저장 + 재진입 시 복원 배너. **첨부파일(File 객체)은 직렬화 불가라 명시적으로 범위 밖.**
 
 ### 중간 우선순위
@@ -62,7 +62,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
   또한 `enrichNotifications()`(`lib/queries/notifications.ts`)의 `RawNotificationRow`가 `weekly_log_id: string`(non-null)로 타입되어 있고 `notificationHref()`(`components/notification-bell.tsx:63`)가 항상 `/protected/weekly-logs/{weekly_log_id}`를 만들므로, **nullable로 바꾸는 즉시 두 곳이 컴파일 에러로 드러납니다**(의도된 안전장치 — 타입 재생성 후 반드시 함께 수정).
 - **알림 수신 설정 컬럼이 전무**: `profiles` 실측 컬럼은 `id, email, department_id, role, created_at, updated_at, phone_number, avatar_key, bio, name, is_active` — 알림 관련 컬럼이 **0개**. F044는 컬럼 추가부터 시작합니다.
 - **`profiles.is_active`가 소스 어디에서도 참조되지 않음**: DB에는 `boolean NOT NULL DEFAULT true`로 존재하지만 `app/`·`components/`·`lib/` 전체 grep 결과 **사용처 0건**입니다(이 Supabase 프로젝트를 공유하는 다른 도메인이 추가한 것으로 보임 — 아래 항목 참고). F041이 리마인더 수신자를 고를 때 이 컬럼을 존중할지 여부는 **결정 항목**입니다.
-- **⚠️ 이 Supabase 프로젝트는 다른 애플리케이션과 공유 중**: `list_tables` 결과 주간업무일지 도메인(`departments`/`profiles`/`weekly_logs`/`weekly_log_*`/`organizations`/`work_types`/`notifications`) 외에 **ERP 성격의 테이블 19종**(`menus`, `user_menu_permissions`, `companies`, `brands`, `products`, `org_*` 등)이 함께 있고, 테이블 주석이 이 저장소에 없는 `docs/roadmap/ROADMAP_MASTER.md`를 가리킵니다. → **신규 마이그레이션 이름·함수명·`cron.job` 이름이 다른 도메인과 충돌하지 않도록** 접두사를 신중히 고를 것(예: `weekly_log_` / `create_weekly_log_reminders`). 특히 `pg_cron`은 데이터베이스 전역 자원이라 **다른 도메인이 이미 쓰고 있는지 `cron.job`을 먼저 확인**해야 합니다.
+- **⚠️ 이 Supabase 프로젝트는 다른 애플리케이션과 공유 중**: `list_tables` 결과 진행업무 도메인(`departments`/`profiles`/`weekly_logs`/`weekly_log_*`/`organizations`/`work_types`/`notifications`) 외에 **ERP 성격의 테이블 19종**(`menus`, `user_menu_permissions`, `companies`, `brands`, `products`, `org_*` 등)이 함께 있고, 테이블 주석이 이 저장소에 없는 `docs/roadmap/ROADMAP_MASTER.md`를 가리킵니다. → **신규 마이그레이션 이름·함수명·`cron.job` 이름이 다른 도메인과 충돌하지 않도록** 접두사를 신중히 고를 것(예: `weekly_log_` / `create_weekly_log_reminders`). 특히 `pg_cron`은 데이터베이스 전역 자원이라 **다른 도메인이 이미 쓰고 있는지 `cron.job`을 먼저 확인**해야 합니다.
 - **`localStorage`/`sessionStorage` 사용처 0건**: `app/`·`components/`·`lib/`·`hooks/` 전체 grep 결과 **단 한 건도 없습니다.** F042(임시저장)가 이 프로젝트 최초의 브라우저 스토리지 도입이고 F045(프리셋)가 두 번째이므로, **Task 041에서 정하는 키 네이밍·직렬화·`try/catch`·SSR 접근 금지 규약이 이후 모든 스토리지 사용의 표준**이 됩니다.
 - **변경 이력을 담을 테이블이 없음**: `weekly_logs`에는 `updated_at`만 있고, 이 값은 상태 변경이 아닌 다른 필드 수정에도 갱신되어 **어느 속성이 언제 바뀌었는지 복원 불가능**합니다(v1 Task 030이 `completed_count` 산정 시 이미 겪은 문제 — 그래서 `target_end_date`를 근사치로 썼음). F043은 신규 테이블부터 시작합니다.
 - **`stats_*` RPC 7종에 `author_id` 파라미터가 없음**: 전부 `(from_date, to_date, [dept_id,] org_id)` 시그니처로 **조직/부서 축만** 지원합니다(대시보드가 관리자용이라 개인 축이 필요 없었음). F040은 개인 축 집계를 새로 만들어야 합니다.
@@ -162,7 +162,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] Playwright로 RPC 실패를 강제(네트워크 가로채기 또는 잘못된 파라미터)했을 때 목록이 정상 렌더링되고 콘솔 에러만 남는지 확인 — 브라우저 `page.route` 가로채기는 서버 사이드 RPC 호출(Server Component → Supabase)에는 적용되지 않아, 대신 `authenticated` 권한을 일시 회수해 강제 실패시킨 뒤 위젯 0/0/0 폴백 + 목록 정상 렌더링 + 콘솔에 `[lib/queries/stats] stats_my_work_summary 조회 실패` 로그만 남는 것을 확인, 이후 권한 즉시 원복
   - **범위 밖 유지**: 부서 단위 요약(관리자 대시보드가 이미 담당), 위젯 커스터마이징(표시 지표 선택), 위젯을 다른 페이지로 확산하는 것, "이번 주 마감"의 정확한 목록 필터를 위한 신규 상한 날짜 필터 축(위 결정 메모 참고 — Task 040 범위 밖)
 
-- **Task 041: 주간업무일지 작성 중 임시저장 구현 (F042)** ✅
+- **Task 041: 진행업무 작성 중 임시저장 구현 (F042)** ✅
   - [x] **스코프 확정 (착수 첫 단계)** — 저장 대상은 `WeeklyLogFormData`(`lib/schemas/weekly-log.ts`)의 **9개 필드 전부**(`title`, `work_type`, `importance`, `content`, `start_date`, `target_end_date`, `estimated_mm`, `estimated_cost`, `partner_company`). 이 타입은 전부 문자열·숫자·문자열 배열이라 **JSON 직렬화가 온전히 가능**하다. **첨부파일은 `File` 객체라 직렬화 불가 → 명시적으로 제외**하고, 복원 배너에 "첨부파일은 복원되지 않습니다" 문구를 노출한다
   - [x] **적용 범위 결정: 신규 작성 폼만 (`components/weekly-log-new-form.tsx`)** ← 권장. 수정 폼을 제외하는 근거를 주석에 남긴다:
     - 수정 대상에는 **이미 서버에 저장된 원본**이 있어 데이터 유실 위험 자체가 낮다
@@ -250,7 +250,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
   - **수락 기준**: 사용자가 프로필 화면에서 댓글·멘션·리마인더 알림을 각각 끌 수 있고, 끈 유형의 알림은 **DB에 행 자체가 생성되지 않으며**(읽음 처리로 숨기는 방식이 아님), 알림을 꺼도 댓글 작성·멘션 자체는 정상 동작한다 — 전부 실측 확인 완료
   - **⚠️ 계획과 다르게 처리한 부분**: (1) 테스트 체크리스트가 "QA 계정 2개(작성자·수신자)"로 되어 있었으나, "멘션 알림만 끄고 댓글 알림은 켠 상태에서 댓글+멘션 동시 발생" 시나리오를 깨끗하게 격리하려면 멘션 수신자가 댓글 수신자(로그 작성자)와 달라야 했다(같으면 `notifications_recipient_comment_unique (recipient_id, comment_id)`가 type과 무관하게 동일 행을 `on conflict do update`로 덮어써 두 알림을 분리해서 관찰할 수 없음). QA 계정을 3개(A=댓글 작성자, B=로그 작성자/댓글 수신자, C=멘션 대상)로 늘려 진행. (2) "설정 저장 실패(네트워크 가로채기) 시 토스트가 뜨고 값이 롤백되는지" 체크리스트 문구는 실제로는 이 폼의 기존 관례(나머지 프로필 필드와 동일하게 `setError`로 인라인 빨간 문구 표시, 토스트 아님)를 그대로 따랐다 — 토스트+즉시 롤백은 로드맵이 대안으로 언급한 "즉시 저장(낙관적 업데이트)" 경로에 해당하는 동작이며, 이번엔 권장안인 폼 방식을 택했으므로 적용 대상이 아니다. 값 자체는 실패한 요청이 커밋되지 않으므로 DB 기준으로는 "롤백"과 동일한 결과(재조회 시 이전 값 유지)이고, 새로고침 시 서버의 실제 값으로 정상 복원됨을 확인
   - **테스트 체크리스트** (Playwright MCP + Supabase MCP. 임시 QA 계정 3개(작성자 A·수신자 B·멘션대상 C, `qa-task043-{a,b,c}@example.com`, Commerce시스템팀 소속)를 실제 가입 플로우로 생성해 실브라우저 검증, 종료 후 3개 계정과 시딩한 로그 1건·댓글 4건·멘션 1건·알림 전부 `auth.users`/`weekly_logs` DELETE로 완전 삭제해 65 profiles 기준선으로 원복 확인)
-    - [x] 수신자가 댓글 알림을 끈 상태에서 타인이 그의 업무일지에 댓글 → **`notifications` 행이 생성되지 않고** 헤더 벨 배지도 증가하지 않음 확인 — B가 `notify_on_comment=false`로 저장 후 A가 실브라우저로 댓글 작성, SQL로 B 수신 알림 0건 확인
+    - [x] 수신자가 댓글 알림을 끈 상태에서 타인이 그의 진행업무에 댓글 → **`notifications` 행이 생성되지 않고** 헤더 벨 배지도 증가하지 않음 확인 — B가 `notify_on_comment=false`로 저장 후 A가 실브라우저로 댓글 작성, SQL로 B 수신 알림 0건 확인
     - [x] 같은 상황에서 **댓글 자체는 정상 저장되고 상세 페이지에 즉시 표시**되는지 확인(게이트가 기능을 막지 않는다는 증거) — A의 댓글이 새로고침 없이 목록에 즉시 렌더링됨을 스냅샷으로 확인
     - [x] 멘션 알림만 끄고 댓글 알림은 켠 상태에서 **댓글 + 멘션이 동시에 발생**하는 케이스 → 댓글 알림만 생성되는지 확인(두 트리거가 독립적으로 게이트되는지) — B(댓글 on)/C(멘션 off)로 분리해 A가 B의 로그에 C를 멘션하는 댓글 작성(SQL impersonation, `authenticated` role) → B는 `comment` 알림 1건 생성, C는 `mention` 알림 0건으로 두 트리거의 독립적 게이팅 확인
     - [x] 대댓글 알림이 `notify_on_comment`(댓글 설정)를 따르는지 확인 — 댓글 알림을 끄면 대댓글 알림도 생성되지 않음 — B가 알림을 끈 상태에서 A가 B의 원댓글에 실브라우저로 답글 작성 → `reply` 알림 0건 확인
@@ -271,7 +271,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
   - [x] **컬럼 보호 트리거 우회** — 확인 결과 `notifications_protect_columns`는 `BEFORE UPDATE`에만 걸려 있어(`BEFORE INSERT` 없음) 이 INSERT 경로엔 `set_config` 우회가 애초에 불필요함을 함수 주석에 명시(기존 notify 함수 2종과 달리 우회 코드 없음 — 로드맵의 "필요 시" 조건부 문구가 실제로는 "불필요"로 판명된 경우)
   - [x] **스케줄 등록** — `cron.schedule('weekly_log_reminder', '0 6 * * 5', $$select public.create_weekly_log_reminders()$$)`. 사용자 승인대로 금요일 15:00 KST(=06:00 UTC) 확정
   - [x] **⚠️ 마이그레이션 추적성** — `docs/guides/deployment-ops.md`에 9절("`pg_cron` 잡 운영") 신규 추가: 등록된 잡 표, 조회·점검 SQL, 재등록/중단 SQL, 알림 보존 정책(7절)과의 관계. CLAUDE.md 반영은 Task 050에서 예정대로 진행
-  - [x] **알림 UI 대응 확인** — `notificationHref()`는 Task 042에서 이미 대응돼 추가 작업 없음(실측 확인). `formatNotificationMessage()`(`lib/format.ts`)에 `reminder` 케이스 추가("이번 주 주간업무일지를 아직 작성하지 않았습니다"), `notification-bell.tsx`에 리마인더 전용 아이콘(`CalendarClock`, 시스템 표시로 아바타 대체) 추가
+  - [x] **알림 UI 대응 확인** — `notificationHref()`는 Task 042에서 이미 대응돼 추가 작업 없음(실측 확인). `formatNotificationMessage()`(`lib/format.ts`)에 `reminder` 케이스 추가("이번 주 진행업무를 아직 작성하지 않았습니다"), `notification-bell.tsx`에 리마인더 전용 아이콘(`CalendarClock`, 시스템 표시로 아바타 대체) 추가
   - [x] **(선택) 알림 보존 정책 자동화** — **채택하지 않음(범위 밖 유지)**. 로드맵 권장은 "함께 등록"이었으나, Task 044 자체가 이미 최초의 `pg_cron`·최초의 스케줄 알림 생성 경로라는 두 가지 새 위험을 동시에 다루고 있어 여기에 별도 정리 잡까지 얹으면 검증 범위가 필요 이상으로 커진다고 판단. 9절에 "필요해지면 이 패턴을 따라 추가"로 경로만 남겨둠
   - **관련 파일**: DB 마이그레이션(`enable_pg_cron`, `add_weekly_log_reminder_function`, `schedule_weekly_log_reminder`), `components/notification-bell.tsx`, `lib/format.ts`, `docs/guides/deployment-ops.md`(9절 신규 + 7절 갱신)
   - **수락 기준**: 지정한 요일·시각에 리마인더가 자동 생성되고, **이번 주 로그를 이미 작성한 사용자와 리마인더를 끈 사용자에게는 생성되지 않으며**, 같은 주에 함수를 여러 번 실행해도 사용자당 알림이 1건을 넘지 않고, 알림 클릭 시 작성 화면으로 이동한다. 클라이언트는 이 함수를 호출할 수 없다 — **전부 충족 확인**
@@ -280,7 +280,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - 연속 2회 호출 시 1차 58건 삽입 후 2차 0건 삽입(전체 58건 유지)으로 중복 방지 확인
     - `authenticated` impersonation 호출 → 실제로 `42501 permission denied` 발생 확인
     - `get_advisors`(security/performance) 재확인 → 이 Task로 인한 신규 경고 없음(기존 경고만 잔존)
-    - **벨 UI 렌더링 확인 중 실측 이슈 발견**: 기존에 떠 있던 `next start`(프로덕션 빌드) 서버로 QA를 시도했더니 Task 042~044에서 바뀐 코드가 전혀 반영되지 않은 상태였다(빌드 시점이 코드 변경보다 앞섬 — 프로덕션 서버는 파일 변경을 감지하지 않으므로 당연한 동작이었으나 처음엔 회귀로 오인할 뻔했다). **원인 파악 후 임시로 별도 포트(3001)에 `next dev`를 새로 띄워 검증**하고 종료 시 정리했다 — 기존 3000번 프로덕션 서버는 건드리지 않음. 3001에서 실계정(QA 신규 가입 후 `notifications`에 리마인더 행 1건 직접 INSERT)으로 벨 배지 "1"·아이콘·문구("이번 주 주간업무일지를 아직 작성하지 않았습니다")·클릭 시 `/protected/weekly-logs/new` 이동을 모두 확인, 이후 QA 계정·알림 행 전부 삭제해 65 profiles 기준선 복원 확인
+    - **벨 UI 렌더링 확인 중 실측 이슈 발견**: 기존에 떠 있던 `next start`(프로덕션 빌드) 서버로 QA를 시도했더니 Task 042~044에서 바뀐 코드가 전혀 반영되지 않은 상태였다(빌드 시점이 코드 변경보다 앞섬 — 프로덕션 서버는 파일 변경을 감지하지 않으므로 당연한 동작이었으나 처음엔 회귀로 오인할 뻔했다). **원인 파악 후 임시로 별도 포트(3001)에 `next dev`를 새로 띄워 검증**하고 종료 시 정리했다 — 기존 3000번 프로덕션 서버는 건드리지 않음. 3001에서 실계정(QA 신규 가입 후 `notifications`에 리마인더 행 1건 직접 INSERT)으로 벨 배지 "1"·아이콘·문구("이번 주 진행업무를 아직 작성하지 않았습니다")·클릭 시 `/protected/weekly-logs/new` 이동을 모두 확인, 이후 QA 계정·알림 행 전부 삭제해 65 profiles 기준선 복원 확인
     - `markNotificationReadAction`/Realtime 폴백 회귀, 경계값(주 시작/종료일에 걸친 로그)·타임존 세션 변경 재실행은 이번 재개 범위에서 별도로 반복 검증하지 않음 — 함수가 세션 타임존과 무관하게 `at time zone 'Asia/Seoul'`을 명시적으로 계산하도록 작성되어 있어 구조적으로 세션 타임존에 의존하지 않는다는 점(코드 실측)과, Task 043에서 이미 동일한 알림 파이프라인(Realtime·읽음 처리)의 회귀를 검증했다는 점에 근거해 낮은 리스크로 판단
   - **범위 밖 유지**: 이메일·슬랙 등 앱 외부 채널 발송, 사용자별 리마인더 요일/시각 커스터마이징, 미작성자 목록을 관리자에게 리포트하는 기능, 리마인더 발송 이력 테이블, 알림 보존 정책 자동화(위 참고)
 
@@ -383,7 +383,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
 > 목표: 시작일~목표종료일을 시간축 위에서 겹쳐 보는 상태. **v2에서 비용 대비 우선순위가 가장 낮다고 사용자와 합의된 유일한 항목.**
 > **선행 조건**: Phase 1~4 완료. **⚠️ 착수 전 사용자에게 실제 필요 여부를 재확인하고, 필요 없다면 "범위 밖 유지"로 종료한다.**
 
-- **Task 048: 주간업무일지 타임라인 뷰 구현 (F047)** ✅
+- **Task 048: 진행업무 타임라인 뷰 구현 (F047)** ✅
   - [x] **착수 게이트** — Phase 1~4 완료 후 사용자에게 재확인해 **구현 진행**으로 확정(2026-08-21).
   - [x] **구현 방식 결정** — **CSS Grid 직접 구현**(권장안 그대로 채택). 신규 의존성 없이 `lib/utils.ts`의 순수 `Date` 헬퍼로 처리.
   - [x] **라우트 신설** — `app/protected/weekly-logs/timeline/page.tsx`. 칸반 페이지와 동일한 구조(`getClaims()` → `profiles` 조회 → 부서 게이트 → `normalizeWeeklyLogFilters()` → Suspense + 스켈레톤)를 그대로 복제.
@@ -527,7 +527,7 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
   - **관련 파일**: `components/command-palette.tsx`(신규), `components/header-nav.tsx`(데스크탑 트리거 배치, `CommandPaletteProvider`로 로그인 사용자 영역 감싸기), `components/mobile-nav.tsx`(모바일 트리거 배치), `components/ui/command.tsx`(변경 없음, 기존 컴포넌트 재사용)
   - **수락 기준**: 데스크탑에서 `⌘K`(Mac)/`Ctrl K`(Win)로 팔레트가 열리고 각 메뉴 클릭 시 해당 라우트로 정상 이동하며, 관리자 전용 메뉴는 일반 사용자에게 노출되지 않는다. 모바일에서도 트리거 버튼으로 동일하게 접근 가능하다. **충족 확인.**
   - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task054-cp7x2@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
-    - [x] 1280px 데스크탑, 일반 사용자로 `Ctrl K` → 팔레트 오픈, "보기"(목록/칸반보드/타임라인)·"작성"(새 주간업무일지 작성)·"계정"(프로필) 3개 그룹만 노출되고 "관리자" 그룹은 없음을 확인
+    - [x] 1280px 데스크탑, 일반 사용자로 `Ctrl K` → 팔레트 오픈, "보기"(목록/칸반보드/타임라인)·"작성"(새 진행업무 작성)·"계정"(프로필) 3개 그룹만 노출되고 "관리자" 그룹은 없음을 확인
     - [x] 검색창에 "타임라인" 입력 → cmdk 내장 매칭으로 해당 항목만 필터링되는 것을 확인, 클릭 → `/protected/weekly-logs/timeline`로 정상 이동 및 다이얼로그 자동 닫힘 확인
     - [x] 작성 폼(`/protected/weekly-logs/new`) Tiptap 에디터에 텍스트 입력 후 `Ctrl K` → 팔레트가 열리고 에디터 본문은 그대로 유지(글자 유실·엉뚱한 문자 삽입 없음)됨을 확인, `Escape`로 닫은 뒤 콘솔 에러 0건 확인
     - [x] 390px 모바일 뷰포트 → 헤더의 검색 아이콘(트리거 버튼) 탭으로 동일한 다이얼로그가 열림을 확인
@@ -594,12 +594,12 @@ v2는 v1(`docs/roadmap/ROADMAP_v1.md`, F019~F039 전부 구현 완료)과 달리
     - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 이전 Task들과 동일한 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목)
 
 - **Task 059: 상세 페이지 `Breadcrumb` 추가 (F056)** ✅
-  - [x] `components/weekly-log-detail-view.tsx` 상단에 `ui/breadcrumb.tsx`(이미 설치, 미사용)로 "주간업무 / {부서명} / {제목}" 경로 표시 — "주간업무"는 `/protected/weekly-logs`(전체 목록), "{부서명}"은 `/protected/weekly-logs?department={department_id}`(해당 팀으로 필터링된 목록), "{제목}"은 `BreadcrumbPage`(클릭 불가, 현재 페이지)
-    - **계획과 다르게 처리한 부분**: 기존에 있던 "← 목록으로" 텍스트 링크(`ArrowLeft` 아이콘 + `/protected/weekly-logs`)를 이 Breadcrumb로 완전히 대체했다 — 두 내비게이션이 사실상 같은 목적지(첫 세그먼트 "주간업무"가 동일한 무필터 목록으로 이동)를 가리켜 나란히 두면 중복이었고, Breadcrumb 쪽이 부서 세그먼트까지 포함해 정보량이 더 많다. 읽기 전용 화면과 편집 화면(`isEditing`) 양쪽에서 기존 `backLink`가 있던 자리에 그대로 넣었다.
+  - [x] `components/weekly-log-detail-view.tsx` 상단에 `ui/breadcrumb.tsx`(이미 설치, 미사용)로 "진행업무 / {부서명} / {제목}" 경로 표시 — "진행업무"는 `/protected/weekly-logs`(전체 목록), "{부서명}"은 `/protected/weekly-logs?department={department_id}`(해당 팀으로 필터링된 목록), "{제목}"은 `BreadcrumbPage`(클릭 불가, 현재 페이지)
+    - **계획과 다르게 처리한 부분**: 기존에 있던 "← 목록으로" 텍스트 링크(`ArrowLeft` 아이콘 + `/protected/weekly-logs`)를 이 Breadcrumb로 완전히 대체했다 — 두 내비게이션이 사실상 같은 목적지(첫 세그먼트 "진행업무"가 동일한 무필터 목록으로 이동)를 가리켜 나란히 두면 중복이었고, Breadcrumb 쪽이 부서 세그먼트까지 포함해 정보량이 더 많다. 읽기 전용 화면과 편집 화면(`isEditing`) 양쪽에서 기존 `backLink`가 있던 자리에 그대로 넣었다.
   - **관련 파일**: `components/weekly-log-detail-view.tsx`, `components/ui/breadcrumb.tsx`(변경 없음, 기존 컴포넌트 재사용)
   - **수락 기준**: 상세 페이지 진입 시 소속 부서·목록으로의 경로가 한눈에 보이고, 각 구간 클릭 시 해당 목록/필터로 이동한다. **충족 확인.**
   - **테스트 결과** (Playwright MCP 실브라우저 검증, QA 계정 `qa-task059-hb4k7@example.com`을 실제 회원가입 플로우로 생성 후 종료 시 완전 삭제, 65 profiles 기준선 원복 확인):
-    - [x] 상세 페이지 진입 → "주간업무 › Commerce시스템팀 › {제목}" 순으로 노출, 375px 폭에서도 줄바꿈만 될 뿐 카드 밖으로 밀리지 않음을 스크린샷으로 확인
+    - [x] 상세 페이지 진입 → "진행업무 › Commerce시스템팀 › {제목}" 순으로 노출, 375px 폭에서도 줄바꿈만 될 뿐 카드 밖으로 밀리지 않음을 스크린샷으로 확인
     - [x] "Commerce시스템팀" 세그먼트 클릭 → `/protected/weekly-logs?department={id}`로 이동해 해당 팀으로 필터링된 목록이 뜨는 것을 확인
     - [x] "수정" 버튼으로 편집 폼 진입 → 동일한 Breadcrumb가 편집 화면 상단에도 그대로 유지됨을 스크린샷으로 확인
     - [x] 다크 → 라이트 모드 전환 후 재확인 — 구분자·링크·현재 페이지 텍스트 색상이 테마 토큰(`text-muted-foreground`/`hover:text-foreground`) 기반이라 반전 정상
