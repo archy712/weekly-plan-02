@@ -12,6 +12,7 @@ import {
   CirclePercent,
   Clock,
   Coins,
+  FileText,
   Pencil,
   Repeat2,
   Star,
@@ -651,7 +652,20 @@ export function WeeklyLogDetailView({
           )}
         </div>
       )}
-      <HtmlContent html={log.content} />
+      {/* 본문 섹션 — 라벨 + 카드 컨테이너는 위 "예상 소요" 블록, 아래 첨부파일 블록과
+          동일한 관례(라벨은 text-sm font-medium + size-3.5 아이콘, 컨테이너는
+          rounded-md border)를 따른다. 본문만 아무 경계 없이 떠 있어 어디부터
+          상세 내용인지 구분이 안 된다는 피드백에 따른 것이다. */}
+      <div className="flex flex-col gap-2">
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          업무 상세 내용
+        </span>
+        <HtmlContent
+          html={log.content}
+          className="rounded-md border bg-muted/30 px-4 py-3"
+        />
+      </div>
       {attachmentsState.attachments.length > 0 && (
         <WeeklyLogAttachmentField attachments={attachmentsState.attachments} pendingFiles={[]} />
       )}
