@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { UseFormReturn } from "react-hook-form";
@@ -13,17 +13,48 @@ import { createWeeklyLogAction } from "@/lib/actions/weekly-log";
 import type { WeeklyLogFormData } from "@/lib/schemas/weekly-log";
 import type { WorkTypeOption } from "@/lib/types";
 
-export function WeeklyLogNewForm({
-  workTypeOptions,
-  userId,
-  nowIso,
-}: {
+type WeeklyLogNewFormProps = {
   workTypeOptions: WorkTypeOption[];
   userId: string;
   // 임시저장 만료(7일) 판정 기준 시각 — 클라이언트에서 Date.now()를 렌더 중에 읽지 않도록
   // 서버 컴포넌트가 내려준다(hooks/use-weekly-log-draft.ts 주석 참고).
   nowIso: string;
-}) {
+};
+
+// cacheComponents: true 하에서 Next.js는 이동한 페이지를 언마운트하지 않고 React <Activity>로
+// 숨겨 상태를 보존한다(최대 3개 라우트). 그래서 저장 후 목록으로 갔다가 다시 신규 작성에
+// 들어오면 직전 폼 입력값·첨부파일 목록은 물론 createdRef까지 그대로 남아, 화면에 이전 내용이
+// 보일 뿐 아니라 다음 저장이 새 행을 만들지 않고 직전 업무를 재사용하게 된다.
+// 행이 한 번이라도 생성된 인스턴스는 페이지가 숨겨지는 시점(useLayoutEffect 클린업)에 key를
+// 바꿔 통째로 다시 마운트한다 — 폼·첨부파일 훅·임시저장 훅(자동 저장 중단 플래그 포함)·ref가
+// 한꺼번에 초기화된다. 저장 없이 이동한 경우는 작성 중인 내용을 보존하는 편이 맞으므로
+// 건드리지 않는다.
+export function WeeklyLogNewForm(props: WeeklyLogNewFormProps) {
+  const [instanceKey, setInstanceKey] = useState(0);
+  const shouldResetRef = useRef(false);
+
+  const handleCreated = useCallback(() => {
+    shouldResetRef.current = true;
+  }, []);
+
+  useLayoutEffect(() => {
+    return () => {
+      if (shouldResetRef.current) {
+        shouldResetRef.current = false;
+        setInstanceKey((key) => key + 1);
+      }
+    };
+  }, []);
+
+  return <WeeklyLogNewFormContent key={instanceKey} {...props} onCreated={handleCreated} />;
+}
+
+function WeeklyLogNewFormContent({
+  workTypeOptions,
+  userId,
+  nowIso,
+  onCreated,
+}: WeeklyLogNewFormProps & { onCreated: () => void }) {
   const router = useRouter();
   const attachmentsState = useWeeklyLogAttachments();
   // 첨부파일 업로드 실패로 재제출될 때 weekly_logs 행이 중복 생성되지 않도록,
@@ -83,6 +114,7 @@ export function WeeklyLogNewForm({
       }
       created = { id: result.id, departmentId: result.departmentId };
       createdRef.current = created;
+      onCreated();
       // 저장에 성공한 순간 draft는 더 이상 필요 없다 — 이후 첨부파일 업로드가 실패해
       // 재제출되더라도(createdRef 가드로 행은 재생성되지 않는다) 이미 저장된 행이 있으므로
       // draft를 남겨두면 재진입 시 혼란만 준다. 지우는 것만으로는 부족해서(watch 구독이 살아
