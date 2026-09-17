@@ -122,16 +122,27 @@ const CHANGE_HISTORY_FIELD_LABELS: Record<WeeklyLogChangeHistoryField, string> =
   status: "진행상태",
   work_type: "업무타입",
   importance: "업무 중요도",
+  progress: "진척률",
 };
 
 export function getChangeHistoryFieldLabel(field: WeeklyLogChangeHistoryField): string {
   return CHANGE_HISTORY_FIELD_LABELS[field];
 }
 
+// 변경 이력이 추적하는 속성 목록 — 섹션 제목의 안내 문구("진행상태 · 업무타입 …")를
+// 이 배열에서 만들어, 추적 대상을 늘릴 때 라벨 맵 한 곳만 고치면 화면 안내도 따라오게 한다.
+// 순서는 DB 트리거(record_weekly_log_change_history)의 기록 순서와 맞춘다.
+export const CHANGE_HISTORY_TRACKED_FIELDS: WeeklyLogChangeHistoryField[] = [
+  "status",
+  "work_type",
+  "importance",
+  "progress",
+];
+
 // 변경 이력(F043)의 old_value/new_value는 DB에 원시값(status 코드, "N" 문자열, work_type을
-// ', '로 합친 문자열)으로 저장돼 있고, 화면과 동일한 한글 라벨은 렌더링 시점에 입힌다
-// (라벨 문구가 나중에 바뀌어도 과거 이력이 깨지지 않도록). work_type은 이미 사람이 읽을 수
-// 있는 이름이 그대로 저장돼 있어 추가 변환이 필요 없다.
+// ', '로 합친 문자열, progress 0~100 정수)으로 저장돼 있고, 화면과 동일한 한글 라벨은
+// 렌더링 시점에 입힌다(라벨 문구가 나중에 바뀌어도 과거 이력이 깨지지 않도록). work_type은
+// 이미 사람이 읽을 수 있는 이름이 그대로 저장돼 있어 추가 변환이 필요 없다.
 export function formatChangeHistoryValue(
   field: WeeklyLogChangeHistoryField,
   value: string | null,
@@ -145,6 +156,12 @@ export function formatChangeHistoryValue(
     return (IMPORTANCE_LEVELS as readonly number[]).includes(level)
       ? formatImportanceLabel(level as WeeklyLogImportance)
       : value;
+  }
+  if (field === "progress") {
+    // 상세 화면의 진척률 표기와 동일하게 "%"를 붙인다. 숫자로 파싱되지 않는 값(있을 수
+    // 없지만 방어적으로)은 원문 그대로 보여준다.
+    const percent = Number(value);
+    return Number.isFinite(percent) ? `${percent}%` : value;
   }
   return value;
 }

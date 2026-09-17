@@ -75,6 +75,22 @@ v2(F040~F057) 마감과 뒤이은 운영 정리(F058~F060, `docs/roadmap/ROADMAP
     - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목), `npm run build` 성공
   - **범위 밖 유지**: ① **첨부파일 이동** — 스토리지 경로가 `{department_id}/...` 고정이고 파일 이동이 원자적이지 않아 이관을 단일 UPDATE로 유지하는 쪽을 택했다. 스토리지 SELECT는 버킷 전체 공개라 다운로드는 정상이고, 이관 전 첨부의 **삭제만** 이전 팀 구성원·관리자로 제한된다. ② **등록 시점 담당자 지정** — 위 배경의 판단에 따라 도입하지 않음. ③ **인증 계정 E2E 검증** — 실 로그인 세션이 필요한 브라우저 검증은 사용자 작업으로 남김(권한 분기는 위와 같이 DB 레벨에서 전량 검증)
 
+- **Task 067: 변경 이력에 진척률 추가 및 추적 대상 표기 (F064)** ✅
+  - **배경**: 사용자가 상세 페이지의 "변경 이력" 섹션이 어떤 기능인지 물었고, 설명 과정에서 **진척률이 추적 대상이 아니라는 점**과 **화면만 봐서는 무엇이 기록되는지 알 수 없다는 점**이 드러나 두 가지를 함께 요청했다.
+  - [x] **DB — 진척률 추적 추가**: `weekly_log_change_history_field_check` CHECK 제약에 `'progress'` 추가, `record_weekly_log_change_history()`에 `progress` 분기 추가, **트리거의 `UPDATE OF` 컬럼 목록에도 `progress` 추가**(함수만 고치면 발화하지 않아 트리거를 `drop`/재생성). 값은 status·importance와 동일하게 원시값(0~100 정수)으로 저장하고 "%" 표기는 렌더링 시점에 입힌다
+  - [x] **앱 — 타입/포맷**: `WeeklyLogChangeHistoryField` 유니온에 `progress` 추가, `CHANGE_HISTORY_FIELD_LABELS`에 "진척률" 라벨 추가, `formatChangeHistoryValue()`에 `progress` → `"45%"` 분기 추가
+  - [x] **앱 — 추적 대상 표기**: 섹션 제목 옆에 "진행상태 · 업무타입 · 업무 중요도 · 진척률"을 작은 회색 문구로 노출. 문구는 새 상수 `CHANGE_HISTORY_TRACKED_FIELDS`를 라벨 맵으로 매핑해 만들므로 추적 대상이 바뀌면 자동으로 따라온다(하드코딩 아님)
+  - [x] 제목 줄이 좁은 화면에서 2줄이 될 수 있어 트리거 버튼에 `h-auto`를 추가 — shadcn `Button`의 기본 size가 `h-9` 고정이라 그대로 두면 내용이 버튼 밖으로 넘친다
+  - **관련 파일**: `lib/types/index.ts`, `lib/format.ts`, `components/weekly-log-change-history.tsx`, `CLAUDE.md`
+  - **마이그레이션**: `add_progress_to_weekly_log_change_history`(Supabase MCP `apply_migration` 적용, 로컬 `supabase/migrations/`에는 없음)
+  - **수락 기준**: 진척률을 바꾸면 변경 이력에 "진척률을 20% → 45%(으)로 변경"으로 남고, 섹션 제목만 봐도 어떤 항목이 기록되는지 알 수 있다. **충족 확인.**
+  - **테스트 결과** (실 DB 트랜잭션 후 전량 롤백):
+    - [x] 진척률 변경 시 `field='progress'` 이력 1건 기록(0 → 55)
+    - [x] 같은 값으로 다시 저장하면 추가 기록 없음(`IS DISTINCT FROM` 가드 정상)
+    - [x] `create or replace function`이 기존 ACL을 유지함을 `proacl` 실측 확인(`postgres`/`service_role`만 — `anon`/`authenticated` 회수 상태 그대로)
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건
+  - **범위 밖 유지**: 제목·본문·날짜 등 나머지 컬럼과 되돌리기(revert)는 기존 판단(F043)대로 계속 제외
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -84,5 +100,6 @@ v2(F040~F057) 마감과 뒤이은 운영 정리(F058~F060, `docs/roadmap/ROADMAP
 | F061 | 화면 표기 리네임 (주간업무→진행업무) | Task 064 |
 | F062 | 문서 동기화 (CLAUDE.md/README.md/푸터) | Task 065 |
 | F063 | 진행업무 오너십 이관 | Task 066 |
+| F064 | 변경 이력 진척률 추가·추적 대상 표기 | Task 067 |
 
 이전 F-번호(F001~F039는 MVP·v1, F040~F057은 v2, F058~F060은 v2 Phase 8)는 각각 `docs/roadmap/ROADMAP_mvp.md`, `docs/roadmap/ROADMAP_v1.md`, `docs/roadmap/ROADMAP_V2.md`를 참고.

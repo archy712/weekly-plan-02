@@ -105,8 +105,12 @@ export type WeeklyLogAttachment = Pick<
 >;
 
 // F043(v2 Task 045) 변경 이력 field 유니온 — DB CHECK 제약(weekly_log_change_history)과
-// 동일하게 상세 페이지에서 즉시 저장되는 3개 속성으로 한정한다.
-export type WeeklyLogChangeHistoryField = "status" | "work_type" | "importance";
+// 동일하게 상세 페이지에서 즉시 저장되는 4개 속성으로 한정한다(진척률은 이후 ad hoc 추가).
+export type WeeklyLogChangeHistoryField =
+  | "status"
+  | "work_type"
+  | "importance"
+  | "progress";
 
 export type WeeklyLogChangeHistory = Omit<Tables<"weekly_log_change_history">, "field"> & {
   field: WeeklyLogChangeHistoryField;
