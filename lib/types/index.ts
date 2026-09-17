@@ -85,6 +85,9 @@ export type WeeklyLogListItem = Pick<
   // 익명 집계(추천/비추천 건수). 목록에는 상호작용이 없어 "내 반응"은 담지 않는다.
   reaction_up_count: number;
   reaction_down_count: number;
+  // F063 오너십 이관 횟수. 댓글수/반응수와 달리 2차 조회가 아니라 weekly_logs의 비정규화
+  // 컬럼을 그대로 읽는다 — 트리거가 값을 강제 동기화해 클라이언트가 위조할 수 없기 때문이다.
+  transfer_count: number;
 };
 
 // Excel 다운로드는 목록 조회에 포함되지 않는 업무 속성(업무타입/중요도/예상소요기간·금액/
@@ -118,6 +121,21 @@ export type WeeklyLogChangeHistoryItem = WeeklyLogChangeHistory & {
   changed_by_email: string | null;
 };
 
+// F063 오너십 이관 이력 1건. weekly_log_change_history와 동일하게 트리거 전용 기록이라
+// 클라이언트가 위조·수정·삭제할 수 없고(쓰기 정책 없음), 표시용 신원은 get_profile_identities
+// RPC로 배치 조회해 붙인다(profiles_select_own_or_admin 때문에 embed 불가).
+export type WeeklyLogTransferItem = Tables<"weekly_log_transfers"> & {
+  from_name: string | null;
+  from_email: string | null;
+  to_name: string | null;
+  to_email: string | null;
+  to_avatar_key: string;
+  transferred_by_name: string | null;
+  transferred_by_email: string | null;
+  from_department_name: string | null;
+  to_department_name: string | null;
+};
+
 export type WeeklyLogDetail = Pick<
   WeeklyLog,
   | "id"
@@ -133,9 +151,15 @@ export type WeeklyLogDetail = Pick<
   | "estimated_mm"
   | "estimated_cost"
   | "partner_company"
+  | "author_id"
+  | "transfer_count"
 > & {
   department_name: string;
+  // 담당자(작성자) 신원 — profiles_select_own_or_admin RLS 때문에 embed로는 타인 정보를
+  // 가져올 수 없어 목록과 동일하게 get_profile_identities RPC로 조회해 채운다.
+  author_name: string | null;
   author_email: string | null;
+  author_avatar_key: string;
   attachments: WeeklyLogAttachment[];
   comments: WeeklyLogComment[];
   // F031 상세 페이지 추천/비추천(익명 집계 + 내 반응). 상호작용이 있는 화면이라 목록과
@@ -143,6 +167,9 @@ export type WeeklyLogDetail = Pick<
   reactions: WeeklyLogReactionSummary;
   // F043(Task 045) 변경 이력 — 최신순, 최근 HISTORY_PAGE_SIZE(50)건까지.
   history: WeeklyLogChangeHistoryItem[];
+  // F063 이관 이력 — 최신순. 이관은 변경 이력과 달리 담당자·팀·이관자·사유를 함께 보여줘야
+  // 해 별도 테이블/섹션으로 둔다.
+  transfers: WeeklyLogTransferItem[];
 };
 
 export const ALL_DEPARTMENTS_FILTER = "all" as const;
@@ -293,7 +320,7 @@ export type WeeklyLogComment = Pick<
 // 멘션·댓글·대댓글 발생 시 DB 트리거로만 생성되는 알림(Task 034). notifications 테이블은
 // weekly_logs 등 대부분의 테이블과 달리 "전 부서 공개"가 아니라 recipient_id 기준으로만
 // RLS가 걸려 있어(개인 데이터), 이 타입은 항상 "내 알림" 목록에만 쓰인다.
-export type NotificationType = "mention" | "comment" | "reply" | "reminder";
+export type NotificationType = "mention" | "comment" | "reply" | "reminder" | "transfer";
 
 export type Notification = Omit<Tables<"notifications">, "type"> & {
   type: NotificationType;

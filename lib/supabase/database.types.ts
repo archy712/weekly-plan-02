@@ -1768,6 +1768,85 @@ export type Database = {
           },
         ]
       }
+      weekly_log_transfers: {
+        Row: {
+          created_at: string
+          from_department_id: string | null
+          from_profile_id: string | null
+          id: string
+          note: string | null
+          to_department_id: string | null
+          to_profile_id: string | null
+          transferred_by: string | null
+          weekly_log_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_department_id?: string | null
+          from_profile_id?: string | null
+          id?: string
+          note?: string | null
+          to_department_id?: string | null
+          to_profile_id?: string | null
+          transferred_by?: string | null
+          weekly_log_id: string
+        }
+        Update: {
+          created_at?: string
+          from_department_id?: string | null
+          from_profile_id?: string | null
+          id?: string
+          note?: string | null
+          to_department_id?: string | null
+          to_profile_id?: string | null
+          transferred_by?: string | null
+          weekly_log_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_log_transfers_from_department_id_fkey"
+            columns: ["from_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_transfers_from_profile_id_fkey"
+            columns: ["from_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_transfers_to_department_id_fkey"
+            columns: ["to_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_transfers_to_profile_id_fkey"
+            columns: ["to_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_transfers_transferred_by_fkey"
+            columns: ["transferred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_log_transfers_weekly_log_id_fkey"
+            columns: ["weekly_log_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_logs: {
         Row: {
           author_id: string
@@ -1778,12 +1857,14 @@ export type Database = {
           estimated_mm: number | null
           id: string
           importance: number
+          last_transferred_at: string | null
           partner_company: string | null
           progress: number
           start_date: string
           status: string
           target_end_date: string
           title: string
+          transfer_count: number
           updated_at: string
           work_type: string[]
         }
@@ -1796,12 +1877,14 @@ export type Database = {
           estimated_mm?: number | null
           id?: string
           importance?: number
+          last_transferred_at?: string | null
           partner_company?: string | null
           progress?: number
           start_date: string
           status?: string
           target_end_date: string
           title: string
+          transfer_count?: number
           updated_at?: string
           work_type: string[]
         }
@@ -1814,12 +1897,14 @@ export type Database = {
           estimated_mm?: number | null
           id?: string
           importance?: number
+          last_transferred_at?: string | null
           partner_company?: string | null
           progress?: number
           start_date?: string
           status?: string
           target_end_date?: string
           title?: string
+          transfer_count?: number
           updated_at?: string
           work_type?: string[]
         }
@@ -2068,6 +2153,14 @@ export type Database = {
           mm_sum: number
           total_count: number
         }[]
+      }
+      transfer_weekly_log: {
+        Args: {
+          new_author_id: string
+          target_log_id: string
+          transfer_note?: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

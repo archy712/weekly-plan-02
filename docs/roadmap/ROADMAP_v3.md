@@ -47,6 +47,34 @@ v2(F040~F057) 마감과 뒤이은 운영 정리(F058~F060, `docs/roadmap/ROADMAP
   - **수락 기준**: CLAUDE.md·README.md가 실제 화면 표기·실제 파일 경로와 모순되지 않고, 푸터의 "고도화 3차 과제" 링크가 유효한 문서로 연결된다. **충족 확인.**
   - **테스트 결과**: `npx tsc --noEmit`/`npm run lint` 클린(코드 변경은 `site-footer.tsx` 링크 3개뿐이라 회귀 위험 낮음), Playwright MCP로 랜딩 페이지 푸터에서 "고도화 3차 과제" 링크가 렌더링되고 `docs/roadmap/ROADMAP_v3.md`(GitHub raw 경로)로 정상 연결됨을 확인. 문서 파일(`CLAUDE.md`/`README.md`) 자체는 실행 코드가 아니므로 별도 브라우저 검증 대상이 아님.
 
+- **Task 066: 진행업무 오너십 이관 (F063)** ✅
+  - **배경**: 사용자가 "관리자가 등록한 진행업무를 다른 사람에게 이관하고 싶다"며, (a) 등록 시점에 담당자를 지정하는 방식과 (b) 우선 등록한 뒤 상세 화면에서 이관하는 방식 중 어느 쪽이 나은지 검토를 요청했다. **(b) 상세 화면 이관을 권고하고 채택**했다 — ① 이관은 등록 시점 1회성 이벤트가 아니라 업무 수명 동안 반복되는 사건이라 "한 번 이상 이관 가능"이라는 요구를 만족하려면 어차피 상세 화면 경로가 필요하고, 그게 있으면 "등록 직후 이관"은 2클릭으로 커버되지만 반대는 성립하지 않는다, ② `weekly_logs` INSERT RLS가 `(department_id = current_department_id() AND author_id = auth.uid()) OR is_admin()`이라 등록 폼에 담당자 필드를 넣으면 일반 사용자도 쓰는 폼이 role별로 갈라진다, ③ 상세 화면은 이미 인라인 편집 + 접이식 변경 이력 패턴이 확립돼 있어 이관 이력·알림을 붙이기 자연스럽다.
+  - [x] **DB — 이관 이력 테이블 신설**(`weekly_log_transfers`): 이전/새 담당자, 이전/새 팀, 이관 수행자, 사유(선택 200자), 시각. RLS는 `weekly_log_change_history`와 동일하게 **SELECT 정책만** 두고 쓰기 정책은 만들지 않음(트리거 전용 기록 = 위조 불가)
+  - [x] **DB — 이관여부 속성**: `weekly_logs.transfer_count`(int not null default 0)·`last_transferred_at`. 댓글수·반응수와 달리 2차 조회가 아니라 비정규화 컬럼으로 둔 이유는 목록 배지를 추가 쿼리 없이 그릴 수 있고, 아래 BEFORE 트리거가 값을 강제 동기화해 클라이언트가 위조할 수 없기 때문
+  - [x] **DB — 트리거 2종**: `sync_weekly_log_transfer_columns()`(BEFORE UPDATE, `SECURITY INVOKER`) — 카운터 동기화 + "관리자만 이관" 최종 방어선(`auth.uid()`가 NULL이 아닌데 `is_admin()`이 아니면 예외, `prevent_unauthorized_role_change()`와 동일 관례) + 담당자 미변경 UPDATE에서 두 컬럼을 이전 값으로 강제 복원. `record_weekly_log_transfer()`(AFTER UPDATE OF author_id, `SECURITY DEFINER`) — 이력 행과 새 담당자 알림 생성
+  - [x] **DB — 이관 진입점 RPC** `transfer_weekly_log(target_log_id, new_author_id, transfer_note)`: `SECURITY INVOKER`(UPDATE는 기존 RLS가 판정), 관리자 여부·대상 실존·대상 팀 보유·중복 이관·조직 범위(일반 관리자는 자기 부문, 슈퍼관리자는 전 부문)를 SQL에서 전부 검증. **검증을 서버 액션이 아니라 RPC에 둔 이유**는 PostgREST로 직접 호출될 수 있어 SQL이 최종 방어선이어야 하기 때문
+  - [x] **DB — 알림 유형 `transfer` 추가**(총 5종). 유형별 on/off 게이트를 두지 않은 유일한 유형(업무 배정은 "직접 전달"이라 놓치면 안 된다는 판단, 프로필 알림 설정 캡션에 명시)
+  - [x] **이관 시 `department_id`도 함께 이동** — 이 앱의 쓰기 RLS가 전부 팀 기준이라 담당자만 바꾸면 새 담당자가 자기 업무를 수정조차 못 하기 때문. 이 설계 결정이 이번 Task의 핵심
+  - [x] **이관 사유 전달 방식** — 이력을 "트리거 전용 기록"으로 유지하면서 사유까지 담기 위해, RPC 본문에서 `set_config(..., true)`로 트랜잭션 로컬 GUC에 넣고 AFTER 트리거가 `current_setting(..., true)`로 읽는다. supabase-js에서 `set_config`를 따로 호출하는 방식은 PostgREST 호출마다 트랜잭션이 달라 동작하지 않는다(설계 시 배제)
+  - [x] **앱 — 서버 액션·조회**: `lib/actions/weekly-log-transfer.ts`, `lib/queries/weekly-log-transfers.ts`(사람 신원은 `get_profile_identities` RPC 배치 조회, 팀 이름은 FK 힌트 embed)
+  - [x] **앱 — UI**: 상세 페이지 담당자 줄(아바타 + 이름)과 관리자 전용 "이관" 버튼, 검색형 이관 다이얼로그(`ProfileSearchPicker` 재사용 — 부문장/부서장 지정과 동일한 `search_mentionable_profiles` + 200ms debounce), 제목 옆 "이관 N회" 배지, 접이식 "이관 이력" 섹션, 목록 테이블·카드의 "이관 N" 배지
+  - [x] **상세 페이지 담당자 표시 정정** — 기존에는 `profiles:profiles(email)` embed로 작성자 이메일을 가져왔는데 `profiles_select_own_or_admin` RLS 때문에 일반 사용자에게는 **항상 null**이라 담당자 줄이 통째로 사라지고 있었다. 목록 화면과 동일하게 `get_profile_identities` RPC로 교체해 이름·아바타까지 정상 노출
+  - **관련 파일**: `lib/actions/weekly-log-transfer.ts`(신규), `lib/queries/weekly-log-transfers.ts`(신규), `components/weekly-log-transfer-{dialog,history,badge}.tsx`(신규), `components/weekly-log-detail-view.tsx`, `components/weekly-log-{table,card}.tsx`, `components/notification-preferences-field.tsx`, `app/protected/weekly-logs/[id]/page.tsx`, `lib/queries/weekly-logs.ts`, `lib/types/index.ts`, `lib/format.ts`, `lib/supabase/database.types.ts`, `CLAUDE.md`
+  - **마이그레이션**: `add_weekly_log_transfer`, `fix_weekly_log_transfer_function_grants`, `fix_weekly_log_transfer_feature_id_comments`(전부 Supabase MCP `apply_migration` 적용이라 로컬 `supabase/migrations/`에는 없음)
+  - **수락 기준**: 관리자 이상만 이관할 수 있고, 대상자를 검색해 선택할 수 있으며, 이관이 여러 번 가능하고, 모든 이관 기록이 남아 화면에 표시된다. **충족 확인.**
+  - **테스트 결과** (Supabase MCP로 실 DB에서 트랜잭션 후 전량 롤백하는 방식으로 권한 분기 검증 — 이 프로젝트에는 일반 관리자·일반 사용자 계정이 없어(팀이 배정된 프로필 5개가 모두 superadmin) 역할·소속을 트랜잭션 안에서 임시 변경해 시나리오를 구성):
+    - [x] 관리자 이관 — `transfer_count` 0→1, 이력 1건(사유 공백 trim 적용), 새 담당자 알림 1건, `weekly_logs.department_id`가 새 담당자의 팀과 일치
+    - [x] 반복 이관 — 2회 연속 이관 시 `transfer_count`가 2로 누적
+    - [x] 같은 담당자에게 재이관 — "이미 이 사용자가 담당자입니다."로 차단
+    - [x] 일반 사용자 RPC 호출 — "권한이 없습니다: 진행업무 이관은 관리자만 할 수 있습니다."로 차단
+    - [x] 일반 사용자가 RPC를 우회해 같은 팀 업무의 `author_id`를 직접 UPDATE — BEFORE 트리거가 동일 메시지로 차단
+    - [x] 일반 사용자의 `transfer_count` 위조 UPDATE — 트리거가 이전 값(0)으로 되돌림
+    - [x] 일반 사용자의 `weekly_log_transfers` 직접 INSERT — RLS 위반으로 차단
+    - [x] 일반 관리자가 타 부문 대상에게 이관 — "권한이 없습니다: 소속 부문 밖의 진행업무 또는 담당자입니다."로 차단 / 같은 상황에서 슈퍼관리자는 허용
+    - [x] `get_advisors`(security)로 함수 권한 확인 — `revoke ... from anon/authenticated`만으로는 PUBLIC(`=X`) grant가 남아 `anon`이 여전히 호출 가능함을 `proacl` 실측으로 발견해 `from public` 회수를 추가(후속 마이그레이션). 최종 `proacl`이 기존 `record_weekly_log_change_history()`(postgres/service_role만)와 동일함을 확인
+    - [x] `npx tsc --noEmit` 에러 0건, `npm run lint` 신규 경고/에러 0건(기존 3개 에러는 `ui/carousel.tsx`/`ui/sidebar.tsx`/`hooks/use-mobile.ts` 사전 존재 항목), `npm run build` 성공
+  - **범위 밖 유지**: ① **첨부파일 이동** — 스토리지 경로가 `{department_id}/...` 고정이고 파일 이동이 원자적이지 않아 이관을 단일 UPDATE로 유지하는 쪽을 택했다. 스토리지 SELECT는 버킷 전체 공개라 다운로드는 정상이고, 이관 전 첨부의 **삭제만** 이전 팀 구성원·관리자로 제한된다. ② **등록 시점 담당자 지정** — 위 배경의 판단에 따라 도입하지 않음. ③ **인증 계정 E2E 검증** — 실 로그인 세션이 필요한 브라우저 검증은 사용자 작업으로 남김(권한 분기는 위와 같이 DB 레벨에서 전량 검증)
+
 ---
 
 ## 기능 ID 커버리지 매핑
@@ -55,5 +83,6 @@ v2(F040~F057) 마감과 뒤이은 운영 정리(F058~F060, `docs/roadmap/ROADMAP
 |---------|--------|-----------|
 | F061 | 화면 표기 리네임 (주간업무→진행업무) | Task 064 |
 | F062 | 문서 동기화 (CLAUDE.md/README.md/푸터) | Task 065 |
+| F063 | 진행업무 오너십 이관 | Task 066 |
 
 이전 F-번호(F001~F039는 MVP·v1, F040~F057은 v2, F058~F060은 v2 Phase 8)는 각각 `docs/roadmap/ROADMAP_mvp.md`, `docs/roadmap/ROADMAP_v1.md`, `docs/roadmap/ROADMAP_V2.md`를 참고.

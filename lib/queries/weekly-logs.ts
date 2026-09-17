@@ -15,7 +15,7 @@ import type {
 type Client = Awaited<ReturnType<typeof createClient>>;
 
 const LOGS_SELECT =
-  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, progress, departments:departments(name)";
+  "id, title, start_date, target_end_date, status, department_id, author_id, created_at, progress, transfer_count, departments:departments(name)";
 
 type LogRow = {
   id: string;
@@ -27,6 +27,8 @@ type LogRow = {
   author_id: string;
   created_at: string;
   progress: number;
+  // F063 이관 횟수 — 댓글수·반응수와 달리 2차 조회 없이 weekly_logs 컬럼을 그대로 읽는다.
+  transfer_count: number;
   departments: { name: string } | null;
 };
 
@@ -386,6 +388,7 @@ async function hydrateWeeklyLogRows(
       comment_count: commentCounts.get(row.id) ?? 0,
       reaction_up_count: reactionCounts.get(row.id)?.up ?? 0,
       reaction_down_count: reactionCounts.get(row.id)?.down ?? 0,
+      transfer_count: row.transfer_count,
     };
   });
 }

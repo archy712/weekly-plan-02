@@ -13,9 +13,9 @@ import {
   Clock,
   Coins,
   Pencil,
+  Repeat2,
   Star,
   Tag,
-  UserRound,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -65,8 +65,11 @@ const WeeklyLogForm = dynamic(
     ),
   },
 );
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { WeeklyLogAttachmentField } from "@/components/weekly-log-attachment-field";
 import { WeeklyLogChangeHistorySection } from "@/components/weekly-log-change-history";
+import { WeeklyLogTransferDialog } from "@/components/weekly-log-transfer-dialog";
+import { WeeklyLogTransferHistorySection } from "@/components/weekly-log-transfer-history";
 import { WeeklyLogCommentSection } from "@/components/weekly-log-comment-section";
 import { WeeklyLogReactionButtons } from "@/components/weekly-log-reaction-buttons";
 import { useWeeklyLogAttachments } from "@/hooks/use-weekly-log-attachments";
@@ -77,7 +80,13 @@ import {
   IMPORTANCE_MIN,
 } from "@/lib/constants/importance";
 import { PROGRESS_MAX, PROGRESS_MIN, PROGRESS_STEP } from "@/lib/constants/progress";
-import { formatCurrency, formatDate, getStatusLabel } from "@/lib/format";
+import { getAvatarPreset } from "@/lib/constants/avatars";
+import {
+  formatCurrency,
+  formatDate,
+  formatTransferPartyName,
+  getStatusLabel,
+} from "@/lib/format";
 import { cn, computeTargetProgress, formatThousandsInput } from "@/lib/utils";
 import type {
   WeeklyLogDetail,
@@ -308,6 +317,11 @@ export function WeeklyLogDetailView({
   // 별도 상태가 없다 — 기본값 0을 "아직 입력 안 함"으로 간주해 입력을 유도한다. 완료된
   // 업무는 더 이상 진척률을 조정할 대상이 아니므로 제외한다.
   const progressNotEntered = !isCompleted && progress === 0;
+  // 담당자 표시명(이름 → 이메일 폴백) — 본문 메타 줄과 이관 다이얼로그 안내 문구가 공유한다.
+  const ownerName = formatTransferPartyName({
+    name: log.author_name,
+    email: log.author_email,
+  });
 
   const breadcrumbNav = (
     // 상세 페이지 진입 경로가 다양해(목록/칸반/타임라인/알림/댓글 알림 등) 브라우저 뒤로가기가
@@ -382,6 +396,19 @@ export function WeeklyLogDetailView({
       <div className="flex items-start justify-between gap-2">
         <h1 className="text-2xl font-bold">{log.title}</h1>
         <div className="flex shrink-0 items-center gap-1.5">
+          {/* 이관여부 속성(F063) — weekly_logs.transfer_count는 트리거가 강제 동기화하는
+              비정규화 컬럼이라 추가 조회 없이 그대로 읽는다. 0이면 배지 자체를 숨긴다. */}
+          {log.transfer_count > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="gap-1">
+                  <Repeat2 className="size-3" aria-hidden />
+                  이관 {log.transfer_count}회
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>아래 이관 이력에서 상세 기록을 볼 수 있습니다</TooltipContent>
+            </Tooltip>
+          )}
           <Badge variant="secondary">중요도: {formatImportanceLabel(importance)}</Badge>
           <StatusBadge status={status} />
           {/* 진척률이 목표진척률에 못 미치면(완료 제외) 표시 — canWrite 여부와 무관하게
@@ -462,12 +489,33 @@ export function WeeklyLogDetailView({
           <Users className="size-3.5 shrink-0" aria-hidden />
           {log.department_name}
         </span>
-        {log.author_email && (
-          <span className="flex items-center gap-1.5">
-            <UserRound className="size-3.5 shrink-0" aria-hidden />
-            {log.author_email}
-          </span>
-        )}
+        {/* 담당자 — 목록의 작성자 컬럼과 동일하게 아바타 + 이름(없으면 이메일)으로 보여준다.
+            관리자에게는 바로 옆에 이관 버튼이 붙는다(F063). */}
+        <span className="flex items-center gap-1.5">
+          <Avatar size="sm" className={getAvatarPreset(log.author_avatar_key).bgClass}>
+            <AvatarFallback className="bg-transparent text-xs">
+              {getAvatarPreset(log.author_avatar_key).emoji}
+            </AvatarFallback>
+          </Avatar>
+          {ownerName}
+          {isAdmin && (
+            <WeeklyLogTransferDialog
+              logId={log.id}
+              currentOwnerName={ownerName}
+              trigger={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs"
+                >
+                  <Repeat2 className="size-3.5" aria-hidden />
+                  이관
+                </Button>
+              }
+            />
+          )}
+        </span>
         <span className="flex items-center gap-1.5">
           <CalendarDays className="size-3.5 shrink-0" aria-hidden />
           {formatDate(log.start_date)} ~ {formatDate(log.target_end_date)}
@@ -691,6 +739,7 @@ export function WeeklyLogDetailView({
           </Button>
         </div>
       )}
+      <WeeklyLogTransferHistorySection transfers={log.transfers} />
       <WeeklyLogChangeHistorySection history={log.history} />
       <WeeklyLogCommentSection
         weeklyLogId={log.id}

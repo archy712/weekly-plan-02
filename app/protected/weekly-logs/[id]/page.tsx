@@ -8,6 +8,7 @@ import { WeeklyLogDetailSkeleton } from "@/components/weekly-log-detail-skeleton
 import { getWeeklyLogComments } from "@/lib/queries/comments";
 import { getWeeklyLogReactionSummary } from "@/lib/queries/reactions";
 import { getWeeklyLogChangeHistory } from "@/lib/queries/weekly-log-history";
+import { getWeeklyLogTransfers } from "@/lib/queries/weekly-log-transfers";
 import { formatDate } from "@/lib/format";
 import type { WeeklyLogImportance, WeeklyLogStatus, WeeklyLogWorkType } from "@/lib/types";
 
@@ -44,7 +45,7 @@ async function WeeklyLogDetailContent({
   const { data: log, error: logError } = await supabase
     .from("weekly_logs")
     .select(
-      "id, title, content, start_date, target_end_date, status, department_id, work_type, importance, progress, estimated_mm, estimated_cost, partner_company, departments:departments(name, organization_id), profiles:profiles(email)",
+      "id, title, content, start_date, target_end_date, status, department_id, author_id, transfer_count, work_type, importance, progress, estimated_mm, estimated_cost, partner_company, departments:departments(name, organization_id)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -70,7 +71,8 @@ async function WeeklyLogDetailContent({
   // 독립적이라 순차로 await하면 왕복만 늘어난다 — 한 번에 병렬로 실행한다. 전부 weekly_logs
   // SELECT 공개 범위를 그대로 따르는 부서 무관 조회이고, 업무타입은 조직 필터를 SQL이 아니라
   // 아래 JS에서 걸므로(전 조직 조회 후 필터) 로그 조직 id와 무관하게 미리 조회해도 안전하다.
-  const [attachmentsResult, comments, reactions, workTypesResult, history] = await Promise.all([
+  const [attachmentsResult, comments, reactions, workTypesResult, history, transfers, authorIdentities] =
+    await Promise.all([
     // 첨부파일도 weekly_logs와 동일하게 SELECT는 전 부서 공개다.
     supabase
       .from("weekly_log_attachments")
@@ -90,6 +92,12 @@ async function WeeklyLogDetailContent({
       .order("name"),
     // 상태·업무타입·중요도 변경 이력(F043, v2 Task 045). 역시 부서 무관 SELECT 공개.
     getWeeklyLogChangeHistory(supabase, id),
+    // 오너십 이관 이력(F062). 변경 이력과 동일하게 트리거 전용 기록이라 조회만 한다.
+    getWeeklyLogTransfers(supabase, id),
+    // 담당자(작성자) 신원 — profiles_select_own_or_admin RLS 때문에 embed로는 타인의 이름/
+    // 아바타를 가져올 수 없어(원래 embed하던 profiles(email)이 일반 사용자에게는 항상 null이
+    // 었다) 목록 화면과 동일하게 get_profile_identities RPC로 조회한다.
+    supabase.rpc("get_profile_identities", { profile_ids: [log.author_id] }),
   ]);
 
   if (attachmentsResult.error) {
@@ -101,6 +109,7 @@ async function WeeklyLogDetailContent({
 
   const attachments = attachmentsResult.data;
   const workTypeRows = workTypesResult.data;
+  const author = authorIdentities.data?.[0];
 
   // 부서 select의 "비활성 라벨링"과 동일한 패턴 — 이 로그의 부서가 속한 조직의 활성
   // 업무 타입은 항상 노출하고, 다른 조직 소속이거나 비활성인 타입은 이 로그에 이미
@@ -140,6 +149,8 @@ async function WeeklyLogDetailContent({
         target_end_date: log.target_end_date,
         status: log.status as WeeklyLogStatus,
         department_id: log.department_id,
+        author_id: log.author_id,
+        transfer_count: log.transfer_count,
         work_type: log.work_type as WeeklyLogWorkType[],
         importance: log.importance as WeeklyLogImportance,
         progress: log.progress,
@@ -147,11 +158,14 @@ async function WeeklyLogDetailContent({
         estimated_cost: log.estimated_cost,
         partner_company: log.partner_company,
         department_name: log.departments?.name ?? "",
-        author_email: log.profiles?.email ?? null,
+        author_name: author?.name ?? null,
+        author_email: author?.email ?? null,
+        author_avatar_key: author?.avatar_key ?? "fox",
         attachments: attachments ?? [],
         comments,
         reactions,
         history,
+        transfers,
       }}
       canWrite={canWrite}
       currentUserId={data.claims.sub}

@@ -17,6 +17,8 @@ import type { ProfileFormData } from "@/lib/schemas/profile";
  *
  * - "댓글" 스위치는 대댓글 알림도 함께 제어한다(별도 컬럼 없이 notify_on_comment를 따르는
  *   DB 트리거 매핑, Task 042 참고) — 캡션으로 이 매핑을 사용자에게 명시한다.
+ * - 업무 이관 알림(F063)에는 대응하는 스위치가 없다 — 끌 수 있게 하면 자신에게 배정된
+ *   업무를 모르고 지나칠 수 있어, "사회적 알림"이 아니라 "직접 전달"로 보고 항상 발송한다.
  * - "리마인더" 스위치는 Task 044(pg_cron)의 `create_weekly_log_reminders()`가 매주 금요일
  *   15:00 KST에 이 값을 직접 조회해 알림 생성 여부를 결정한다(`notify_on_reminder = true`인
  *   사용자만 대상). Task 043 시점엔 값만 저장했으나 이제 실제로 소비된다.
@@ -31,7 +33,8 @@ export function NotificationPreferencesField({
       <div>
         <h3 className="text-sm font-medium">알림 설정</h3>
         <p className="text-sm text-muted-foreground">
-          받고 싶은 알림 유형을 선택하세요. 끈 알림은 이후부터 생성되지 않습니다.
+          받고 싶은 알림 유형을 선택하세요. 끈 알림은 이후부터 생성되지 않습니다. 단, 내게
+          담당이 이관된 진행업무 알림은 끌 수 없습니다.
         </p>
       </div>
       <FormField

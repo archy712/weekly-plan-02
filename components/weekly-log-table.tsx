@@ -10,6 +10,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/status-badge";
 import { WeeklyLogReactionCounts } from "@/components/weekly-log-reaction-counts";
+import { WeeklyLogTransferBadge } from "@/components/weekly-log-transfer-badge";
 import { HighlightedText } from "@/components/highlighted-text";
 import { SortableTableHead, type SortDirection } from "@/components/sortable-table-head";
 import { formatDate, formatProgressLabel } from "@/lib/format";
@@ -120,6 +121,7 @@ export function WeeklyLogTable({
                     <span className="text-muted-foreground">
                       {item.author_name ?? item.author_email ?? "알 수 없는 사용자"}
                     </span>
+                    <WeeklyLogTransferBadge count={item.transfer_count} />
                   </div>
                 </TableCell>
               )}

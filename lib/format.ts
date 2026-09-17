@@ -109,6 +109,9 @@ export function formatNotificationMessage(notification: NotificationListItem): s
     // 사용자님이 삭제된 업무일지에 댓글을 남겼습니다"라는 오해의 소지가 있는 문구가 나간다.
     case "reminder":
       return "이번 주 진행업무를 아직 작성하지 않았습니다.";
+    // F063 이관 알림 — 새 담당자에게만 발송된다(actor는 이관을 수행한 관리자).
+    case "transfer":
+      return `${actor}님이 "${logTitle}"의 담당자를 회원님으로 변경했습니다.`;
     case "comment":
     default:
       return `${actor}님이 "${logTitle}"에 댓글을 남겼습니다.`;
@@ -144,6 +147,15 @@ export function formatChangeHistoryValue(
       : value;
   }
   return value;
+}
+
+// 이관 이력(F063)에 등장하는 사람 표시용 — 목록의 작성자 표시(author_name ?? author_email)와
+// 동일한 폴백 순서를 쓰되, 프로필이 삭제돼 on delete set null로 id까지 비워진 경우까지 덮는다.
+export function formatTransferPartyName(party: {
+  name: string | null;
+  email: string | null;
+}): string {
+  return party.name ?? party.email ?? "알 수 없는 사용자";
 }
 
 // 부문장/부서장/팀장 표시용. 지정된 사람이 없으면 "-", 있는데 이름이 비어 있으면(가입 시
