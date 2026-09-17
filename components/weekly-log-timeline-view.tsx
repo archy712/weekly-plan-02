@@ -154,7 +154,7 @@ export function WeeklyLogTimelineView({
   if (currentAuthorId) {
     activeFilters.push({
       key: "author",
-      label: "작성자: 나",
+      label: "담당자: 나",
       onRemove: () => navigate({ author: null }),
     });
   }
@@ -454,7 +454,7 @@ export function WeeklyLogTimelineView({
                         >
                           <div
                             role="img"
-                            aria-label={`${item.title}, 팀: ${item.department_name}, 작성자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
+                            aria-label={`${item.title}, 팀: ${item.department_name}, 담당자: ${authorLabel}, ${dateRangeText}, ${getStatusLabel(item.status)}${overdue ? ", 지연" : ""}${progressText}`}
                             title={tooltip}
                             className={cn(
                               "absolute inset-y-2 flex items-center overflow-hidden rounded",
@@ -541,7 +541,7 @@ export function WeeklyLogTimelineView({
                 <tr>
                   <th scope="col">제목</th>
                   <th scope="col">팀</th>
-                  <th scope="col">작성자</th>
+                  <th scope="col">담당자</th>
                   <th scope="col">시작일</th>
                   <th scope="col">목표종료일</th>
                   <th scope="col">진행상태</th>

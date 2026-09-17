@@ -87,7 +87,7 @@ export function WeeklyLogListView({
   currentFrom?: string;
   currentTo?: string;
   // Task 040(F040) 신설 축. "내 업무" 위젯이 자기 자신의 id로 좁혀 이동할 때만 쓰이므로,
-  // 배지 라벨은 항상 "작성자: 나"로 고정한다(다른 사용자의 id를 지정하는 UI가 없음).
+  // 배지 라벨은 항상 "담당자: 나"로 고정한다(다른 사용자의 id를 지정하는 UI가 없음).
   currentAuthorId?: string;
   currentSortKey: WeeklyLogSortKey | null;
   currentSortDirection: WeeklyLogSortDirection;
@@ -403,7 +403,7 @@ export function WeeklyLogListView({
   if (currentAuthorId) {
     activeFilters.push({
       key: "author",
-      label: "작성자: 나",
+      label: "담당자: 나",
       onRemove: () => navigate({ author: null }),
     });
   }

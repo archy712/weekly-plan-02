@@ -50,12 +50,15 @@ export function WeeklyLogTable({
               onSort={onSort}
               className="pl-4"
             />
-            {/* 작성자 이름은 weekly_logs 컬럼이 아니지만, PostgREST 계산 필드
+            {/* 표기는 "담당자"지만 정렬 키(author_name)와 계산 필드 이름(author_sort_name)은
+                그대로 둔다 — 이관(F063)으로 담당자가 바뀔 수 있어 화면 표기만 실제 의미에 맞춰
+                바꾼 것이고, 코드 식별자·DB 스키마는 건드리지 않는다는 기존 리네임 원칙(F061)을
+                따른다. 이 이름은 weekly_logs 컬럼이 아니지만 PostgREST 계산 필드
                 author_sort_name(SECURITY DEFINER 함수)로 다른 컬럼과 똑같이 서버 ORDER BY에
                 태울 수 있다(lib/queries/weekly-logs.ts의 buildWeeklyLogsQuery 참고). */}
             {showAuthor && (
               <SortableTableHead
-                label="작성자"
+                label="담당자"
                 sortKey="author_name"
                 currentSortKey={sortKey}
                 currentDirection={sortDirection}

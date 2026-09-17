@@ -324,7 +324,7 @@ export function WeeklyLogKanbanView({
   if (currentAuthorId) {
     activeFilters.push({
       key: "author",
-      label: "작성자: 나",
+      label: "담당자: 나",
       onRemove: () => navigate({ author: null }),
     });
   }
