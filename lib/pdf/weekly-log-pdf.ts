@@ -50,6 +50,7 @@ export async function downloadWeeklyLogListPdf({
   items,
   departmentLabel,
   dateRangeLabel,
+  overdueOnly,
 }: {
   items: WeeklyLogListItem[];
   departmentLabel: string;
@@ -57,6 +58,9 @@ export async function downloadWeeklyLogListPdf({
   // 항상 일치해야 한다는 MVP Task 013 설계 원칙 — 필터가 걸려 있었는지 PDF만 보고도
   // 알 수 있어야 한다).
   dateRangeLabel?: string;
+  // "지연만" 토글이 켜진 상태로 내린 다운로드라는 사실도 함께 표기한다 — 필터가 걸려
+  // 있었는지 다운로드 파일만 보고도 알 수 있어야 한다는 원칙(dateRangeLabel과 동일).
+  overdueOnly?: boolean;
 }): Promise<void> {
   const [{ default: JsPDF }, { default: autoTable }, fontBase64] = await Promise.all([
     import("jspdf"),
@@ -81,10 +85,17 @@ export async function downloadWeeklyLogListPdf({
   doc.text(`진행업무 - ${departmentLabel}`, 14, 18);
   doc.setFontSize(10);
   doc.text(`출력일시: ${printedAt}`, 14, 25);
-  if (dateRangeLabel) {
-    doc.text(`조회 기간: ${dateRangeLabel}`, 14, 30);
+  // 안내 문구는 개수가 가변적이라(기간·조건) y 좌표를 누적해 한 줄씩 쌓고, 표는 그 아래에서
+  // 시작한다 — 줄이 하나도 없으면 기존과 동일하게 30에서 시작한다.
+  const infoLines: string[] = [];
+  if (dateRangeLabel) infoLines.push(`조회 기간: ${dateRangeLabel}`);
+  if (overdueOnly) infoLines.push("조건: 지연만(미완료 + 목표종료일 경과)");
+  let infoY = 30;
+  for (const line of infoLines) {
+    doc.text(line, 14, infoY);
+    infoY += 5;
   }
-  const tableStartY = dateRangeLabel ? 35 : 30;
+  const tableStartY = infoLines.length > 0 ? infoY : 30;
 
   const body =
     items.length === 0

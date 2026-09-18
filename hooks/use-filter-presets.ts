@@ -25,6 +25,8 @@ export type FilterPresetFilters = {
   from: string | null;
   to: string | null;
   author: string | null;
+  // "지연만" 토글(ad hoc). 진행상태와 독립된 필터 축이라 프리셋에도 함께 저장한다.
+  overdue: boolean;
 };
 
 export type FilterPreset = {
@@ -41,6 +43,9 @@ const filterPresetFiltersSchema = z.object({
   from: z.string().nullable(),
   to: z.string().nullable(),
   author: z.string().nullable(),
+  // 이 축이 생기기 전에 저장된 프리셋에는 필드가 없다 — default(false)로 채워 기존
+  // 프리셋이 "스키마 불일치"로 조용히 폐기되지 않게 한다(parseStoredPresets 참고).
+  overdue: z.boolean().default(false),
 });
 
 const filterPresetSchema = z.object({

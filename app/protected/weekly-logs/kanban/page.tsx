@@ -4,7 +4,11 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { WeeklyLogKanbanView } from "@/components/weekly-log-kanban-view";
 import { WeeklyLogKanbanSkeleton } from "@/components/weekly-log-kanban-skeleton";
-import { fetchWeeklyLogsKanban, normalizeWeeklyLogFilters } from "@/lib/queries/weekly-logs";
+import {
+  fetchWeeklyLogsKanban,
+  normalizeWeeklyLogFilters,
+  resolveWeeklyLogDateRange,
+} from "@/lib/queries/weekly-logs";
 import { formatDate, formatKstDate } from "@/lib/format";
 import { ALL_DEPARTMENTS_FILTER, WEEKLY_LOGS_KANBAN_COLUMN_PAGE_SIZE } from "@/lib/types";
 import type { Department } from "@/lib/types";
@@ -16,6 +20,7 @@ type WeeklyLogKanbanSearchParams = {
   from?: string;
   to?: string;
   author?: string;
+  overdue?: string;
 };
 
 async function WeeklyLogKanbanContent({
@@ -45,13 +50,15 @@ async function WeeklyLogKanbanContent({
 
   // 목록 페이지(app/protected/weekly-logs/page.tsx)와 완전히 동일한 조회조건 정규화·기본값
   // 규칙을 재사용한다 — 파라미터가 없는 첫 진입은 admin 전체/일반 유저 소속 부서.
+  const dateRange = resolveWeeklyLogDateRange(params);
   const filters = normalizeWeeklyLogFilters({
     department: params.department || (isAdmin ? ALL_DEPARTMENTS_FILTER : profile.department_id),
     status: params.status,
     q: params.q,
-    from: params.from,
-    to: params.to,
+    from: dateRange.from,
+    to: dateRange.to,
     author: params.author,
+    overdue: params.overdue,
   });
 
   const [columns, departmentRows] = await Promise.all([
@@ -79,6 +86,8 @@ async function WeeklyLogKanbanContent({
       currentStatus={filters.status}
       currentFrom={filters.from}
       currentTo={filters.to}
+      isDefaultDateRange={dateRange.isDefault}
+      currentOverdueOnly={!!filters.overdueBefore}
       currentAuthorId={filters.author}
       currentUserDepartmentId={profile.department_id}
       isAdmin={isAdmin}

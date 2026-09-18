@@ -32,6 +32,7 @@ import { WeeklyLogTable } from "@/components/weekly-log-table";
 import { WeeklyLogCardList } from "@/components/weekly-log-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
 import { WeeklyLogReactionHint } from "@/components/weekly-log-reaction-hint";
+import { WeeklyLogOverdueToggle } from "@/components/weekly-log-overdue-toggle";
 import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
@@ -71,6 +72,8 @@ export function WeeklyLogListView({
   currentStatus,
   currentFrom,
   currentTo,
+  isDefaultDateRange,
+  currentOverdueOnly,
   currentAuthorId,
   currentSortKey,
   currentSortDirection,
@@ -87,6 +90,15 @@ export function WeeklyLogListView({
   currentStatus: StatusFilter;
   currentFrom?: string;
   currentTo?: string;
+  // 기간 필터가 사용자가 고른 값이 아니라 "최초 진입 기본값"(이번 달 1일 ~ 제한 없음)으로
+  // 채워졌는지. DateRangeFilter가 이 사실을 라벨로 알려 준다 — 값이 어디서 왔는지 모른 채
+  // "총 N건"이 전체 건수가 아닌 상태를 보는 일이 없게 하려는 것이다
+  // (판정 규칙은 lib/queries/weekly-logs.ts의 resolveWeeklyLogDateRange()).
+  isDefaultDateRange?: boolean;
+  // "지연만 보기" 토글(ad hoc). 진행상태와 독립된 축 — 지연은 "완료가 아니면서 목표종료일이
+  // 지난 업무"라 예정·진행중 상태에 걸쳐 있어 status 필터로는 표현할 수 없다(칸반 카드·
+  // 타임라인 막대·"내 업무" 위젯의 지연 판정과 동일 규칙).
+  currentOverdueOnly?: boolean;
   // Task 040(F040) 신설 축. "내 업무" 위젯이 자기 자신의 id로 좁혀 이동할 때만 쓰이므로,
   // 배지 라벨은 항상 "담당자: 나"로 고정한다(다른 사용자의 id를 지정하는 UI가 없음).
   currentAuthorId?: string;
@@ -115,13 +127,13 @@ export function WeeklyLogListView({
   const loadingRef = useRef(false);
 
   const [prevKey, setPrevKey] = useState(
-    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`,
+    `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentOverdueOnly ? "overdue" : ""}::${currentSortKey ?? ""}::${currentSortDirection}`,
   );
 
   // 부서/진행상태/기간/검색어/작성자/정렬(서버에서 확정된 값)이 바뀌면 서버가 첫 배치를
   // 다시 내려 initialItems가 갱신되므로, 목록 상태를 그 첫 배치로 되돌린다(뒤로가기·필터
   // 변경 대응). (렌더링 중 상태 조정 — https://react.dev/learn/you-might-not-need-an-effect)
-  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentSortKey ?? ""}::${currentSortDirection}`;
+  const currentKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentOverdueOnly ? "overdue" : ""}::${currentSortKey ?? ""}::${currentSortDirection}`;
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
     setSearchInput(currentSearchQuery ?? "");
@@ -153,6 +165,7 @@ export function WeeklyLogListView({
     from?: string | null;
     to?: string | null;
     author?: string | null;
+    overdue?: boolean;
     sort?: WeeklyLogSortKey | null;
     dir?: WeeklyLogSortDirection;
   }) => {
@@ -167,6 +180,7 @@ export function WeeklyLogListView({
     if (to) params.set("to", to);
     const author = overrides.author === null ? "" : (overrides.author ?? currentAuthorId ?? "");
     if (author) params.set("author", author);
+    if (overrides.overdue ?? currentOverdueOnly) params.set("overdue", "1");
     const sortKey = overrides.sort === null ? null : (overrides.sort ?? currentSortKey);
     if (sortKey) {
       params.set("sort", sortKey);
@@ -206,6 +220,13 @@ export function WeeklyLogListView({
     navigate({ from: range.from, to: range.to });
   };
 
+  // "지연만"을 켤 때는 기간 조건을 함께 해제한다 — 기간이 걸려 있으면(특히 최초 진입
+  // 기본값인 "이번 달 1일 이후") 그 창 밖에서 목표종료일이 지난 지연 업무가 빠져 토글을
+  // 켜도 0건이 나오는 함정이 있다. 끌 때는 기간을 건드리지 않는다.
+  const handleOverdueToggle = (next: boolean) => {
+    navigate(next ? { overdue: true, from: null, to: null } : { overdue: false });
+  };
+
   // 저장된 필터 프리셋 적용(F045) — 프리셋에 없는 축은 명시적으로 null/빈 값을 넘겨
   // 현재 화면에 남아 있는 값과 병합되지 않고 프리셋 조건으로 완전히 대체되게 한다.
   const applyFilterPreset = (filters: FilterPresetFilters) => {
@@ -217,6 +238,7 @@ export function WeeklyLogListView({
       from: filters.from,
       to: filters.to,
       author: filters.author,
+      overdue: filters.overdue,
     });
   };
 
@@ -237,6 +259,7 @@ export function WeeklyLogListView({
     from: currentFrom ?? null,
     to: currentTo ?? null,
     author: currentAuthorId ?? null,
+    overdue: currentOverdueOnly ?? false,
   };
   const rawSort = { key: currentSortKey, direction: currentSortDirection };
 
@@ -318,6 +341,7 @@ export function WeeklyLogListView({
         items: result.items,
         departmentLabel: scopeLabel,
         dateRangeLabel,
+        overdueOnly: currentOverdueOnly,
       });
     } catch {
       toast.error("PDF 생성 중 오류가 발생했습니다.");
@@ -363,6 +387,7 @@ export function WeeklyLogListView({
         items: exportItems,
         departmentLabel: scopeLabel,
         dateRangeLabel,
+        overdueOnly: currentOverdueOnly,
       });
     } catch {
       toast.error("Excel 생성 중 오류가 발생했습니다.");
@@ -415,6 +440,12 @@ export function WeeklyLogListView({
   // 실제 내용이 들어오는 순간을 짧은 페이드로 받아 "뚝 바뀌는" 느낌을 없앤다. 마운트 시
   // 1회만 재생되므로 필터 soft navigation(이 컴포넌트가 리마운트되지 않음)에서는 화면이
   // 다시 깜빡이지 않는다 — 칸반·타임라인·상세·사용자 관리 뷰도 동일한 클래스를 쓴다.
+  // 기간·"지연만"은 전용 컨트롤이 항상 값을 보여주므로 배지로 중복 노출하지 않는다(위
+  // activeFilters 주석 참고). 그래서 "필터가 걸려 있는가"를 activeFilters 길이만으로 판단하면
+  // 두 축이 누락돼 건수 문구·빈 상태 안내가 어긋난다 — 이 값으로 함께 판정한다.
+  const hasAnyFilter =
+    activeFilters.length > 0 || !!currentFrom || !!currentTo || !!currentOverdueOnly;
+
   return (
     <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <LoadingBar active={isPending} />
@@ -485,12 +516,23 @@ export function WeeklyLogListView({
             <SelectContent>
               <SelectItem value={ALL_STATUSES_FILTER}>전체 상태</SelectItem>
               {STATUS_FILTER_OPTIONS.map((status) => (
-                <SelectItem key={status} value={status}>
+                <SelectItem
+                  key={status}
+                  value={status}
+                  // "지연만"이 켜져 있으면 완료는 정의상 0건이라(완료된 지연 업무는 없다)
+                  // 고를 수 없게 막아 빈 화면을 보게 되는 일을 없앤다.
+                  disabled={!!currentOverdueOnly && status === "completed"}
+                >
                   {getStatusLabel(status)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <WeeklyLogOverdueToggle
+            active={!!currentOverdueOnly}
+            clearsDateRange
+            onToggle={handleOverdueToggle}
+          />
           <WeeklyLogFilterPresets
             userId={userId}
             currentFilters={rawFilters}
@@ -501,14 +543,17 @@ export function WeeklyLogListView({
           <DateRangeFilter
             from={currentFrom}
             to={currentTo}
+            isDefault={isDefaultDateRange}
             onFromChange={handleFromChange}
             onToChange={handleToChange}
             onReset={handleDateRangeReset}
             onPreset={applyDatePreset}
           />
           {/* 현재 필터 조건에 맞는 총 건수 — 기간 프리셋("최근 3개월") 오른쪽에 우측 정렬. */}
+          {/* 기간은 배지로 노출하지 않으므로(아래 activeFilters 주석 참고) activeFilters만
+              보면 기본 기간이 걸린 상태에서도 "총 업무"로 보인다 — 기간까지 함께 따진다. */}
           <p className="text-muted-foreground ml-auto text-sm">
-            {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
+            {hasAnyFilter ? "조건에 맞는 업무" : "총 업무"}{" "}
             <span className="text-foreground font-medium">
               {totalCount.toLocaleString()}
             </span>
@@ -548,14 +593,22 @@ export function WeeklyLogListView({
       >
         {items.length === 0 ? (
           <EmptyState
-            icon={activeFilters.length > 0 ? SearchX : undefined}
+            icon={hasAnyFilter ? SearchX : undefined}
             title={
-              activeFilters.length > 0 ? "검색 결과가 없습니다" : "등록된 진행업무가 없습니다"
+              // "지연만"이 켜져 있으면 0건은 "데이터가 없다"가 아니라 "지연이 없다"는
+              // 좋은 소식이므로 문구를 따로 둔다.
+              currentOverdueOnly
+                ? "지연된 업무가 없습니다"
+                : hasAnyFilter
+                  ? "검색 결과가 없습니다"
+                  : "등록된 진행업무가 없습니다"
             }
             description={
-              activeFilters.length > 0
-                ? "위 필터를 조정하거나 개별 배지를 해제해보세요."
-                : "신규 작성 버튼을 눌러 첫 진행업무를 작성해보세요."
+              currentOverdueOnly
+                ? "목표종료일이 지난 미완료 업무가 없습니다. [지연만]을 다시 눌러 전체 목록으로 돌아갈 수 있습니다."
+                : hasAnyFilter
+                  ? "위 필터를 조정하거나 개별 배지를 해제해보세요."
+                  : "신규 작성 버튼을 눌러 첫 진행업무를 작성해보세요."
             }
           />
         ) : (

@@ -11,6 +11,7 @@ import {
   fetchWeeklyLogsPage,
   normalizeWeeklyLogFilters,
   normalizeWeeklyLogSort,
+  resolveWeeklyLogDateRange,
 } from "@/lib/queries/weekly-logs";
 import { getMyWorkSummary } from "@/lib/queries/stats";
 import { formatDate, formatKstDate } from "@/lib/format";
@@ -26,6 +27,7 @@ type WeeklyLogsSearchParams = {
   sort?: string;
   dir?: string;
   author?: string;
+  overdue?: string;
 };
 
 // Task 040(F040) "내 업무" 위젯 전용 조회. 목록(WeeklyLogsContent)과 별도의 Suspense
@@ -83,13 +85,17 @@ async function WeeklyLogsContent({
   // 쓰기(등록/수정/삭제)는 RLS에서 여전히 소속 부서(또는 admin)로만 제한된다.
   // 파라미터가 없는 첫 진입 시 기본값은 admin은 전체, 일반 유저는 소속 부서로 좁힌다.
   // (상태·날짜·검색어·정렬 정규화는 normalizeWeeklyLog* 헬퍼가 담당한다.)
+  // 기간은 "필터 파라미터가 하나도 없는 최초 진입"에만 기본값(이번 달 1일 ~ 제한 없음)이
+  // 붙는다 — 판정 규칙과 근거는 resolveWeeklyLogDateRange()의 주석 참고.
+  const dateRange = resolveWeeklyLogDateRange(params);
   const filters = normalizeWeeklyLogFilters({
     department: params.department || (isAdmin ? ALL_DEPARTMENTS_FILTER : profile.department_id),
     status: params.status,
     q: params.q,
-    from: params.from,
-    to: params.to,
+    from: dateRange.from,
+    to: dateRange.to,
     author: params.author,
+    overdue: params.overdue,
   });
   const sort = normalizeWeeklyLogSort({ key: params.sort, direction: params.dir });
 
@@ -123,6 +129,8 @@ async function WeeklyLogsContent({
       currentStatus={filters.status}
       currentFrom={filters.from}
       currentTo={filters.to}
+      isDefaultDateRange={dateRange.isDefault}
+      currentOverdueOnly={!!filters.overdueBefore}
       currentAuthorId={filters.author}
       currentSortKey={sort.key}
       currentSortDirection={sort.direction}

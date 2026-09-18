@@ -30,6 +30,7 @@ import { WeeklyLogKanbanColumn } from "@/components/weekly-log-kanban-column";
 import { WeeklyLogKanbanCardContent } from "@/components/weekly-log-kanban-card";
 import { WeeklyLogFilterPresets } from "@/components/weekly-log-filter-presets";
 import { WeeklyLogReactionHint } from "@/components/weekly-log-reaction-hint";
+import { WeeklyLogOverdueToggle } from "@/components/weekly-log-overdue-toggle";
 import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { DateRangeFilter } from "@/components/date-range-filter";
 import { LoadingBar } from "@/components/loading-bar";
@@ -79,6 +80,8 @@ export function WeeklyLogKanbanView({
   currentStatus,
   currentFrom,
   currentTo,
+  isDefaultDateRange,
+  currentOverdueOnly,
   currentAuthorId,
   currentUserDepartmentId,
   isAdmin,
@@ -94,6 +97,15 @@ export function WeeklyLogKanbanView({
   currentStatus: StatusFilter;
   currentFrom?: string;
   currentTo?: string;
+  // 기간 필터가 사용자가 고른 값이 아니라 "최초 진입 기본값"(이번 달 1일 ~ 제한 없음)으로
+  // 채워졌는지. DateRangeFilter가 이 사실을 라벨로 알려 준다 — 값이 어디서 왔는지 모른 채
+  // "총 N건"이 전체 건수가 아닌 상태를 보는 일이 없게 하려는 것이다
+  // (판정 규칙은 lib/queries/weekly-logs.ts의 resolveWeeklyLogDateRange()).
+  isDefaultDateRange?: boolean;
+  // "지연만 보기" 토글(ad hoc). 진행상태와 독립된 축 — 지연은 "완료가 아니면서 목표종료일이
+  // 지난 업무"라 예정·진행중 상태에 걸쳐 있어 status 필터로는 표현할 수 없다(칸반 카드·
+  // 타임라인 막대·"내 업무" 위젯의 지연 판정과 동일 규칙).
+  currentOverdueOnly?: boolean;
   // Task 040(F040) 신설 축. "내 업무" 위젯의 "지연" 링크가 자신의 id로 칸반을 좁혀 보낼 때
   // 쓰인다(목록 페이지의 status=in_progress 근사와 달리, 칸반은 카드의 "지연" 표시가
   // stats_my_work_summary RPC와 동일한 조건이라 정확히 일치한다).
@@ -130,7 +142,7 @@ export function WeeklyLogKanbanView({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  const filterKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}`;
+  const filterKey = `${currentDepartmentId}::${currentSearchQuery ?? ""}::${currentStatus}::${currentFrom ?? ""}::${currentTo ?? ""}::${currentAuthorId ?? ""}::${currentOverdueOnly ? "overdue" : ""}`;
   const [prevKey, setPrevKey] = useState(filterKey);
   // 필터가 같아도 신규 작성·삭제 후 서버가 컬럼을 새로 내려주면(revalidatePath/router.refresh)
   // 반영해야 하므로, 필터 키가 아니라 initialColumns 배열 참조 변경으로 컬럼 상태를 되돌린다
@@ -157,6 +169,7 @@ export function WeeklyLogKanbanView({
     from?: string | null;
     to?: string | null;
     author?: string | null;
+    overdue?: boolean;
   }) => {
     const params = new URLSearchParams();
     params.set("department", overrides.department ?? currentDepartmentId);
@@ -169,6 +182,7 @@ export function WeeklyLogKanbanView({
     if (to) params.set("to", to);
     const author = overrides.author === null ? "" : (overrides.author ?? currentAuthorId ?? "");
     if (author) params.set("author", author);
+    if (overrides.overdue ?? currentOverdueOnly) params.set("overdue", "1");
     startTransition(() => {
       router.push(`/protected/weekly-logs/kanban?${params.toString()}`);
     });
@@ -190,6 +204,7 @@ export function WeeklyLogKanbanView({
       from: filters.from,
       to: filters.to,
       author: filters.author,
+      overdue: filters.overdue,
     });
   };
 
@@ -200,6 +215,7 @@ export function WeeklyLogKanbanView({
     from: currentFrom ?? null,
     to: currentTo ?? null,
     author: currentAuthorId ?? null,
+    overdue: currentOverdueOnly ?? false,
   };
 
   const loadMoreColumn = async (status: WeeklyLogStatus) => {
@@ -401,12 +417,27 @@ export function WeeklyLogKanbanView({
             <SelectContent>
               <SelectItem value={ALL_STATUSES_FILTER}>전체 상태</SelectItem>
               {STATUS_FILTER_OPTIONS.map((status) => (
-                <SelectItem key={status} value={status}>
+                <SelectItem
+                  key={status}
+                  value={status}
+                  // "지연만"이 켜져 있으면 완료는 정의상 0건이라(완료된 지연 업무는 없다)
+                  // 고를 수 없게 막아 빈 화면을 보게 되는 일을 없앤다.
+                  disabled={!!currentOverdueOnly && status === "completed"}
+                >
                   {getStatusLabel(status)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <WeeklyLogOverdueToggle
+            active={!!currentOverdueOnly}
+            clearsDateRange
+            onToggle={(next) =>
+              // 목록 뷰(weekly-log-list-view.tsx의 handleOverdueToggle)와 동일한 이유로
+              // 켤 때 기간 조건을 함께 해제한다.
+              navigate(next ? { overdue: true, from: null, to: null } : { overdue: false })
+            }
+          />
           <WeeklyLogFilterPresets
             userId={userId}
             currentFilters={rawFilters}
@@ -417,13 +448,16 @@ export function WeeklyLogKanbanView({
           <DateRangeFilter
             from={currentFrom}
             to={currentTo}
+            isDefault={isDefaultDateRange}
             onFromChange={(value) => navigate({ from: value || null })}
             onToChange={(value) => navigate({ to: value || null })}
             onReset={() => navigate({ from: null, to: null })}
             onPreset={(range) => navigate({ from: range.from, to: range.to })}
           />
           <p className="text-muted-foreground ml-auto text-sm">
-            {activeFilters.length > 0 ? "조건에 맞는 업무" : "총 업무"}{" "}
+            {activeFilters.length > 0 || currentFrom || currentTo || currentOverdueOnly
+              ? "조건에 맞는 업무"
+              : "총 업무"}{" "}
             <span className="text-foreground font-medium">{totalCount.toLocaleString()}</span>건
           </p>
         </div>

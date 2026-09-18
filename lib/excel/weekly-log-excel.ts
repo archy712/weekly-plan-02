@@ -47,12 +47,16 @@ export async function downloadWeeklyLogListExcel({
   items,
   departmentLabel,
   dateRangeLabel,
+  overdueOnly,
 }: {
   items: WeeklyLogExportItem[];
   departmentLabel: string;
   // PDF와 동일하게, 화면에 적용된 기간 필터를 그대로 시트 상단 안내문으로 전달한다
   // (화면과 다운로드 결과가 항상 일치해야 한다는 MVP Task 013 설계 원칙).
   dateRangeLabel?: string;
+  // "지연만" 토글이 켜진 상태로 내린 다운로드라는 사실도 함께 표기한다 — 필터가 걸려
+  // 있었는지 다운로드 파일만 보고도 알 수 있어야 한다는 원칙(dateRangeLabel과 동일).
+  overdueOnly?: boolean;
 }): Promise<void> {
   const ExcelJS = await import("exceljs");
 
@@ -76,6 +80,9 @@ export async function downloadWeeklyLogListExcel({
   worksheet.addRow([`출력일시: ${printedAt}`]);
   if (dateRangeLabel) {
     worksheet.addRow([`조회 기간: ${dateRangeLabel}`]);
+  }
+  if (overdueOnly) {
+    worksheet.addRow(["조건: 지연만(미완료 + 목표종료일 경과)"]);
   }
 
   const headerRow = worksheet.addRow(COLUMNS.map((col) => col.header));

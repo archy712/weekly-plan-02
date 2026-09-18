@@ -17,6 +17,7 @@ type WeeklyLogTimelineSearchParams = {
   from?: string;
   to?: string;
   author?: string;
+  overdue?: string;
 };
 
 async function WeeklyLogTimelineContent({
@@ -55,6 +56,10 @@ async function WeeklyLogTimelineContent({
     from: params.from || defaultRange.from,
     to: params.to || defaultRange.to,
     author: params.author,
+    // 타임라인은 기간 창이 필수라 "지연만"이 그 창과 AND로 걸린다 — 즉 "화면에 그려진
+    // 기간에 걸쳐 있는 지연 업무"가 된다(목록·칸반은 기간을 비울 수 있어 전체 지연을 볼 수
+    // 있다는 차이). 뷰 전환 시 토글 상태를 잃지 않도록 여기서도 같은 축을 받는다.
+    overdue: params.overdue,
   });
   // normalizeWeeklyLogFilters는 department/status 화면과 공유하는 헬퍼라 from/to를
   // string | undefined로 반환하지만, 위에서 항상 유효한 기본값을 넣어 호출했으므로 실제로는
@@ -92,6 +97,7 @@ async function WeeklyLogTimelineContent({
       currentStatus={filters.status}
       currentFrom={from}
       currentTo={to}
+      currentOverdueOnly={!!filters.overdueBefore}
       currentAuthorId={filters.author}
       // 막대의 "지연" 강조(목표종료일 경과)는 서버 렌더링 시점 날짜를 그대로 기준으로 삼아
       // 칸반보드·"내 업무" 위젯과 동일한 판정을 보장한다(CLAUDE.md 타임존 절 참고).

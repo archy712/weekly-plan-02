@@ -19,6 +19,9 @@ type RawFilters = {
   from?: string | null;
   to?: string | null;
   author?: string | null;
+  // "지연만" 토글의 켜짐/꺼짐만 받는다 — 비교 기준일은 normalizeWeeklyLogFilters()가
+  // 서버 시각으로 채우므로 클라이언트가 날짜를 지정할 방법이 없다.
+  overdue?: boolean | null;
 };
 
 type RawSort = {

@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WeeklyLogOverdueToggle } from "@/components/weekly-log-overdue-toggle";
 import { WeeklyLogViewSwitcher } from "@/components/weekly-log-view-switcher";
 import { EmptyState } from "@/components/empty-state";
 import { DateRangeFilter } from "@/components/date-range-filter";
@@ -60,6 +61,7 @@ export function WeeklyLogTimelineView({
   currentStatus,
   currentFrom,
   currentTo,
+  currentOverdueOnly,
   currentAuthorId,
   todayIso,
   todayKst,
@@ -77,6 +79,9 @@ export function WeeklyLogTimelineView({
   // 타임라인은 한 화면에 기간 전체를 그리는 구조라 기간 없이는 렌더링 자체가 불가능하다.
   currentFrom: string;
   currentTo: string;
+  // "지연만 보기" 토글(ad hoc). 타임라인은 기간 창이 필수라 이 토글이 창과 AND로 걸린다 —
+  // "화면에 그려진 기간에 걸쳐 있는 지연 업무"가 된다(목록·칸반은 기간을 비울 수 있다).
+  currentOverdueOnly?: boolean;
   currentAuthorId?: string;
   todayIso: string;
   // 오늘(KST) 등록 업무의 "NEW" 배지 판정 기준(components/weekly-log-new-badge.tsx 참고).
@@ -94,6 +99,7 @@ export function WeeklyLogTimelineView({
     from?: string | null;
     to?: string | null;
     author?: string | null;
+    overdue?: boolean;
   }) => {
     const params = new URLSearchParams();
     params.set("department", overrides.department ?? currentDepartmentId);
@@ -109,6 +115,7 @@ export function WeeklyLogTimelineView({
     if (to) params.set("to", to);
     const author = overrides.author === null ? "" : (overrides.author ?? currentAuthorId ?? "");
     if (author) params.set("author", author);
+    if (overrides.overdue ?? currentOverdueOnly) params.set("overdue", "1");
     startTransition(() => {
       router.push(`/protected/weekly-logs/timeline?${params.toString()}`);
     });
@@ -126,6 +133,7 @@ export function WeeklyLogTimelineView({
     from: currentFrom,
     to: currentTo,
     author: currentAuthorId ?? null,
+    overdue: currentOverdueOnly ?? false,
   };
 
   const scopeLabel = currentDepartmentName ?? "전체 팀";
@@ -273,12 +281,25 @@ export function WeeklyLogTimelineView({
             <SelectContent>
               <SelectItem value={ALL_STATUSES_FILTER}>전체 상태</SelectItem>
               {STATUS_FILTER_OPTIONS.map((status) => (
-                <SelectItem key={status} value={status}>
+                <SelectItem
+                  key={status}
+                  value={status}
+                  // "지연만"이 켜져 있으면 완료는 정의상 0건이라(완료된 지연 업무는 없다)
+                  // 고를 수 없게 막아 빈 화면을 보게 되는 일을 없앤다.
+                  disabled={!!currentOverdueOnly && status === "completed"}
+                >
                   {getStatusLabel(status)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {/* 타임라인은 기간 창이 필수라(page.tsx가 항상 기본 기간을 채운다) 이 토글을 켜도
+              기간이 해제되지 않는다 — clearsDateRange를 넘기지 않아 툴팁 문구가 그 차이를
+              설명한다. */}
+          <WeeklyLogOverdueToggle
+            active={!!currentOverdueOnly}
+            onToggle={(next) => navigate({ overdue: next })}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateRangeFilter

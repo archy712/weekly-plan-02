@@ -22,9 +22,13 @@ import type { MyWorkSummary } from "@/lib/types/stats";
 // 표현할 수 없음). 그래서:
 //   - "예정"/"진행중"/"완료" → author+status=<해당 상태> 조합이 RPC의 각 건수와 정확히
 //     일치한다(날짜 조건이 없는 단순 집계라 기존 필터로 완전히 표현 가능).
-//   - "지연" → 칸반보드(author로 좁힌 뷰)로 보낸다. 칸반 카드의 빨간 "지연" 표시가 이 RPC와
-//     동일한 조건이므로, 목록 페이지의 근사 필터보다 정확하다(실측: status=in_progress만으로
-//     좁히면 이 프로젝트 시드 데이터 기준 지연 203건 중 69건(planned 상태)이 누락된다).
+//   - "지연" → 목록의 "지연만" 토글(overdue=1)로 보낸다. 이 축이 생기기 전에는 status로
+//     지연을 표현할 수 없어 칸반보드(author로 좁힌 뷰)로 우회했지만(실측: status=in_progress
+//     만으로 좁히면 시드 데이터 기준 지연 203건 중 69건(planned 상태)이 누락), 이제 목록
+//     쿼리가 RPC와 동일한 조건(`status <> 'completed' AND target_end_date < 오늘`)을 그대로
+//     적용하므로 건수가 정확히 일치한다. 기간 파라미터를 싣지 않는 것이 중요하다 — 최초 진입
+//     기본 기간(이번 달 1일~)이 걸리면 그 창 밖의 지연 업무가 빠진다(department를 명시해
+//     기본 기간 주입 자체를 막는다, lib/queries/weekly-logs.ts의 resolveWeeklyLogDateRange).
 export function MyWorkSummaryWidget({
   summary,
   authorId,
@@ -64,7 +68,7 @@ export function MyWorkSummaryWidget({
       key: "overdue",
       label: "지연",
       count: summary.overdue_count,
-      href: `/protected/weekly-logs/kanban?department=${ALL_DEPARTMENTS_FILTER}&author=${authorId}`,
+      href: `/protected/weekly-logs?department=${ALL_DEPARTMENTS_FILTER}&author=${authorId}&overdue=1`,
       caption: "완료되지 않고 목표종료일이 지난 내 업무(예정·진행중에 걸쳐 있음)",
     },
   ];

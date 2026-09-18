@@ -203,3 +203,22 @@ export function formatFileSize(bytes: number): string {
   }
   return `${value.toFixed(value < 10 ? 1 : 0)}${units[unitIndex]}`;
 }
+
+// 기간 필터(F021, Task 029)가 실제로 무엇을 남기는지 입력값에 맞춰 한 문장으로 설명한다.
+// 이 필터는 "업무의 시작일 범위 / 목표종료일 범위"가 아니라 **조회 기간과 업무 기간이
+// 겹치는지**를 보는 조건이라(구현: lib/queries/weekly-logs.ts의 applyScalarFilters,
+// start_date <= to AND target_end_date >= from, stats_* RPC도 동일) 입력칸 이름과 비교
+// 대상이 교차한다 — "기간 시작"은 목표종료일과, "기간 종료"는 시작일과 비교된다.
+// 이 교차를 화면에서 읽을 수 없다는 피드백에 따라, 입력 아래에 항상 이 문구를 노출한다.
+export function formatDateRangeFilterHint(from?: string, to?: string): string | null {
+  if (from && to) {
+    return `${formatDate(from)} ~ ${formatDate(to)} 사이에 진행되는 업무 (업무 기간이 이 기간과 하루라도 겹치면 포함)`;
+  }
+  if (from) {
+    return `${formatDate(from)} 당일 이후까지 진행되는 업무 (목표종료일이 ${formatDate(from)} 이상)`;
+  }
+  if (to) {
+    return `${formatDate(to)} 당일까지 시작한 업무 (시작일이 ${formatDate(to)} 이하)`;
+  }
+  return null;
+}

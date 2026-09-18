@@ -39,6 +39,7 @@ function buildHref(basePath: string, filters: FilterPresetFilters): string {
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
   if (filters.author) params.set("author", filters.author);
+  if (filters.overdue) params.set("overdue", "1");
   const qs = params.toString();
   return qs ? `${basePath}?${qs}` : basePath;
 }

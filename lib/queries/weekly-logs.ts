@@ -2,7 +2,8 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getReactionCountsForLogs } from "@/lib/queries/reactions";
-import { escapeLikePattern } from "@/lib/utils";
+import { formatDate } from "@/lib/format";
+import { escapeLikePattern, getThisMonthRange } from "@/lib/utils";
 import { ALL_DEPARTMENTS_FILTER, ALL_STATUSES_FILTER } from "@/lib/types";
 import type {
   WeeklyLogKanbanColumn,
@@ -65,6 +66,11 @@ export function normalizeWeeklyLogFilters(raw: {
   from?: string | null;
   to?: string | null;
   author?: string | null;
+  // "지연만" 토글은 켜짐/꺼짐만 받고, 비교 기준일은 **여기서 서버 시각으로 채운다**
+  // (클라이언트가 보낸 날짜를 믿지 않는다). 기준일은 칸반 카드·타임라인 막대·"내 업무"
+  // 위젯의 지연 판정과 문자 그대로 같은 값이어야 하므로 그 세 곳과 동일하게
+  // formatDate(new Date())를 쓴다(CLAUDE.md "지연 판정 규칙 3중 일치" 절).
+  overdue?: string | boolean | null;
 }): WeeklyLogListFilters {
   const status =
     raw.status && VALID_STATUSES.includes(raw.status as WeeklyLogStatus)
@@ -87,6 +93,16 @@ export function normalizeWeeklyLogFilters(raw: {
   const author =
     trimmedAuthor && uuidParamSchema.safeParse(trimmedAuthor).success ? trimmedAuthor : undefined;
 
+  // "1"/"true" 같은 쿼리파라미터 문자열과 서버 액션이 보내는 boolean을 모두 받는다.
+  // 빈 문자열·"0"·"false"는 꺼짐으로 본다(URL에서 파라미터를 지우는 것이 정상 경로이지만,
+  // 수동으로 overdue=0을 남기는 경우까지 방어한다).
+  const overdueEnabled =
+    raw.overdue === true ||
+    (typeof raw.overdue === "string" &&
+      raw.overdue !== "" &&
+      raw.overdue !== "0" &&
+      raw.overdue !== "false");
+
   return {
     department,
     status,
@@ -94,7 +110,33 @@ export function normalizeWeeklyLogFilters(raw: {
     from,
     to,
     author,
+    overdueBefore: overdueEnabled ? formatDate(new Date()) : undefined,
   };
+}
+
+// 목록·칸반의 **완전 최초 진입**(URL에 필터 파라미터가 하나도 없는 상태)에만 적용하는
+// 기본 조회 기간. "기간 시작 = 이번 달 1일, 기간 종료 = 제한 없음" 한쪽만 걸어
+// `target_end_date >= 이번 달 1일`(= 이번 달 이후까지 진행되는 업무)만 남긴다 — 진행중·예정
+// 업무는 전부 보이고 과거에 끝난 완료 업무만 감춰지며, 기간 종료를 비워둬 먼 미래에 시작하는
+// 예정 업무도 잘리지 않는다.
+//
+// "만진 적 있는 URL"인지는 `department` 파라미터의 유무로 판정한다 — 필터를 바꾸는 모든
+// 경로(각 뷰의 navigate(), 뷰 스위처의 buildHref(), "내 업무" 위젯 링크)가 "전체 팀"을
+// 고른 경우까지 department를 명시적으로 남기는 기존 관례(파라미터 없는 첫 진입과 구분하기
+// 위한 것)를 그대로 재사용한다. 덕분에 (1) 사용자가 기간을 "초기화"하면 department가 남은
+// URL이 되어 기본값이 다시 끼어들지 않고(= 전체 기간으로 풀린다), (2) "내 업무" 위젯의
+// "지연" 링크처럼 기간을 일부러 걸지 않는 진입 경로에서도 기본값이 적용되지 않는다
+// (기간 조건으로는 지연을 표현할 수 없어 기본 기간이 지연 업무를 가려버리기 때문 —
+// CLAUDE.md "기간(from/to) 필터의 의미" 절 참고).
+export function resolveWeeklyLogDateRange(
+  params: { department?: string | null; from?: string | null; to?: string | null },
+  today: Date = new Date(),
+): { from?: string; to?: string; isDefault: boolean } {
+  const touched = !!params.department || !!params.from || !!params.to;
+  if (touched) {
+    return { from: params.from ?? undefined, to: params.to ?? undefined, isDefault: false };
+  }
+  return { from: getThisMonthRange(today).from, to: undefined, isDefault: true };
 }
 
 export function normalizeWeeklyLogSort(raw: {
@@ -123,6 +165,8 @@ export function normalizeWeeklyLogSort(raw: {
 function applyScalarFilters<
   Q extends {
     eq: (column: string, value: string) => Q;
+    neq: (column: string, value: string) => Q;
+    lt: (column: string, value: string) => Q;
     lte: (column: string, value: string) => Q;
     gte: (column: string, value: string) => Q;
   },
@@ -145,6 +189,14 @@ function applyScalarFilters<
   // 동일 헬퍼를 쓰므로 자동으로 함께 반영됨).
   if (filters.author) {
     query = query.eq("author_id", filters.author);
+  }
+  // "지연만" 토글 — 진행상태 필터와 독립된 축이라 status 조건과 AND로 함께 걸린다.
+  // status=completed와 동시에 켜면 두 조건이 서로 모순돼 0건이 되는데(완료된 지연 업무는
+  // 정의상 없다) 이는 의도된 결과다. 칸반보드의 "완료" 컬럼이 비는 것도 같은 이유다.
+  if (filters.overdueBefore) {
+    query = query
+      .neq("status", "completed")
+      .lt("target_end_date", filters.overdueBefore);
   }
   return query;
 }

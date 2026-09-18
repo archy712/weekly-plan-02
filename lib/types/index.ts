@@ -235,6 +235,13 @@ export type WeeklyLogListFilters = {
   from?: string;
   to?: string;
   author?: string;
+  // "지연만 보기" 토글(ad hoc). 진행상태와 독립된 축이며(지연 = 완료가 아니면서 목표종료일이
+  // 지난 업무 — 예정·진행중에 걸쳐 있음), 값은 boolean이 아니라 **비교 기준일(YYYY-MM-DD)**을
+  // 담는다: 조건이 `status <> 'completed' AND target_end_date < overdueBefore`라 쿼리에
+  // 날짜가 필요한데, 필터 객체는 서버 액션(추가 로딩·다운로드)까지 그대로 흘러다니므로
+  // 기준일을 함께 들고 다니지 않으면 8개 조회 함수의 시그니처에 today를 따로 끼워야 한다.
+  // 이 값은 클라이언트가 보낸 것을 쓰지 않고 normalizeWeeklyLogFilters()가 서버에서 채운다.
+  overdueBefore?: string;
 };
 
 // key가 null이면 기본 정렬(시작일 내림차순, created_at·id로 안정 정렬). 증분 로딩의 range
