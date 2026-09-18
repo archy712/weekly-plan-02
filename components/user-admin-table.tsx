@@ -202,7 +202,7 @@ export function UserAdminTable({
     !!currentSearchQuery;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <LoadingBar active={isPending} />
       <div className="flex flex-wrap items-center gap-2">
         <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">

@@ -27,6 +27,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { startRouteProgress } from "@/lib/route-progress";
 
 type PaletteItem = { href: string; label: string; icon: LucideIcon };
 
@@ -110,6 +111,9 @@ export function CommandPaletteProvider({
 
   const navigate = (href: string) => {
     setOpen(false);
+    // 링크 클릭이 아니라 코드로 이동하는 경로라 문서 전역 클릭 리스너
+    // (components/route-progress.tsx)가 잡지 못한다 — 직접 전역 바를 켠다.
+    startRouteProgress();
     router.push(href);
   };
 

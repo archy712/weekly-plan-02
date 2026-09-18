@@ -70,7 +70,7 @@ export function MyWorkSummaryWidget({
   ];
 
   return (
-    <Card>
+    <Card className="animate-in fade-in-0 duration-300">
       {/* 이 카드의 숫자(예: "진행중 2")가 바로 아래 필터 영역의 "총 N건"(전 사용자·현재
           필터 기준 목록 건수)과 무관하다는 게 한눈에 안 들어온다는 피드백에 따라, "내 업무"
           라벨을 카드 자체에 항상 노출해 두 숫자가 서로 다른 집계라는 걸 명시한다. */}

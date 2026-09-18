@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { startRouteProgress } from "@/lib/route-progress";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -43,7 +44,14 @@ export function AdminTabNav() {
           필터들(dashboard-filters.tsx 등)과 동일한 Select 컴포넌트로 전환했다 — 현재 탭이
           라벨로 항상 보이고, 나머지는 펼쳐서 한눈에 고를 수 있다. */}
       <div className="border-b pb-3 sm:hidden">
-        <Select value={activeTab.href} onValueChange={(href) => router.push(href)}>
+        <Select
+          value={activeTab.href}
+          onValueChange={(href) => {
+            // 데스크탑 탭(TabPendingIndicator)과 달리 링크가 아니므로 전역 바를 직접 켠다.
+            startRouteProgress();
+            router.push(href);
+          }}
+        >
           <SelectTrigger className="w-full" aria-label="관리자 콘솔 메뉴 선택">
             <SelectValue />
           </SelectTrigger>

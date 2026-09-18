@@ -138,7 +138,7 @@ async function SuperAdminOrganizationList() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           슈퍼관리자는 시스템의 모든 부문을 생성·수정·닫기(비활성화)할 수 있습니다.

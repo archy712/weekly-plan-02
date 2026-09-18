@@ -229,7 +229,7 @@ export function WeeklyLogTimelineView({
   const gridTemplateColumns = `${LABEL_WIDTH}px repeat(${totalDays}, minmax(${DAY_MIN_WIDTH}px, 1fr))`;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <LoadingBar active={isPending} />
       <WeeklyLogViewSwitcher current="timeline" filters={rawFilters} />
       {/* 필터 컨트롤 전체를 카드 하나로 감싸 아래 타임라인과 시각적으로 분리한다 —

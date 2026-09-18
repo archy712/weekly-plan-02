@@ -219,7 +219,7 @@ async function DashboardContent({
 
   return (
     <NavigationProgressProvider>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 animate-in fade-in-0 duration-300">
         <DashboardFilters
           departments={departments}
           currentDepartmentId={selectedDepartment}

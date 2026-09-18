@@ -1,7 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { GanttChartSquare, KanbanSquare, List } from "lucide-react";
+import Link, { useLinkStatus } from "next/link";
+import {
+  GanttChartSquare,
+  KanbanSquare,
+  List,
+  Loader2,
+  type LucideIcon,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { FilterPresetFilters } from "@/hooks/use-filter-presets";
@@ -37,6 +43,19 @@ function buildHref(basePath: string, filters: FilterPresetFilters): string {
   return qs ? `${basePath}?${qs}` : basePath;
 }
 
+// 뷰 전환은 다른 라우트로의 이동이라 대상 화면의 loading.tsx 스켈레톤이 결국 뜨지만,
+// 클릭 직후 RSC 페이로드를 기다리는 짧은 공백에는 "어느 탭을 눌렀는지" 표시가 없다.
+// 관리자 콘솔 탭(components/admin-tab-nav.tsx의 TabPendingIndicator)과 동일하게
+// useLinkStatus로 감싸는 <Link>의 pending을 읽어, 아이콘 자리를 스피너로 바꿔 넣는다
+// (새 요소를 추가하지 않으므로 레이아웃이 밀리지 않는다 — Next.js 공식 권고).
+function ViewTabIcon({ Icon }: { Icon: LucideIcon }) {
+  const { pending } = useLinkStatus();
+  if (pending) {
+    return <Loader2 className="size-4 animate-spin" aria-hidden />;
+  }
+  return <Icon className="size-4" aria-hidden />;
+}
+
 export function WeeklyLogViewSwitcher({
   current,
   filters,
@@ -67,7 +86,7 @@ export function WeeklyLogViewSwitcher({
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <Icon className="size-4" aria-hidden />
+          <ViewTabIcon Icon={Icon} />
           {label}
         </Link>
       ))}

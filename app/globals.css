@@ -105,6 +105,17 @@
   }
 }
 
+/* 전역 라우트 전환 바(components/route-progress.tsx)의 등장 애니메이션. 투명하게 시작해
+   지연 뒤 나타나므로, 프리페치로 즉시 끝나는 이동에서는 바가 깜빡이지 않는다. */
+@keyframes route-progress-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 :root {
   --sidebar: hsl(0 0% 98%);
   --sidebar-foreground: hsl(240 5.3% 26.1%);

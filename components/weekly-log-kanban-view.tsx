@@ -354,7 +354,7 @@ export function WeeklyLogKanbanView({
     !!activeItem && activeItem.status !== "completed" && activeItem.target_end_date < todayIso;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <LoadingBar active={isPending} />
       <WeeklyLogViewSwitcher current="kanban" filters={rawFilters} />
       {/* 필터 컨트롤 전체를 카드 하나로 감싸 아래 칸반보드와 시각적으로 분리한다 —

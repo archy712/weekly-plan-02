@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { RouteProgress } from "@/components/route-progress";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -36,6 +37,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
+            {/* 라우트 전환 중 화면 최상단에 뜨는 전역 로딩 바. 대상 페이지의
+                loading.tsx 스켈레톤이 뜨기 전 공백을 메운다. */}
+            <RouteProgress />
             {children}
             <Toaster />
           </TooltipProvider>

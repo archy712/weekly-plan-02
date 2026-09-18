@@ -89,7 +89,7 @@ async function WorkTypesContent() {
   const logCounts = Object.fromEntries(counts.map((entry) => [entry.id, entry.logCount]));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <div className="flex justify-end">
         <WorkTypeFormDialog
           mode="create"

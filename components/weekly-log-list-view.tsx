@@ -411,8 +411,12 @@ export function WeeklyLogListView({
     });
   }
 
+  // 루트에 얹은 animate-in fade-in-0은 스켈레톤(loading.tsx / Suspense fallback)이 걷히고
+  // 실제 내용이 들어오는 순간을 짧은 페이드로 받아 "뚝 바뀌는" 느낌을 없앤다. 마운트 시
+  // 1회만 재생되므로 필터 soft navigation(이 컴포넌트가 리마운트되지 않음)에서는 화면이
+  // 다시 깜빡이지 않는다 — 칸반·타임라인·상세·사용자 관리 뷰도 동일한 클래스를 쓴다.
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 animate-in fade-in-0 duration-300">
       <LoadingBar active={isPending} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <WeeklyLogViewSwitcher current="list" filters={rawFilters} />
